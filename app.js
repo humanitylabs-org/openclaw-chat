@@ -401,16 +401,15 @@ ui.connectBtn.addEventListener("click", async () => {
     // Save connection
     localStorage.setItem("connection", JSON.stringify({ gatewayUrl, token }));
 
-    // Connect to gateway
-    await connectToGateway();
-
-    // Show step 2 (device approval)
+    // Show step 2 (device approval) before connecting
     ui.step1.classList.add("hidden");
     ui.step2.classList.remove("hidden");
     ui.requestId.textContent = state.deviceIdentity.deviceId.slice(0, 16);
 
-    // Poll for device approval
-    pollDeviceApproval();
+    // Connect to gateway
+    // If device is approved, onHello callback will advance to step 3
+    // If not approved, connection will timeout or close with "pairing required"
+    await connectToGateway();
   } catch (err) {
     console.error("Connection error:", err);
     showStatus("Connection failed: " + err.message, "error");
@@ -430,58 +429,49 @@ function showStatus(message, type) {
 
 async function connectToGateway() {
   return new Promise((resolve, reject) => {
+    let helloReceived = false;
+
     state.gateway = new GatewayClient({
       url: state.gatewayUrl,
       token: state.token,
       deviceIdentity: state.deviceIdentity,
       onHello: (payload) => {
         console.log("Connected to gateway:", payload);
+        helloReceived = true;
+        
+        // Device is approved if we received hello
+        localStorage.setItem("deviceApproved", "true");
+        
+        // If in onboarding flow (step 2 visible), advance to step 3
+        if (!ui.step2.classList.contains("hidden")) {
+          ui.step2.classList.add("hidden");
+          ui.step3.classList.remove("hidden");
+        }
+        
         resolve();
       },
       onClose: (info) => {
         console.log("Gateway connection closed:", info);
         updateConnectionStatus(false);
+        
+        // If we haven't received hello yet, this might be a pairing rejection
+        if (!helloReceived && info.reason === "pairing required") {
+          // Stay on step 2, show approval needed message
+          showStatus("Device needs approval. Please approve in Control UI.", "info");
+        }
       },
       onEvent: handleGatewayEvent,
     });
 
     state.gateway.start();
 
-    // Timeout after 10 seconds
-    setTimeout(() => reject(new Error("Connection timeout")), 10000);
-  });
-}
-
-async function pollDeviceApproval() {
-  const maxAttempts = 60; // 5 minutes (60 * 5s)
-  let attempts = 0;
-
-  const checkApproval = async () => {
-    if (attempts >= maxAttempts) {
-      showStatus("Approval timeout. Please try again.", "error");
-      return;
-    }
-
-    try {
-      const result = await state.gateway.request("device.status", {
-        deviceId: state.deviceIdentity.deviceId,
-      });
-
-      if (result?.approved) {
-        localStorage.setItem("deviceApproved", "true");
-        ui.step2.classList.add("hidden");
-        ui.step3.classList.remove("hidden");
-        return;
+    // Timeout after 30 seconds (enough time for manual approval)
+    setTimeout(() => {
+      if (!helloReceived) {
+        reject(new Error("Connection timeout - device may need approval"));
       }
-    } catch (err) {
-      console.error("Device status check failed:", err);
-    }
-
-    attempts++;
-    setTimeout(checkApproval, 5000); // Check every 5 seconds
-  };
-
-  checkApproval();
+    }, 30000);
+  });
 }
 
 async function startChat() {
