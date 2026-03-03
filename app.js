@@ -566,6 +566,14 @@ function appendMessage(msg) {
 }
 
 function formatMarkdown(text) {
+  // Handle VOICE: references
+  text = text.replace(/VOICE:([^\s]+)/g, (match, path) => {
+    const audioUrl = constructAudioUrl(path);
+    return `<div class="tts-player" data-src="${audioUrl}">
+      <button class="tts-button" onclick="playTTS('${audioUrl}')">▶ Play</button>
+    </div>`;
+  });
+
   // Very basic markdown formatting
   return text
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
@@ -573,6 +581,34 @@ function formatMarkdown(text) {
     .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/\n/g, "<br>");
 }
+
+function constructAudioUrl(path) {
+  // Convert gateway URL to HTTP/HTTPS
+  let baseUrl = state.gatewayUrl;
+  if (baseUrl.startsWith("ws://")) {
+    baseUrl = "http://" + baseUrl.slice(5);
+  } else if (baseUrl.startsWith("wss://")) {
+    baseUrl = "https://" + baseUrl.slice(6);
+  }
+  // Remove trailing slash and add path
+  baseUrl = baseUrl.replace(/\/+$/, "");
+  return `${baseUrl}/${path.replace(/^\/+/, "")}`;
+}
+
+// Global audio player
+let currentAudio = null;
+
+window.playTTS = function(url) {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  currentAudio = new Audio(url);
+  currentAudio.play().catch(err => {
+    console.error("Failed to play audio:", err);
+    alert("Failed to play audio. Check console for details.");
+  });
+};
 
 function scrollToBottom() {
   ui.messagesContainer.scrollTop = ui.messagesContainer.scrollHeight;
@@ -658,6 +694,16 @@ function handleGatewayEvent(msg) {
   } else if (msg.event === "chat.tool") {
     // Tool call indicator
     console.log("Tool call:", msg.payload);
+    
+    // Add tool indicator to UI
+    const lastBubble = ui.messagesContainer.lastElementChild?.querySelector(".message-content");
+    if (lastBubble && msg.payload?.name) {
+      const toolDiv = document.createElement("div");
+      toolDiv.className = "tool-step";
+      toolDiv.textContent = `🔧 ${msg.payload.name}`;
+      lastBubble.appendChild(toolDiv);
+      scrollToBottom();
+    }
   }
 }
 
