@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Icon Generator</title>
+</head>
+<body>
+  <h1>Generating icons...</h1>
+  <script>
+    function generateIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#6366f1');
+      gradient.addColorStop(1, '#4f46e5');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Draw robot emoji-style icon
+      const padding = size * 0.2;
+      const iconSize = size - (padding * 2);
+      
+      // Head (rounded rectangle)
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(padding, padding, iconSize, iconSize * 0.6, size * 0.1);
+      ctx.fill();
+
+      // Eyes
+      const eyeSize = iconSize * 0.15;
+      const eyeY = padding + iconSize * 0.25;
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.arc(padding + iconSize * 0.35, eyeY, eyeSize, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(padding + iconSize * 0.65, eyeY, eyeSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Antenna
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = size * 0.03;
+      ctx.beginPath();
+      ctx.moveTo(size / 2, padding);
+      ctx.lineTo(size / 2, padding - size * 0.1);
+      ctx.stroke();
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(size / 2, padding - size * 0.15, size * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Download link
+      const link = document.createElement('a');
+      link.download = `icon-${size}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.textContent = `Download icon-${size}.png`;
+      link.style.display = 'block';
+      link.style.marginBottom = '10px';
+      document.body.appendChild(link);
+      link.click();
+    }
+
+    generateIcon(192);
+    generateIcon(512);
+
+    document.body.innerHTML += '<p>Icons generated! Check your downloads folder.</p>';
+  </script>
+</body>
+</html>
