@@ -175,6 +175,7 @@
       align-items: flex-end;
       gap: 0;
       flex-shrink: 0;
+      padding-top: env(safe-area-inset-top, 0px);
     }
     .openclaw-top-bar .openclaw-tab-bar {
       flex: 1;
@@ -558,7 +559,7 @@
     /* ─── Input Area ─────────────────────────────────────────────── */
     .openclaw-input-area {
       flex-shrink: 0;
-      padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+      padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
     }
 
     .openclaw-input-row {
@@ -889,19 +890,13 @@
       .onboarding-step { padding: 1.5rem; }
       .openclaw-msg { max-width: 90%; }
       .openclaw-input-area {
-        padding: 6px 8px calc(16px + env(safe-area-inset-bottom, 0px));
-      }
-      .openclaw-model-bar {
-        padding: 0 12px calc(4px + env(safe-area-inset-bottom, 0px));
+        padding: 4px 6px calc(6px + env(safe-area-inset-bottom, 0px));
       }
     }
 
-    /* Extra safety for standalone PWA mode on iOS */
+    /* Standalone PWA mode on iOS — just safe area, no extra */
     @media (display-mode: standalone) {
       .openclaw-input-area {
-        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-      }
-      .openclaw-model-bar {
         padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
       }
     }
