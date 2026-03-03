@@ -355,6 +355,7 @@ const ui = {
   messagesContainer: $("messages"),
   messageInput: $("message-input"),
   sendBtn: $("send-btn"),
+  typingIndicator: $("typing-indicator"),
 };
 
 // ─── Onboarding Flow ─────────────────────────────────────────────────
@@ -494,8 +495,11 @@ async function startChat() {
 }
 
 function updateConnectionStatus(connected) {
-  ui.connectionStatus.textContent = connected ? "Connected" : "Disconnected";
-  ui.connectionStatus.className = "connection-status" + (connected ? " connected" : "");
+  if (connected) {
+    ui.connectionStatus.classList.add("connected");
+  } else {
+    ui.connectionStatus.classList.remove("connected");
+  }
 }
 
 // ─── Chat Functions ──────────────────────────────────────────────────
@@ -576,7 +580,7 @@ async function switchAgent(agent) {
 async function loadChatHistory() {
   try {
     const result = await state.gateway.request("chat.history", {
-      session: state.sessionKey,
+      sessionKey: state.sessionKey,
       limit: 50,
     });
 
@@ -597,48 +601,66 @@ function renderMessages() {
 }
 
 function appendMessage(msg) {
-  const div = document.createElement("div");
-  div.className = `message ${msg.role}`;
-
+  const cls = msg.role === "user" ? "openclaw-msg-user" : "openclaw-msg-assistant";
   const bubble = document.createElement("div");
-  bubble.className = "message-bubble";
+  bubble.className = `openclaw-msg ${cls}`;
 
-  const content = document.createElement("div");
-  content.className = "message-content";
-
+  // Render content
+  let displayText = "";
   if (typeof msg.content === "string") {
-    content.innerHTML = formatMarkdown(msg.content);
+    displayText = msg.content;
   } else if (Array.isArray(msg.content)) {
     // Handle content blocks
     for (const block of msg.content) {
       if (block.type === "text") {
-        const p = document.createElement("p");
-        p.textContent = block.text || "";
-        content.appendChild(p);
+        displayText += (block.text || "");
       }
     }
   }
 
-  bubble.appendChild(content);
-  div.appendChild(bubble);
-  ui.messagesContainer.appendChild(div);
+  if (displayText) {
+    const textDiv = document.createElement("div");
+    textDiv.className = "openclaw-msg-text";
+    
+    // Format markdown for assistant, plain text for user
+    if (msg.role === "assistant") {
+      textDiv.innerHTML = formatMarkdown(displayText);
+    } else {
+      textDiv.textContent = displayText;
+    }
+    
+    bubble.appendChild(textDiv);
+  }
+
+  ui.messagesContainer.appendChild(bubble);
 }
 
 function formatMarkdown(text) {
-  // Handle VOICE: references
+  // Extract and remove VOICE: references (will be rendered separately)
+  const voiceRefs = [];
   text = text.replace(/VOICE:([^\s]+)/g, (match, path) => {
-    const audioUrl = constructAudioUrl(path);
-    return `<div class="tts-player" data-src="${audioUrl}">
-      <button class="tts-button" onclick="playTTS('${audioUrl}')">▶ Play</button>
-    </div>`;
+    voiceRefs.push(path);
+    return "";
   });
 
   // Very basic markdown formatting
-  return text
+  let formatted = text
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/\n/g, "<br>");
+
+  // Add audio players after text
+  if (voiceRefs.length > 0) {
+    for (const path of voiceRefs) {
+      const audioUrl = constructAudioUrl(path);
+      formatted += `<div class="openclaw-audio-player">
+        <button class="openclaw-audio-play-btn" onclick="playTTS('${audioUrl}')">▶ Play audio</button>
+      </div>`;
+    }
+  }
+
+  return formatted;
 }
 
 function constructAudioUrl(path) {
@@ -691,6 +713,10 @@ async function sendMessage(text) {
   ui.messageInput.value = "";
   ui.sendBtn.disabled = true;
 
+  // Show typing indicator
+  ui.typingIndicator.classList.remove("hidden");
+  scrollToBottom();
+
   // Create placeholder for assistant response
   const assistantMsg = {
     role: "assistant",
@@ -700,24 +726,18 @@ async function sendMessage(text) {
   state.messages.push(assistantMsg);
   state.currentStreamingMessage = assistantMsg;
 
-  const msgDiv = document.createElement("div");
-  msgDiv.className = "message assistant";
-  const bubble = document.createElement("div");
-  bubble.className = "message-bubble";
-  const content = document.createElement("div");
-  content.className = "message-content";
-  bubble.appendChild(content);
-  msgDiv.appendChild(bubble);
-  ui.messagesContainer.appendChild(msgDiv);
-
   try {
     await state.gateway.request("chat.send", {
-      session: state.sessionKey,
+      sessionKey: state.sessionKey,
       message: text,
+      deliver: false,
+      idempotencyKey: generateId(),
     });
   } catch (err) {
     console.error("Failed to send message:", err);
-    content.textContent = "Error sending message: " + err.message;
+    ui.typingIndicator.classList.add("hidden");
+    assistantMsg.content = "Error sending message: " + err.message;
+    renderMessages();
   }
 
   ui.sendBtn.disabled = false;
@@ -732,11 +752,15 @@ function handleGatewayEvent(msg) {
     if (state.currentStreamingMessage) {
       state.currentStreamingMessage.content = message.content;
       state.currentStreamingMessage = null;
+      ui.typingIndicator.classList.add("hidden");
       renderMessages();
     }
   } else if (msg.event === "chat.delta") {
     // Streaming delta
     if (state.currentStreamingMessage && msg.payload?.delta) {
+      // Hide typing indicator on first delta
+      ui.typingIndicator.classList.add("hidden");
+      
       if (typeof state.currentStreamingMessage.content === "string") {
         state.currentStreamingMessage.content += msg.payload.delta;
       } else {
@@ -744,9 +768,17 @@ function handleGatewayEvent(msg) {
       }
       
       // Update the last message bubble
-      const lastBubble = ui.messagesContainer.lastElementChild?.querySelector(".message-content");
+      const lastBubble = ui.messagesContainer.lastElementChild;
       if (lastBubble) {
-        lastBubble.innerHTML = formatMarkdown(state.currentStreamingMessage.content);
+        const textDiv = lastBubble.querySelector(".openclaw-msg-text");
+        if (textDiv) {
+          textDiv.innerHTML = formatMarkdown(state.currentStreamingMessage.content);
+        } else {
+          const newTextDiv = document.createElement("div");
+          newTextDiv.className = "openclaw-msg-text";
+          newTextDiv.innerHTML = formatMarkdown(state.currentStreamingMessage.content);
+          lastBubble.appendChild(newTextDiv);
+        }
       }
       scrollToBottom();
     }
@@ -754,15 +786,15 @@ function handleGatewayEvent(msg) {
     // Tool call indicator
     console.log("Tool call:", msg.payload);
     
+    // Hide typing indicator
+    ui.typingIndicator.classList.add("hidden");
+    
     // Add tool indicator to UI
-    const lastBubble = ui.messagesContainer.lastElementChild?.querySelector(".message-content");
-    if (lastBubble && msg.payload?.name) {
-      const toolDiv = document.createElement("div");
-      toolDiv.className = "tool-step";
-      toolDiv.textContent = `🔧 ${msg.payload.name}`;
-      lastBubble.appendChild(toolDiv);
-      scrollToBottom();
-    }
+    const toolDiv = document.createElement("div");
+    toolDiv.className = "openclaw-tool-item";
+    toolDiv.textContent = `🔧 ${msg.payload?.name || "Tool call"}`;
+    ui.messagesContainer.appendChild(toolDiv);
+    scrollToBottom();
   }
 }
 
