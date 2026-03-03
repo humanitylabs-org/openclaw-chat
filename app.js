@@ -503,15 +503,73 @@ async function loadAgentInfo() {
   try {
     const result = await state.gateway.request("agents.list");
     const agents = result?.agents || [];
+    
     if (agents.length > 0) {
-      state.agent = agents[0];
+      // Load saved agent ID or use first agent
+      const savedAgentId = localStorage.getItem("activeAgentId");
+      state.agent = agents.find(a => a.id === savedAgentId) || agents[0];
+      
       ui.agentEmoji.textContent = state.agent.emoji || "🤖";
       ui.agentName.textContent = state.agent.name || "Assistant";
       ui.agentCreature.textContent = state.agent.creature || "AI assistant";
+      
+      // If multiple agents, make name clickable to switch
+      if (agents.length > 1) {
+        ui.agentName.style.cursor = "pointer";
+        ui.agentName.style.textDecoration = "underline";
+        ui.agentName.onclick = () => showAgentSwitcher(agents);
+      }
     }
   } catch (err) {
     console.error("Failed to load agent info:", err);
   }
+}
+
+function showAgentSwitcher(agents) {
+  const current = state.agent?.id;
+  const options = agents.map(a => 
+    `<div class="agent-option ${a.id === current ? 'active' : ''}" data-id="${a.id}">
+      <span class="agent-emoji">${a.emoji || '🤖'}</span>
+      <div>
+        <div class="agent-name">${a.name || 'Assistant'}</div>
+        <div class="agent-creature">${a.creature || 'AI assistant'}</div>
+      </div>
+      ${a.id === current ? '<span class="checkmark">✓</span>' : ''}
+    </div>`
+  ).join('');
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal">
+      <h3>Switch Agent</h3>
+      <div class="agent-list">${options}</div>
+      <button class="btn" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+    </div>
+  `;
+  
+  // Add click handlers
+  modal.querySelectorAll('.agent-option').forEach(el => {
+    el.onclick = () => {
+      const agentId = el.dataset.id;
+      switchAgent(agents.find(a => a.id === agentId));
+      modal.remove();
+    };
+  });
+  
+  document.body.appendChild(modal);
+}
+
+async function switchAgent(agent) {
+  state.agent = agent;
+  localStorage.setItem("activeAgentId", agent.id);
+  
+  ui.agentEmoji.textContent = agent.emoji || "🤖";
+  ui.agentName.textContent = agent.name || "Assistant";
+  ui.agentCreature.textContent = agent.creature || "AI assistant";
+  
+  // Reload chat history for new agent
+  await loadChatHistory();
 }
 
 async function loadChatHistory() {

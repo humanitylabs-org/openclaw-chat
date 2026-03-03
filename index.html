@@ -326,6 +326,71 @@
       display: none !important;
     }
 
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 400px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal h3 {
+      margin-bottom: 1.5rem;
+      font-size: 1.25rem;
+    }
+
+    .agent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .agent-option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .agent-option:hover {
+      background: var(--bg-secondary);
+      border-color: var(--accent);
+    }
+
+    .agent-option.active {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .agent-option .checkmark {
+      margin-left: auto;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
     /* Loading spinner */
     .spinner {
       border: 2px solid var(--bg-tertiary);
