@@ -18,7 +18,6 @@
     }
 
     :root {
-      /* Obsidian-like color scheme */
       --background-primary: #202020;
       --background-secondary: #161616;
       --background-modifier-border: #2d2d2d;
@@ -45,10 +44,9 @@
       flex-direction: column;
     }
 
-    /* Utility */
-    .hidden {
-      display: none !important;
-    }
+    .hidden { display: none !important; }
+    .oc-hidden { display: none !important; }
+    .oc-opacity-low { opacity: 0.3; }
 
     /* ─── Onboarding ─────────────────────────────────────────────── */
     .onboarding {
@@ -59,11 +57,6 @@
       height: 100vh;
       padding: 2rem;
       text-align: center;
-    }
-
-    .onboarding h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
     }
 
     .onboarding-step {
@@ -127,9 +120,7 @@
       transition: background 0.2s;
     }
 
-    .btn:hover {
-      background: var(--interactive-accent-hover);
-    }
+    .btn:hover { background: var(--interactive-accent-hover); }
 
     .btn:disabled {
       background: var(--background-modifier-border);
@@ -144,20 +135,9 @@
       font-size: 0.875rem;
     }
 
-    .status-message.error {
-      background: rgba(239, 68, 68, 0.1);
-      color: #ef4444;
-    }
-
-    .status-message.success {
-      background: rgba(76, 175, 80, 0.1);
-      color: #4caf50;
-    }
-
-    .status-message.info {
-      background: rgba(124, 58, 237, 0.1);
-      color: var(--interactive-accent);
-    }
+    .status-message.error { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+    .status-message.success { background: rgba(76, 175, 80, 0.1); color: #4caf50; }
+    .status-message.info { background: rgba(124, 58, 237, 0.1); color: var(--interactive-accent); }
 
     .spinner {
       border: 2px solid var(--background-modifier-border);
@@ -181,68 +161,192 @@
       flex-direction: column;
       overflow: hidden;
       padding: 0;
-    }
-
-    .openclaw-chat-container.active {
-      display: flex;
-    }
-
-    /* Agent bar */
-    .openclaw-agent-bar {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.75rem 1rem;
-      background: var(--background-secondary);
-      border-bottom: 1px solid var(--background-modifier-border);
-    }
-
-    .openclaw-agent-info {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .openclaw-agent-emoji {
-      font-size: 1.5rem;
-      line-height: 1;
-    }
-
-    .openclaw-agent-details {
-      display: flex;
-      flex-direction: column;
-      gap: 0.125rem;
-    }
-
-    .openclaw-agent-name {
-      font-weight: 600;
-      font-size: 14px;
-      color: var(--text-normal);
-    }
-
-    .openclaw-agent-creature {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .openclaw-status-wrapper {
       position: relative;
     }
 
-    .openclaw-status-dot {
-      width: 8px;
-      height: 8px;
+    .openclaw-chat-container.active { display: flex; }
+
+    /* ─── Top Bar (tabs + agent) ─────────────────────────────────── */
+    .openclaw-top-bar {
+      display: flex;
+      align-items: flex-end;
+      gap: 0;
+      flex-shrink: 0;
+    }
+    .openclaw-top-bar .openclaw-tab-bar {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Agent switcher button */
+    .openclaw-agent-btn {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
       border-radius: 50%;
-      background: var(--text-faint);
-      transition: background 0.3s;
+      margin: 0 3px 4px 2px;
+      transition: background 0.15s;
+      background: rgba(128,128,128,0.08);
+    }
+    .openclaw-agent-btn:hover { background: rgba(128,128,128,0.2); }
+    .openclaw-agent-emoji-btn { font-size: 13px; line-height: 1; }
+
+    /* Agent switcher dropdown */
+    .openclaw-agent-dropdown {
+      position: absolute;
+      top: 36px;
+      right: 4px;
+      z-index: 1000;
+      min-width: 160px;
+      max-width: 220px;
+      background: var(--background-primary);
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      padding: 3px;
+      font-size: 12px;
+    }
+    .openclaw-agent-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.12s;
+    }
+    .openclaw-agent-item:hover { background: rgba(128,128,128,0.12); }
+    .openclaw-agent-item.active { background: rgba(128,128,128,0.1); cursor: default; }
+    .openclaw-agent-item-emoji { font-size: 14px; flex-shrink: 0; }
+    .openclaw-agent-item-info { min-width: 0; }
+    .openclaw-agent-item-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-normal);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .openclaw-agent-item-sub { font-size: 11px; color: var(--text-muted); }
+
+    /* ─── Tab Bar ────────────────────────────────────────────────── */
+    .openclaw-tab-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      padding: 0 3px;
+      margin: 0;
+      overflow: hidden;
+      border-bottom: 1px solid var(--background-modifier-border);
+    }
+    .openclaw-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: 6px 4px 0 4px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      color: var(--text-muted);
+      transition: all 0.15s;
+      background: rgba(128,128,128,0.06);
+      min-width: 0;
+      flex: 1 1 0;
+      max-width: 33.33%;
+      border-radius: 8px 8px 0 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .openclaw-tab:hover { background: rgba(128,128,128,0.12); }
+    .openclaw-tab.active {
+      background: var(--background-primary);
+      color: var(--text-normal);
+      margin-bottom: -1px;
+      padding-bottom: 1px;
+    }
+    .openclaw-tab-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      justify-content: center;
+    }
+    .openclaw-tab-label {
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .openclaw-tab-close {
+      font-size: 13px;
+      line-height: 1;
+      width: 0;
+      overflow: hidden;
+      opacity: 0;
+      cursor: pointer;
+      padding: 2px 0;
+      border-radius: 4px;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .openclaw-tab:hover .openclaw-tab-close,
+    .openclaw-tab.active .openclaw-tab-close {
+      width: auto;
+      padding: 2px 3px;
+      opacity: 0.4;
+    }
+    .openclaw-tab-close:hover { opacity: 1 !important; background: rgba(128,128,128,0.25); }
+    .openclaw-tab-meter {
+      width: 100%;
+      height: 3px;
+      background: rgba(128,128,128,0.15);
+      border-radius: 1.5px;
+      overflow: hidden;
+      margin-top: 4px;
+      margin-bottom: 3px;
+    }
+    .openclaw-tab-meter-fill {
+      height: 100%;
+      border-radius: 1.5px;
+      background: var(--text-normal);
+      opacity: 0.6;
+      transition: width 1s ease;
+      width: 0%;
+    }
+    .openclaw-tab-add {
+      opacity: 0.35;
+      flex: 0 0 auto !important;
+      background: transparent;
+      padding: 6px 8px;
+      font-size: 14px;
+      border-radius: 8px 8px 0 0;
+      min-width: auto !important;
+    }
+    .openclaw-tab-add:hover { opacity: 1; background: rgba(128,128,128,0.06); }
+    .openclaw-tab-add .openclaw-tab-meter { display: none; }
+
+    /* ─── Status Banner ──────────────────────────────────────────── */
+    .openclaw-banner {
+      padding: 8px 16px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-on-accent);
+      background: var(--interactive-accent);
+      opacity: 0.85;
+      flex-shrink: 0;
+      animation: openclaw-banner-pulse 2s ease-in-out infinite;
+    }
+    @keyframes openclaw-banner-pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
     }
 
-    .openclaw-status-dot.connected {
-      background: #4caf50;
-    }
-
-    /* Messages */
+    /* ─── Messages ───────────────────────────────────────────────── */
     .openclaw-messages {
       flex: 1;
       overflow-y: auto;
@@ -255,17 +359,17 @@
       overscroll-behavior: contain;
     }
 
-    .openclaw-messages::-webkit-scrollbar {
-      width: 4px;
-    }
+    .openclaw-messages::-webkit-scrollbar { width: 4px; }
+    .openclaw-messages::-webkit-scrollbar-thumb { background: var(--background-modifier-border); border-radius: 4px; }
+    .openclaw-messages::-webkit-scrollbar-track { background: transparent; }
 
-    .openclaw-messages::-webkit-scrollbar-thumb {
-      background: var(--background-modifier-border);
-      border-radius: 4px;
-    }
-
-    .openclaw-messages::-webkit-scrollbar-track {
-      background: transparent;
+    .openclaw-messages:empty::after {
+      content: "Send a message to start chatting.";
+      color: var(--text-faint);
+      text-align: center;
+      font-size: 13px;
+      padding: 40px 16px;
+      align-self: center;
     }
 
     /* Message bubbles */
@@ -288,19 +392,14 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* User messages: right-aligned, accent color */
     .openclaw-msg-user {
       align-self: flex-end;
       background: var(--interactive-accent);
       color: var(--text-on-accent);
       border-bottom-right-radius: 4px;
     }
+    .openclaw-msg-user .openclaw-msg-text { color: var(--text-on-accent); }
 
-    .openclaw-msg-user .openclaw-msg-text {
-      color: var(--text-on-accent);
-    }
-
-    /* Assistant messages: full width, no bubble */
     .openclaw-msg-assistant {
       align-self: flex-start;
       max-width: 100%;
@@ -310,17 +409,18 @@
       border-radius: 0;
     }
 
-    .openclaw-msg-text {
-      line-height: 1.5;
+    .openclaw-streaming {
+      animation: openclaw-pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes openclaw-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
     }
 
-    /* Markdown inside assistant messages */
-    .openclaw-msg-assistant p {
-      margin: 0 0 6px;
-    }
-    .openclaw-msg-assistant p:last-child {
-      margin-bottom: 0;
-    }
+    .openclaw-msg-text { line-height: 1.5; }
+
+    .openclaw-msg-assistant p { margin: 0 0 6px; }
+    .openclaw-msg-assistant p:last-child { margin-bottom: 0; }
     .openclaw-msg-assistant code {
       font-size: 12px;
       background: var(--background-secondary);
@@ -335,15 +435,55 @@
       overflow-x: auto;
       font-size: 12px;
     }
-    .openclaw-msg-assistant a {
-      color: var(--interactive-accent);
-      text-decoration: underline;
+    .openclaw-msg-assistant a { color: var(--interactive-accent); text-decoration: underline; }
+    .openclaw-msg-assistant strong { font-weight: 600; }
+    .openclaw-msg-assistant em { font-style: italic; }
+    .openclaw-msg-assistant ul, .openclaw-msg-assistant ol {
+      margin: 4px 0;
+      padding-left: 18px;
     }
-    .openclaw-msg-assistant strong {
-      font-weight: 600;
+    .openclaw-msg-assistant li { margin-bottom: 2px; }
+    .openclaw-msg-assistant blockquote {
+      border-left: 2px solid var(--interactive-accent);
+      padding-left: 10px;
+      margin: 4px 0;
+      color: var(--text-muted);
     }
-    .openclaw-msg-assistant em {
-      font-style: italic;
+
+    /* Message images */
+    .openclaw-msg-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .openclaw-msg-img {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 8px;
+      object-fit: cover;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .openclaw-msg-img:hover { opacity: 0.85; }
+
+    /* Full-size image overlay */
+    .openclaw-img-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      cursor: pointer;
+    }
+    .openclaw-img-overlay img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 8px;
+      object-fit: contain;
     }
 
     /* Tool call items */
@@ -353,13 +493,33 @@
       padding: 2px 8px;
       line-height: 1.4;
     }
+    .openclaw-tool-active { opacity: 1; }
+    .openclaw-tool-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .openclaw-tool-link:hover { color: var(--interactive-accent); text-decoration: underline; }
+    .openclaw-tool-dots {
+      display: inline-flex;
+      gap: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .openclaw-tool-dots .openclaw-dot {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: dotPulse 1.4s ease-in-out infinite;
+    }
+    .openclaw-tool-dots .openclaw-dot:nth-child(2) { animation-delay: 0.2s; }
+    .openclaw-tool-dots .openclaw-dot:nth-child(3) { animation-delay: 0.4s; }
 
     /* Typing indicator */
     .openclaw-typing {
       padding: 4px 12px 8px;
       flex-shrink: 0;
     }
-
     .openclaw-typing-inner {
       display: inline-flex;
       align-items: center;
@@ -368,27 +528,22 @@
       border-radius: 14px;
       background: var(--background-secondary);
     }
-
     .openclaw-typing-text {
       font-size: 12px;
       color: var(--text-muted);
       font-style: italic;
     }
-
     .openclaw-typing-dots {
       display: inline-flex;
       gap: 3px;
       margin-left: 2px;
     }
-
     .openclaw-dot {
-      width: 4px;
-      height: 4px;
+      width: 4px; height: 4px;
       border-radius: 50%;
       background: var(--text-muted);
       animation: dotPulse 1.4s infinite ease-in-out;
     }
-
     .openclaw-dot:nth-child(2) { animation-delay: 0.2s; }
     .openclaw-dot:nth-child(3) { animation-delay: 0.4s; }
 
@@ -397,7 +552,7 @@
       40% { opacity: 1; transform: scale(1.1); }
     }
 
-    /* Input area */
+    /* ─── Input Area ─────────────────────────────────────────────── */
     .openclaw-input-area {
       flex-shrink: 0;
       padding: 2px 4px 4px;
@@ -409,12 +564,50 @@
       gap: 4px;
       background: var(--background-secondary);
       border-radius: 22px;
-      padding: 4px 4px 4px 10px;
+      padding: 4px 4px 4px 6px;
       border: none;
       min-height: 40px;
       overflow: hidden;
       margin-bottom: 0;
     }
+
+    /* Brain (model) button */
+    .openclaw-brain-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-faint);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+      transition: color 0.15s, background 0.15s;
+      font-size: 16px;
+    }
+    .openclaw-brain-btn:hover { color: var(--text-muted); background: rgba(128,128,128,0.1); }
+
+    /* Attach button */
+    .openclaw-attach-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+      transition: color 0.15s;
+      font-size: 16px;
+    }
+    .openclaw-attach-btn:hover { color: var(--text-normal); }
 
     .openclaw-input {
       flex: 1;
@@ -425,7 +618,7 @@
       color: var(--text-normal);
       font-size: 14px;
       line-height: 1.4;
-      padding: 6px 4px 6px 4px;
+      padding: 6px 4px;
       resize: none;
       outline: none;
       min-height: 22px;
@@ -437,12 +630,47 @@
       word-break: break-word;
       overflow-wrap: break-word;
     }
+    .openclaw-input::placeholder { color: var(--text-faint); }
 
-    .openclaw-input::placeholder {
-      color: var(--text-faint);
+    /* Abort button */
+    .openclaw-abort-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: #e53935;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.15s;
+      padding: 0;
+      font-size: 14px;
     }
+    .openclaw-abort-btn:hover { opacity: 0.85; }
 
-    /* Send button: circular, accent */
+    /* Send button wrapper with status dot */
+    .openclaw-send-wrapper {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .openclaw-status-dot {
+      position: absolute;
+      top: -1px;
+      right: -1px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-faint);
+      border: 1.5px solid var(--background-secondary);
+      transition: background 0.3s;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .openclaw-status-dot.connected { background: #4caf50; }
+
     .openclaw-send-btn {
       width: 32px;
       height: 32px;
@@ -459,19 +687,70 @@
       padding: 0;
       font-size: 18px;
     }
+    .openclaw-send-btn:hover { opacity: 0.85; transform: scale(1.05); }
+    .openclaw-send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
 
-    .openclaw-send-btn:hover {
-      opacity: 0.85;
-      transform: scale(1.05);
+    /* Reconnect button */
+    .openclaw-reconnect-btn {
+      background: none;
+      border: none;
+      color: #e34;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+      font-size: 16px;
     }
+    .openclaw-reconnect-btn:hover { background: var(--background-modifier-hover); }
 
-    .openclaw-send-btn:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-      transform: none;
+    /* ─── Attachment Preview ──────────────────────────────────────── */
+    .openclaw-attach-preview {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px 2px;
+      font-size: 12px;
+      color: var(--text-muted);
     }
+    .openclaw-attach-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--background-secondary);
+      border-radius: 8px;
+      padding: 4px 8px 4px 4px;
+      max-width: 200px;
+    }
+    .openclaw-attach-thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .openclaw-attach-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+    .openclaw-attach-remove {
+      background: none;
+      border: none;
+      color: var(--text-faint);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 2px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .openclaw-attach-remove:hover { color: var(--text-normal); }
 
-    /* Audio player */
+    /* ─── Audio Player ───────────────────────────────────────────── */
     .openclaw-audio-player {
       display: flex;
       align-items: center;
@@ -479,7 +758,6 @@
       padding: 6px 0;
       margin-top: 4px;
     }
-
     .openclaw-audio-play-btn {
       background: var(--interactive-accent);
       color: var(--text-on-accent);
@@ -492,93 +770,121 @@
       min-width: 110px;
       text-align: center;
     }
-
-    .openclaw-audio-play-btn:hover {
-      opacity: 0.85;
+    .openclaw-audio-play-btn:hover { opacity: 0.85; }
+    .openclaw-audio-play-btn:disabled { opacity: 0.5; cursor: default; }
+    .openclaw-audio-progress {
+      flex: 1;
+      height: 4px;
+      background: var(--background-modifier-border);
+      border-radius: 2px;
+      overflow: hidden;
+      min-width: 60px;
+    }
+    .openclaw-audio-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--interactive-accent);
+      border-radius: 2px;
+      transition: width 0.2s linear;
     }
 
-    /* Modal */
+    /* ─── Model Picker Modal ─────────────────────────────────────── */
     .modal-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0, 0, 0, 0.8);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 1000;
     }
-
     .modal {
       background: var(--background-secondary);
       border: 1px solid var(--background-modifier-border);
       border-radius: 12px;
-      padding: 2rem;
+      padding: 1.5rem;
       max-width: 400px;
       width: 90%;
       max-height: 80vh;
       overflow-y: auto;
     }
+    .modal h3 { margin-bottom: 1rem; font-size: 1.1rem; }
 
-    .modal h3 {
-      margin-bottom: 1.5rem;
-      font-size: 1.25rem;
-    }
-
-    .agent-list {
+    .openclaw-picker-list {
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
+      gap: 1px;
+      max-height: 300px;
+      overflow-y: auto;
     }
-
-    .agent-option {
+    .openclaw-picker-row {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem;
-      background: var(--background-primary);
-      border: 1px solid var(--background-modifier-border);
-      border-radius: 8px;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: 5px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background 0.12s;
+      font-size: 13px;
     }
-
-    .agent-option:hover {
-      background: var(--background-modifier-hover);
-      border-color: var(--interactive-accent);
+    .openclaw-picker-row:hover { background: var(--background-modifier-hover); }
+    .openclaw-picker-row.active { background: rgba(124, 58, 237, 0.1); }
+    .openclaw-picker-row-left {
+      display: flex; align-items: center; gap: 0;
+      flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-
-    .agent-option.active {
-      border-color: var(--interactive-accent);
-      background: rgba(124, 58, 237, 0.1);
+    .openclaw-picker-dot { color: var(--interactive-accent); font-size: 0.75em; margin-right: 4px; }
+    .openclaw-picker-row-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .openclaw-picker-meta { font-size: 0.72em; color: var(--text-faint); }
+    .openclaw-picker-arrow { color: var(--text-faint); font-size: 0.85em; }
+    .openclaw-picker-back {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 0.85em;
+      padding: 4px 8px; border-radius: 5px;
+      transition: background 0.12s;
+      margin-bottom: 8px;
     }
+    .openclaw-picker-back:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+    .openclaw-picker-selecting {
+      opacity: 0.6; pointer-events: none;
+      justify-content: center; color: var(--text-muted);
+    }
+    .openclaw-picker-footer {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--background-modifier-border);
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+    .openclaw-picker-footer a { color: var(--text-faint); text-decoration: underline; }
 
-    .agent-option .checkmark {
-      margin-left: auto;
-      color: var(--interactive-accent);
-      font-weight: bold;
+    /* ─── Model Label (bottom left) ──────────────────────────────── */
+    .openclaw-model-bar {
+      display: flex;
+      align-items: center;
+      padding: 0 10px 2px;
+      gap: 4px;
+    }
+    .openclaw-model-label {
+      font-size: 10px;
+      color: var(--text-faint);
+      cursor: pointer;
+      padding: 1px 6px;
+      border-radius: 8px;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .openclaw-model-label:hover {
+      background: rgba(128,128,128,0.12);
+      color: var(--text-muted);
     }
 
     /* Mobile adjustments */
     @media (max-width: 768px) {
-      .onboarding {
-        padding: 1rem;
-      }
-
-      .onboarding h1 {
-        font-size: 1.5rem;
-      }
-
-      .onboarding-step {
-        padding: 1.5rem;
-      }
-
-      .openclaw-msg {
-        max-width: 90%;
-      }
+      .onboarding { padding: 1rem; }
+      .onboarding-step { padding: 1.5rem; }
+      .openclaw-msg { max-width: 90%; }
     }
   </style>
 </head>
@@ -590,20 +896,12 @@
         <h2>🤖 Connect to OpenClaw</h2>
         <div class="input-group">
           <label for="gateway-url">Gateway URL</label>
-          <input 
-            type="text" 
-            id="gateway-url" 
-            placeholder="https://your-server.tail1234.ts.net"
-          >
+          <input type="text" id="gateway-url" placeholder="https://your-server.tail1234.ts.net">
           <small>Your OpenClaw gateway URL (Tailscale or public)</small>
         </div>
         <div class="input-group">
           <label for="token">Auth Token</label>
-          <input 
-            type="password" 
-            id="token" 
-            placeholder="Paste your token here"
-          >
+          <input type="password" id="token" placeholder="Paste your token here">
           <small>🔒 Stored locally. Never sent to our servers.</small>
         </div>
         <button class="btn" id="connect-btn">Connect →</button>
@@ -637,24 +935,25 @@
 
     <!-- Chat UI -->
     <div id="chat-container" class="openclaw-chat-container">
-      <div class="openclaw-agent-bar">
-        <div class="openclaw-agent-info">
-          <span class="openclaw-agent-emoji" id="agent-emoji">🤖</span>
-          <div class="openclaw-agent-details">
-            <div class="openclaw-agent-name" id="agent-name">Assistant</div>
-            <div class="openclaw-agent-creature" id="agent-creature">AI assistant</div>
-          </div>
-        </div>
-        <div class="openclaw-status-wrapper">
-          <div class="openclaw-status-dot" id="connection-status"></div>
+      <!-- Top bar: tabs + agent switcher -->
+      <div class="openclaw-top-bar">
+        <div class="openclaw-tab-bar" id="tab-bar"></div>
+        <div class="openclaw-agent-btn oc-hidden" id="agent-btn" aria-label="Switch agent">
+          <span class="openclaw-agent-emoji-btn">🤖</span>
         </div>
       </div>
 
-      <div class="openclaw-messages" id="messages">
-        <!-- Messages will be added here -->
-      </div>
+      <!-- Agent dropdown (hidden) -->
+      <div class="openclaw-agent-dropdown oc-hidden" id="agent-dropdown"></div>
 
-      <div class="openclaw-typing hidden" id="typing-indicator">
+      <!-- Status banner (hidden) -->
+      <div class="openclaw-banner oc-hidden" id="status-banner"></div>
+
+      <!-- Messages -->
+      <div class="openclaw-messages" id="messages"></div>
+
+      <!-- Typing indicator -->
+      <div class="openclaw-typing oc-hidden" id="typing-indicator">
         <div class="openclaw-typing-inner">
           <span class="openclaw-typing-text">Thinking</span>
           <div class="openclaw-typing-dots">
@@ -665,17 +964,25 @@
         </div>
       </div>
 
+      <!-- Input area -->
       <div class="openclaw-input-area">
+        <!-- Attachment preview -->
+        <div class="openclaw-attach-preview oc-hidden" id="attach-preview"></div>
+        <!-- Model label bar -->
+        <div class="openclaw-model-bar">
+          <span class="openclaw-model-label" id="model-label" title="Click to change model"></span>
+        </div>
         <div class="openclaw-input-row">
-          <textarea 
-            id="message-input" 
-            class="openclaw-input"
-            placeholder="Type a message..."
-            rows="1"
-          ></textarea>
-          <button class="openclaw-send-btn" id="send-btn">
-            <span>▲</span>
-          </button>
+          <button class="openclaw-brain-btn" id="brain-btn" aria-label="Switch model" title="Switch model">🧠</button>
+          <button class="openclaw-attach-btn" id="attach-btn" aria-label="Attach file" title="Attach file">📎</button>
+          <input type="file" id="file-input" accept="image/*,.md,.txt,.json,.csv,.pdf,.yaml,.yml,.js,.ts,.py,.html,.css" multiple class="oc-hidden">
+          <textarea id="message-input" class="openclaw-input" placeholder="Message..." rows="1"></textarea>
+          <button class="openclaw-abort-btn oc-hidden" id="abort-btn" aria-label="Stop">■</button>
+          <div class="openclaw-send-wrapper">
+            <button class="openclaw-send-btn oc-opacity-low" id="send-btn"><span>▲</span></button>
+            <button class="openclaw-reconnect-btn oc-hidden" id="reconnect-btn" aria-label="Reconnect">↻</button>
+            <div class="openclaw-status-dot" id="connection-status"></div>
+          </div>
         </div>
       </div>
     </div>
