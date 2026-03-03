@@ -189,8 +189,8 @@ Comprehensive testing guide provided in TESTING.md:
 - Browser compatibility matrix
 
 **Test Gateway Credentials:**
-- URL: `http://100.79.229.90:18789` (Tailscale)
-- Token: `478bd0913168c5c00a1ecca5edcf9d8067db327e317dc87a`
+- URL: `https://your-machine.tailXXXX.ts.net` (Tailscale)
+- Token: `YOUR_AUTH_TOKEN_HERE`
 
 ## 🔐 Security
 

@@ -51,7 +51,7 @@
    - Token: (paste from command above)
    
    **For Tailscale Testing:**
-   - Gateway URL: `http://100.79.229.90:18789` (your Tailscale IP)
+   - Gateway URL: `https://your-machine.tailXXXX.ts.net` (your Tailscale hostname)
    - Token: (same token)
    
    **For Remote Testing:**
@@ -66,7 +66,7 @@
      open http://localhost:18789
      
      # Or via Tailscale
-     open http://100.79.229.90:18789
+     open https://your-machine.tailXXXX.ts.net
      ```
    - Navigate to the Devices page
    - Approve the pending device request
@@ -134,7 +134,7 @@
 ### "Invalid gateway URL"
 - Must start with http://, https://, ws://, or wss://
 - For local: `http://localhost:18789`
-- For Tailscale: `http://100.79.229.90:18789`
+- For Tailscale: `https://your-machine.tailXXXX.ts.net`
 
 ### Device approval never completes
 - Check Control UI is accessible
