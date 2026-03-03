@@ -559,7 +559,7 @@
     /* ─── Input Area ─────────────────────────────────────────────── */
     .openclaw-input-area {
       flex-shrink: 0;
-      padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
+      padding: 2px 6px calc(2px + env(safe-area-inset-bottom, 0px));
     }
 
     .openclaw-input-row {
@@ -889,16 +889,6 @@
       .onboarding { padding: 1rem; }
       .onboarding-step { padding: 1.5rem; }
       .openclaw-msg { max-width: 90%; }
-      .openclaw-input-area {
-        padding: 4px 6px calc(6px + env(safe-area-inset-bottom, 0px));
-      }
-    }
-
-    /* Standalone PWA mode on iOS — just safe area, no extra */
-    @media (display-mode: standalone) {
-      .openclaw-input-area {
-        padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
-      }
     }
   </style>
 </head>
@@ -987,7 +977,7 @@
           <span class="openclaw-model-label" id="model-label" title="Click to change model"></span>
         </div>
         <div class="openclaw-input-row">
-          <button class="openclaw-brain-btn" id="brain-btn" aria-label="Switch model" title="Switch model"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></button>
+          <button class="openclaw-brain-btn" id="brain-btn" aria-label="Switch model" title="Switch model"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9.813 2.012a.75.75 0 01.69.726L10.5 5.5l2.762-.003a.75.75 0 01.053 1.499L10.5 7l.003 2.763a.75.75 0 01-1.5.052L9 7H6.237a.75.75 0 01-.052-1.499L9 5.5l-.003-2.762a.75.75 0 01.816-.726zM18.259 8.715a.75.75 0 01.69.726l.001 1.559h1.559a.75.75 0 01.052 1.499L19 12.5l.001 1.559a.75.75 0 01-1.5.052L17.5 12.5h-1.559a.75.75 0 01-.052-1.499l1.611-.001-.001-1.559a.75.75 0 01.76-.726zM12.259 13.715a.75.75 0 01.69.726L13 16.5l2.059-.001a.75.75 0 01.052 1.499L13 18l.001 2.059a.75.75 0 01-1.5.052L11.5 18l-2.059.001a.75.75 0 01-.052-1.499L11.5 16.5l-.001-2.059a.75.75 0 01.76-.726z"/></svg></button>
           <button class="openclaw-attach-btn" id="attach-btn" aria-label="Attach file" title="Attach file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
           <input type="file" id="file-input" accept="image/*,.md,.txt,.json,.csv,.pdf,.yaml,.yml,.js,.ts,.py,.html,.css" multiple class="oc-hidden">
           <textarea id="message-input" class="openclaw-input" placeholder="Message..." rows="1"></textarea>
