@@ -2,6 +2,8 @@
 
 A Progressive Web App (PWA) for chatting with OpenClaw AI assistants via Tailscale.
 
+🚀 **Live Demo:** https://openclaw-chat.vercel.app
+
 ## Features
 
 - 🔐 **Ed25519 device authentication** - Secure device-based auth matching the OpenClaw protocol
