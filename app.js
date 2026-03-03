@@ -212,7 +212,7 @@ class GatewayClient {
       this.connectTimer = null;
     }
 
-    const CLIENT_ID = "pwa-client";
+    const CLIENT_ID = "gateway-client";
     const CLIENT_MODE = "ui";
     const ROLE = "operator";
     const SCOPES = ["operator.admin", "operator.write", "operator.read"];
@@ -241,22 +241,37 @@ class GatewayClient {
           publicKey: identity.publicKey,
           signature,
           signedAt: signedAtMs,
+          nonce: nonce ?? undefined,
         };
-        if (nonce) device.nonce = nonce;
       } catch (err) {
         console.error("Failed to sign device payload:", err);
       }
     }
 
-    const msg = {
-      type: "connect",
-      client: { id: CLIENT_ID, mode: CLIENT_MODE },
+    const params = {
+      minProtocol: 3,
+      maxProtocol: 3,
+      client: {
+        id: CLIENT_ID,
+        version: "0.1.0",
+        platform: "web",
+        mode: CLIENT_MODE,
+      },
       role: ROLE,
       scopes: SCOPES,
       auth,
       device,
+      caps: ["tool-events"],
     };
-    this.ws?.send(JSON.stringify(msg));
+
+    this.request("connect", params)
+      .then((payload) => {
+        this.backoffMs = 800;
+        this.opts.onHello?.(payload);
+      })
+      .catch(() => {
+        this.ws?.close(4008, "connect failed");
+      });
   }
 
   handleMessage(data) {
@@ -284,22 +299,18 @@ class GatewayClient {
       return;
     }
 
-    // Handle hello
-    if (msg.type === "hello") {
-      this.backoffMs = 800;
-      this.opts.onHello?.(msg.payload);
-      return;
-    }
-
-    // Handle challenge for device approval
-    if (msg.type === "challenge") {
-      this.connectNonce = msg.payload?.nonce || null;
-      this.queueConnect();
-      return;
-    }
-
     // Handle events
     if (msg.type === "event") {
+      // Handle challenge for device approval
+      if (msg.event === "connect.challenge") {
+        const nonce = msg.payload?.nonce;
+        if (typeof nonce === "string") {
+          this.connectNonce = nonce;
+          this.connectSent = false;
+          void this.sendConnect();
+        }
+        return;
+      }
       this.opts.onEvent?.(msg);
     }
   }
