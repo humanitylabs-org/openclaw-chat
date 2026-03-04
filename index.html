@@ -257,9 +257,9 @@
       font-size: 12px;
       cursor: pointer;
       white-space: nowrap;
-      color: var(--text-muted);
+      color: var(--text-faint);
       transition: all 0.15s;
-      background: rgba(128,128,128,0.06);
+      background: transparent;
       min-width: 0;
       flex: 1 1 0;
       max-width: 33.33%;
@@ -267,10 +267,12 @@
       position: relative;
       overflow: hidden;
     }
-    .openclaw-tab:hover { background: rgba(128,128,128,0.12); }
+    .openclaw-tab:hover { background: rgba(128,128,128,0.08); color: var(--text-muted); }
     .openclaw-tab.active {
-      background: var(--background-primary);
+      background: rgba(128,128,128,0.15);
       color: var(--text-normal);
+      border: 1px solid rgba(128,128,128,0.25);
+      border-bottom: 1px solid transparent;
       margin-bottom: -1px;
       padding-bottom: 1px;
     }
