@@ -40,7 +40,17 @@ function initWorkspace() {
       e.preventDefault();
       saveCurrentFile();
     }
+    // Cmd/Ctrl+O for quick file search
+    if ((e.metaKey || e.ctrlKey) && e.key === "o" && workspace.connected) {
+      e.preventDefault();
+      toggleSearch();
+      if (workspace.isMobile) switchPanel(0);
+    }
   });
+
+  // Load theme
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  document.body.setAttribute("data-theme", savedTheme);
 
   if (workspace.fileServerUrl) connectFileServer();
   updateLayout();
@@ -65,7 +75,18 @@ function buildWorkspaceDOM() {
   treePanel.innerHTML = `
     <div class="tree-header">
       <span class="tree-title">Files</span>
-      <button class="tree-refresh-btn" onclick="refreshFileTree()" title="Refresh">↻</button>
+      <div class="tree-header-actions">
+        <button class="tree-icon-btn" onclick="toggleSearch()" title="Search files (⌘O)">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
+        </button>
+        <button class="tree-icon-btn" onclick="toggleTheme()" title="Toggle theme">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="4"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"/></svg>
+        </button>
+        <button class="tree-icon-btn" onclick="refreshFileTree()" title="Refresh">↻</button>
+      </div>
+    </div>
+    <div class="tree-search oc-hidden" id="tree-search">
+      <input type="text" id="tree-search-input" placeholder="Search files..." oninput="filterFileTree(this.value)">
     </div>
     <div class="tree-content" id="tree-content"></div>
   `;
@@ -263,6 +284,56 @@ function refreshFileTree() {
   loadFileTree();
 }
 
+function toggleSearch() {
+  const el = document.getElementById("tree-search");
+  const input = document.getElementById("tree-search-input");
+  el.classList.toggle("oc-hidden");
+  if (!el.classList.contains("oc-hidden")) {
+    input.focus();
+    input.value = "";
+  } else {
+    input.value = "";
+    renderFileTree();
+  }
+}
+
+function filterFileTree(query) {
+  if (!query.trim()) { renderFileTree(); return; }
+  const q = query.toLowerCase();
+  const results = flattenTree(workspace.tree).filter(f => f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q));
+  const container = document.getElementById("tree-content");
+  if (!container) return;
+  container.innerHTML = "";
+  if (results.length === 0) {
+    container.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px;text-align:center">No results</div>';
+    return;
+  }
+  for (const item of results.slice(0, 50)) {
+    const row = document.createElement("div");
+    row.className = "tree-item tree-file";
+    row.style.paddingLeft = "14px";
+    const isActive = workspace.openTabs[workspace.activeTabIdx]?.path === item.path;
+    if (isActive) row.classList.add("active");
+    row.innerHTML = `<span class="tree-icon">${getFileIcon(item.name)}</span><span class="tree-name">${highlightMatch(item.path, q)}</span>`;
+    row.addEventListener("click", () => openFile(item.path, item.name));
+    container.appendChild(row);
+  }
+}
+
+function flattenTree(items, results = []) {
+  for (const item of items) {
+    if (item.type === "file") results.push(item);
+    if (item.type === "dir" && item.children) flattenTree(item.children, results);
+  }
+  return results;
+}
+
+function highlightMatch(text, query) {
+  const idx = text.toLowerCase().indexOf(query);
+  if (idx < 0) return escapeHtml(text);
+  return escapeHtml(text.slice(0, idx)) + '<span class="search-match">' + escapeHtml(text.slice(idx, idx + query.length)) + '</span>' + escapeHtml(text.slice(idx + query.length));
+}
+
 function renderFileTree() {
   const container = document.getElementById("tree-content");
   if (!container) return;
@@ -442,8 +513,19 @@ function renderEditorContent() {
   if (workspace.editMode) {
     area.innerHTML = `
       <div class="editor-toolbar">
-        <button class="editor-btn" onclick="toggleEditMode()">Preview</button>
-        <button class="editor-btn" onclick="saveCurrentFile()">Save</button>
+        <button class="editor-btn active" onclick="toggleEditMode()">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11.5 1.5l3 3-9 9H2.5v-3z"/></svg>
+          Editing
+        </button>
+        <button class="editor-btn" onclick="toggleEditMode()">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/></svg>
+          Preview
+        </button>
+        <div style="flex:1"></div>
+        <button class="editor-btn save-btn" onclick="saveCurrentFile()">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12.5 14.5h-9a1 1 0 01-1-1v-11a1 1 0 011-1h7l3 3v9a1 1 0 01-1 1z"/><path d="M5.5 14.5v-4h5v4M5.5 1.5v3h4"/></svg>
+          Save
+        </button>
       </div>
       <textarea class="editor-textarea" id="editor-textarea" spellcheck="false">${escapeHtml(tab.content)}</textarea>
     `;
@@ -453,13 +535,36 @@ function renderEditorContent() {
       tab.dirty = tab.content !== tab.savedContent;
       renderEditorTabs();
     });
+    // Support tab key for indentation
+    textarea.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + "  " + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+        tab.content = textarea.value;
+        tab.dirty = tab.content !== tab.savedContent;
+      }
+    });
     textarea.focus();
   } else {
     const rendered = renderMarkdown(tab.content);
     area.innerHTML = `
       <div class="editor-toolbar">
-        <button class="editor-btn" onclick="toggleEditMode()">Edit</button>
-        ${tab.dirty ? '<button class="editor-btn" onclick="saveCurrentFile()">Save</button>' : ""}
+        <button class="editor-btn" onclick="toggleEditMode()">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11.5 1.5l3 3-9 9H2.5v-3z"/></svg>
+          Edit
+        </button>
+        <button class="editor-btn active" onclick="toggleEditMode()">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/></svg>
+          Reading
+        </button>
+        <div style="flex:1"></div>
+        ${tab.dirty ? `<button class="editor-btn save-btn" onclick="saveCurrentFile()">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12.5 14.5h-9a1 1 0 01-1-1v-11a1 1 0 011-1h7l3 3v9a1 1 0 01-1 1z"/><path d="M5.5 14.5v-4h5v4M5.5 1.5v3h4"/></svg>
+          Save
+        </button>` : ""}
       </div>
       <div class="editor-preview">${rendered}</div>
     `;
@@ -543,15 +648,65 @@ function dismissBanner() {
 
 function renderMarkdown(text) {
   if (!text) return "";
-  let html = escapeHtml(text);
 
-  // Code blocks (fenced)
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-    return `<pre><code class="lang-${lang}">${code}</code></pre>`;
+  // Extract code blocks first to protect them from other transformations
+  const codeBlocks = [];
+  let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(`<pre class="code-block"><div class="code-lang">${lang || ''}</div><code>${escapeHtml(code)}</code></pre>`);
+    return `\x00CODEBLOCK${idx}\x00`;
   });
 
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  // Extract inline code
+  const inlineCodes = [];
+  processed = processed.replace(/`([^`]+)`/g, (_, code) => {
+    const idx = inlineCodes.length;
+    inlineCodes.push(`<code>${escapeHtml(code)}</code>`);
+    return `\x00INLINE${idx}\x00`;
+  });
+
+  // Now escape the rest
+  let html = escapeHtml(processed);
+
+  // Restore code blocks and inline code
+  html = html.replace(/\x00CODEBLOCK(\d+)\x00/g, (_, i) => codeBlocks[i]);
+  html = html.replace(/\x00INLINE(\d+)\x00/g, (_, i) => inlineCodes[i]);
+
+  // Tables
+  html = html.replace(/^(\|.+\|)\n(\|[\s\-:|]+\|)\n((?:\|.+\|\n?)+)/gm, (_, header, align, body) => {
+    const parseAligns = (row) => row.split('|').filter(c => c.trim()).map(c => {
+      c = c.trim();
+      if (c.startsWith(':') && c.endsWith(':')) return 'center';
+      if (c.endsWith(':')) return 'right';
+      return 'left';
+    });
+    const aligns = parseAligns(align);
+    const headerCells = header.split('|').filter(c => c.trim()).map((c, i) =>
+      `<th style="text-align:${aligns[i] || 'left'}">${c.trim()}</th>`
+    ).join('');
+    const bodyRows = body.trim().split('\n').map(row => {
+      const cells = row.split('|').filter(c => c.trim()).map((c, i) =>
+        `<td style="text-align:${aligns[i] || 'left'}">${c.trim()}</td>`
+      ).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+  });
+
+  // Callouts / Admonitions  (> [!TYPE] title)
+  html = html.replace(/^&gt;\s*\[!(\w+)\]\s*(.*)\n((?:&gt;\s?.*\n?)*)/gm, (_, type, title, body) => {
+    const t = type.toLowerCase();
+    const bodyText = body.replace(/^&gt;\s?/gm, '').trim();
+    const icons = { note: 'ℹ️', tip: '💡', warning: '⚠️', danger: '🔴', info: 'ℹ️', important: '❗', caution: '⚠️', example: '📝', quote: '💬', abstract: '📋', success: '✅', question: '❓', bug: '🐛' };
+    const icon = icons[t] || '📌';
+    return `<div class="callout callout-${t}"><div class="callout-title">${icon} ${title || type}</div><div class="callout-body">${bodyText}</div></div>`;
+  });
+
+  // Blockquotes (must come after callouts)
+  html = html.replace(/^(&gt;\s?.+\n?)+/gm, (match) => {
+    const inner = match.replace(/^&gt;\s?/gm, '').trim();
+    return `<blockquote>${inner}</blockquote>`;
+  });
 
   // Headers
   html = html.replace(/^######\s+(.+)$/gm, "<h6>$1</h6>");
@@ -561,59 +716,122 @@ function renderMarkdown(text) {
   html = html.replace(/^##\s+(.+)$/gm, "<h2>$1</h2>");
   html = html.replace(/^#\s+(.+)$/gm, "<h1>$1</h1>");
 
+  // Horizontal rules
+  html = html.replace(/^---+$/gm, "<hr>");
+  html = html.replace(/^\*\*\*+$/gm, "<hr>");
+
+  // Checkboxes (must come before bold/italic)
+  html = html.replace(/^- \[x\]\s+(.+)$/gm, '<li class="task task-done"><input type="checkbox" checked disabled> $1</li>');
+  html = html.replace(/^- \[ \]\s+(.+)$/gm, '<li class="task"><input type="checkbox" disabled> $1</li>');
+
   // Bold & italic
   html = html.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
   html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
-  html = html.replace(/_(.+?)_/g, "<em>$1</em>");
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+  html = html.replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/g, "<em>$1</em>");
 
   // Strikethrough
   html = html.replace(/~~(.+?)~~/g, "<del>$1</del>");
 
-  // Blockquotes
-  html = html.replace(/^&gt;\s+(.+)$/gm, "<blockquote>$1</blockquote>");
+  // Highlight
+  html = html.replace(/==(.+?)==/g, "<mark>$1</mark>");
 
-  // Horizontal rules
-  html = html.replace(/^---+$/gm, "<hr>");
-
-  // Unordered lists
-  html = html.replace(/^[\-\*]\s+(.+)$/gm, "<li>$1</li>");
-  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, "<ul>$1</ul>");
-
-  // Ordered lists
-  html = html.replace(/^\d+\.\s+(.+)$/gm, "<li>$1</li>");
+  // Images (before links)
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
 
   // Links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
 
-  // Images
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px;">');
+  // Internal links [[filename]] - make clickable
+  html = html.replace(/\[\[([^\]]+)\]\]/g, (_, link) => {
+    const display = link.includes('|') ? link.split('|')[1] : link.split('/').pop();
+    const target = link.includes('|') ? link.split('|')[0] : link;
+    return `<a class="internal-link" href="#" onclick="openInternalLink('${escapeAttr(target)}');return false;">${escapeHtml(display)}</a>`;
+  });
 
-  // Line breaks -> paragraphs
+  // Unordered lists (not checkboxes)
+  html = html.replace(/^[\-\*]\s+(?!\[[ x]\])(.+)$/gm, "<li>$1</li>");
+
+  // Ordered lists
+  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ol-item">$1</li>');
+
+  // Wrap consecutive li items in ul/ol
+  html = html.replace(/((?:<li(?:\s[^>]*)?>.*?<\/li>\s*)+)/g, (match) => {
+    if (match.includes('class="ol-item"')) {
+      return '<ol>' + match.replace(/ class="ol-item"/g, '') + '</ol>';
+    }
+    if (match.includes('class="task')) {
+      return '<ul class="task-list">' + match + '</ul>';
+    }
+    return '<ul>' + match + '</ul>';
+  });
+
+  // Paragraphs
   html = html.replace(/\n\n/g, "</p><p>");
   html = html.replace(/\n/g, "<br>");
   html = "<p>" + html + "</p>";
 
-  // Clean up empty paragraphs
+  // Clean up: remove <p> wrapping around block elements
+  const blocks = ['h[1-6]', 'pre', 'ul', 'ol', 'table', 'blockquote', 'hr', 'div'];
+  for (const tag of blocks) {
+    html = html.replace(new RegExp(`<p>\\s*(<${tag}[\\s>])`, 'g'), '$1');
+    html = html.replace(new RegExp(`(</${tag}>)\\s*</p>`, 'g'), '$1');
+    if (tag === 'hr') {
+      html = html.replace(/<p>\s*(<hr>)/g, '$1');
+      html = html.replace(/(<hr>)\s*<\/p>/g, '$1');
+    }
+  }
   html = html.replace(/<p>\s*<\/p>/g, "");
-  html = html.replace(/<p>\s*(<h[1-6]>)/g, "$1");
-  html = html.replace(/(<\/h[1-6]>)\s*<\/p>/g, "$1");
-  html = html.replace(/<p>\s*(<pre>)/g, "$1");
-  html = html.replace(/(<\/pre>)\s*<\/p>/g, "$1");
-  html = html.replace(/<p>\s*(<ul>)/g, "$1");
-  html = html.replace(/(<\/ul>)\s*<\/p>/g, "$1");
-  html = html.replace(/<p>\s*(<blockquote>)/g, "$1");
-  html = html.replace(/(<\/blockquote>)\s*<\/p>/g, "$1");
-  html = html.replace(/<p>\s*(<hr>)/g, "$1");
-  html = html.replace(/(<hr>)\s*<\/p>/g, "$1");
 
   return html;
+}
+
+function escapeAttr(s) {
+  return s.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+}
+
+// Internal link handler - find and open matching file
+function openInternalLink(target) {
+  // Search the tree for a matching file
+  const normalizedTarget = target.toLowerCase().replace(/\.md$/, '');
+  const found = findFileInTree(workspace.tree, normalizedTarget);
+  if (found) {
+    openFile(found.path, found.name);
+  } else {
+    console.warn("Internal link target not found:", target);
+  }
+}
+
+function findFileInTree(items, target) {
+  for (const item of items) {
+    if (item.type === "file") {
+      const nameNoExt = item.name.replace(/\.[^.]+$/, '').toLowerCase();
+      const pathNoExt = item.path.replace(/\.[^.]+$/, '').toLowerCase();
+      if (nameNoExt === target || pathNoExt === target || pathNoExt.endsWith('/' + target)) {
+        return item;
+      }
+    }
+    if (item.type === "dir" && item.children) {
+      const found = findFileInTree(item.children, target);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ─── Theme Toggle ───────────────────────────────────────────────────
+
+function toggleTheme() {
+  const current = document.body.getAttribute("data-theme") || "dark";
+  const next = current === "dark" ? "light" : "dark";
+  document.body.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
 }
 
 // ─── Panel Navigation (Mobile Swipe) ────────────────────────────────
