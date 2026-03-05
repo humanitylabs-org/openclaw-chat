@@ -160,7 +160,7 @@ function connectFileServer() {
         workspace.connected = true;
         updateFsStatus(true);
         loadFileTree();
-        connectFileServerWs();
+        startFilePolling();
       }
     })
     .catch(() => {
@@ -169,29 +169,34 @@ function connectFileServer() {
     });
 }
 
-function connectFileServerWs() {
-  if (workspace.fileServerWs) {
-    workspace.fileServerWs.close();
-    workspace.fileServerWs = null;
+// Poll for file changes instead of WebSocket (Tailscale Serve doesn't proxy WS on subpaths)
+function startFilePolling() {
+  if (workspace.pollTimer) clearInterval(workspace.pollTimer);
+  workspace.pollTimer = setInterval(() => {
+    if (!workspace.connected) return;
+    checkOpenTabsForChanges();
+  }, 4000);
+}
+
+async function checkOpenTabsForChanges() {
+  const baseUrl = workspace.fileServerUrl.replace(/\/+$/, "");
+  for (const tab of workspace.openTabs) {
+    if (tab.externalChange || tab.deleted) continue;
+    try {
+      const r = await fetch(`${baseUrl}/api/files/${tab.path.split("/").map(encodeURIComponent).join("/")}`, { method: "HEAD" });
+      if (!r.ok) { tab.deleted = true; continue; }
+      const mtime = parseFloat(r.headers.get("X-File-Mtime") || "0");
+      if (mtime > tab.mtime + 100) {
+        tab.externalChange = true;
+        if (workspace.openTabs[workspace.activeTabIdx] === tab) {
+          showBanner(`"${tab.name}" changed externally.`);
+        }
+      }
+    } catch {}
   }
-  const wsUrl = workspace.fileServerUrl.replace(/^http/, "ws").replace(/\/+$/, "") + "/ws";
-  try {
-    workspace.fileServerWs = new WebSocket(wsUrl);
-    workspace.fileServerWs.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        handleFileChange(msg);
-      } catch {}
-    };
-    workspace.fileServerWs.onclose = () => {
-      workspace.fileServerWs = null;
-      // Reconnect after 5s
-      setTimeout(() => {
-        if (workspace.connected) connectFileServerWs();
-      }, 5000);
-    };
-    workspace.fileServerWs.onerror = () => {};
-  } catch {}
+  // Also refresh tree periodically (every 3rd poll = ~12s)
+  workspace._pollCount = (workspace._pollCount || 0) + 1;
+  if (workspace._pollCount % 3 === 0) loadFileTree();
 }
 
 function handleFileChange(msg) {
@@ -274,7 +279,13 @@ function buildTreeNodes(items, depth) {
 
     if (item.type === "dir") {
       const expanded = workspace.expandedDirs.has(item.path);
-      row.innerHTML = `<span class="tree-arrow ${expanded ? "open" : ""}">${expanded ? "▾" : "▸"}</span><span class="tree-icon">📁</span><span class="tree-name">${escapeHtml(item.name)}</span>`;
+      const folderSvg = expanded
+        ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#e0a458" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5A1.5 1.5 0 013.5 3H6l1.5 1.5h5A1.5 1.5 0 0114 6v6.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5z"/></svg>'
+        : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5A1.5 1.5 0 013.5 3H6l1.5 1.5h5A1.5 1.5 0 0114 6v6.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5z"/></svg>';
+      const arrowSvg = expanded
+        ? '<svg width="9" height="9" viewBox="0 0 10 10" fill="currentColor"><path d="M2 3.5L5 7l3-3.5H2z"/></svg>'
+        : '<svg width="9" height="9" viewBox="0 0 10 10" fill="currentColor"><path d="M3.5 2L7 5l-3.5 3V2z"/></svg>';
+      row.innerHTML = `<span class="tree-arrow ${expanded ? "open" : ""}">${arrowSvg}</span><span class="tree-icon">${folderSvg}</span><span class="tree-name">${escapeHtml(item.name)}</span>`;
       row.addEventListener("click", () => toggleDir(item.path));
       frag.appendChild(row);
 
@@ -284,7 +295,7 @@ function buildTreeNodes(items, depth) {
       }
     } else {
       const isActive = workspace.openTabs[workspace.activeTabIdx]?.path === item.path;
-      row.innerHTML = `<span class="tree-icon">${getFileIcon(item.name)}</span><span class="tree-name">${escapeHtml(item.name)}</span>`;
+      row.innerHTML = `<span class="tree-icon">${getFileIcon(item.name)}</span><span class="tree-name">${escapeHtml(item.name.replace(/\.[^.]+$/, ''))}<span style="color:rgba(255,255,255,0.2)">.${item.name.split('.').pop()}</span></span>`;
       if (isActive) row.classList.add("active");
       row.addEventListener("click", () => openFile(item.path, item.name));
       frag.appendChild(row);
@@ -304,13 +315,31 @@ function toggleDir(dirPath) {
 
 function getFileIcon(name) {
   const ext = name.split(".").pop().toLowerCase();
+  // Clean SVG icons - minimal line style
+  const svgIcon = (paths, color = "currentColor") =>
+    `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="${color}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+
   const icons = {
-    md: "📝", txt: "📄", json: "📋", js: "🟨", ts: "🔷",
-    py: "🐍", html: "🌐", css: "🎨", yaml: "⚙️", yml: "⚙️",
-    sh: "💻", jpg: "🖼️", png: "🖼️", gif: "🖼️", svg: "🖼️",
-    pdf: "📕", csv: "📊",
+    md: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 9l1.5-2L8 9l1.5-2L11 9"/>', '#8eaee0'),
+    txt: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 7h6M5 9.5h4"/>', '#888'),
+    json: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M6 7v2c0 1-1 1-1 2M10 7v2c0 1 1 1 1 2"/>', '#f0c674'),
+    js: svgIcon('<rect x="2" y="2" width="12" height="12" rx="2"/><path d="M6 10V7M9 7v2a1 1 0 001 1h0a1 1 0 001-1V7"/>', '#f0c674'),
+    ts: svgIcon('<rect x="2" y="2" width="12" height="12" rx="2"/><path d="M6 7v4M4.5 7h3M10 7v4"/>', '#3178c6'),
+    py: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><circle cx="7" cy="8" r="1.5"/>', '#4b8bbe'),
+    html: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5.5 7L8 10l2.5-3"/>', '#e34c26'),
+    css: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M6 8h4M6 10h3"/>', '#264de4'),
+    yaml: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 7l2 2 2-2M7 9v3"/>', '#cb171e'),
+    yml: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 7l2 2 2-2M7 9v3"/>', '#cb171e'),
+    sh: svgIcon('<rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 7l2 2-2 2M9 11h2"/>', '#4eaa25'),
+    jpg: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><circle cx="6" cy="7" r="1.5"/><path d="M4 13l3-4 2 2 3-4"/>', '#b48ead'),
+    png: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><circle cx="6" cy="7" r="1.5"/><path d="M4 13l3-4 2 2 3-4"/>', '#b48ead'),
+    gif: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><circle cx="6" cy="7" r="1.5"/><path d="M4 13l3-4 2 2 3-4"/>', '#b48ead'),
+    svg: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><circle cx="8" cy="9" r="2.5"/>', '#ffb13b'),
+    pdf: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 8h6M5 10.5h4"/>', '#e53935'),
+    csv: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 7h6M5 9.5h6M8 7v5"/>', '#4caf50'),
+    log: svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 7h6M5 9.5h4M5 12h2"/>', '#666'),
   };
-  return icons[ext] || "📄";
+  return icons[ext] || svgIcon('<path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M10 2v3h3"/>', '#666');
 }
 
 // ─── File Opening / Tabs ────────────────────────────────────────────
