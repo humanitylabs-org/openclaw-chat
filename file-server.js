@@ -372,9 +372,10 @@ function getMimeType(filePath) {
 
 // Start
 watchRecursive(WORKSPACE);
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`File server running at http://0.0.0.0:${PORT}`);
-  console.log(`WebSocket at ws://0.0.0.0:${PORT}/ws`);
+const BIND = "127.0.0.1";
+server.listen(PORT, BIND, () => {
+  console.log(`File server running at http://${BIND}:${PORT} (loopback only)`);
+  console.log(`Access via Tailscale Serve HTTPS proxy`);
   console.log(
     `Watching ${watchers.size} directories for changes`
   );
