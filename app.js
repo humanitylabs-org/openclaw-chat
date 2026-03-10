@@ -549,6 +549,154 @@ document.addEventListener("click", () => ui.agentDropdown.classList.add("oc-hidd
 
 // ─── Tab Management ──────────────────────────────────────────────────
 
+// Confirm-close preference
+function isCloseConfirmDisabled() {
+  return localStorage.getItem("openclaw-confirm-close-disabled") === "true";
+}
+function setCloseConfirmDisabled(v) {
+  localStorage.setItem("openclaw-confirm-close-disabled", v ? "true" : "false");
+}
+
+// Show a confirm-close modal; resolves true if user confirms
+function confirmClose(title, msg) {
+  if (isCloseConfirmDisabled()) return Promise.resolve(true);
+  return new Promise(resolve => {
+    const overlay = document.getElementById("confirm-overlay");
+    document.getElementById("confirm-title").textContent = title;
+    document.getElementById("confirm-msg").textContent = msg;
+    document.getElementById("confirm-ok").textContent = title.startsWith("Reset") ? "Reset" : "Close";
+    const checkbox = document.getElementById("confirm-dont-ask");
+    checkbox.checked = false;
+    overlay.classList.add("oc-open");
+    const cleanup = (result) => {
+      overlay.classList.remove("oc-open");
+      if (result && checkbox.checked) setCloseConfirmDisabled(true);
+      resolve(result);
+    };
+    document.getElementById("confirm-ok").onclick = () => cleanup(true);
+    document.getElementById("confirm-cancel").onclick = () => cleanup(false);
+    overlay.onclick = (e) => { if (e.target === overlay) cleanup(false); };
+  });
+}
+
+// Inline rename for a tab label
+function startTabRename(labelEl, tab) {
+  if (tab.key === "main") return; // Main is never renamable
+  const input = document.createElement("input");
+  input.className = "openclaw-tab-label-input";
+  input.value = tab.label;
+  input.maxLength = 30;
+  labelEl.replaceWith(input);
+  input.focus();
+  input.select();
+  const finish = async (save) => {
+    const newName = input.value.trim();
+    if (save && newName && newName !== tab.label) {
+      try {
+        await state.gateway.request("sessions.patch", {
+          key: `${agentPrefix()}${tab.key}`,
+          label: newName,
+        });
+        tab.label = newName;
+      } catch { /* keep old name */ }
+    }
+    input.replaceWith(labelEl);
+    labelEl.textContent = tab.label;
+    renderTabs();
+  };
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); finish(true); }
+    if (e.key === "Escape") { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener("blur", () => finish(true));
+}
+
+// Check if hamburger mode is needed
+function updateTabMode() {
+  const tabBar = ui.tabBar;
+  const hamburgerBar = document.getElementById("hamburger-bar");
+  if (!tabBar || !hamburgerBar) return;
+  const tabCount = state.tabSessions.length + 1; // +1 for add button
+  const barWidth = tabBar.parentElement?.offsetWidth || 400;
+  const perTab = barWidth / tabCount;
+  if (perTab < 60) {
+    tabBar.classList.add("oc-hamburger-mode");
+    hamburgerBar.classList.add("oc-visible");
+    renderHamburgerBar();
+  } else {
+    tabBar.classList.remove("oc-hamburger-mode");
+    hamburgerBar.classList.remove("oc-visible");
+  }
+}
+
+function renderHamburgerBar() {
+  const currentLabel = document.getElementById("hamburger-current");
+  const current = state.tabSessions.find(t => t.key === state.sessionKey) || state.tabSessions[0];
+  if (currentLabel && current) currentLabel.textContent = current.label;
+}
+
+function renderHamburgerDropdown() {
+  const dd = document.getElementById("hamburger-dropdown");
+  if (!dd) return;
+  dd.innerHTML = "";
+  const currentKey = state.sessionKey || "main";
+  for (const tab of state.tabSessions) {
+    const item = document.createElement("div");
+    item.className = `oc-hamburger-dropdown-item${tab.key === currentKey ? " oc-active" : ""}`;
+
+    const label = document.createElement("span");
+    label.className = "oc-dd-label";
+    label.textContent = tab.label;
+    item.appendChild(label);
+
+    const meter = document.createElement("div");
+    meter.className = "oc-dd-meter";
+    const fill = document.createElement("div");
+    fill.className = "oc-dd-meter-fill";
+    fill.style.width = tab.pct + "%";
+    meter.appendChild(fill);
+    item.appendChild(meter);
+
+    if (tab.key !== currentKey) {
+      const closeBtn = document.createElement("span");
+      closeBtn.className = "oc-dd-close";
+      closeBtn.textContent = "×";
+      closeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dd.classList.remove("oc-open");
+        if (tab.key === "main") resetTab(tab);
+        else closeTab(tab, currentKey);
+      });
+      item.appendChild(closeBtn);
+    }
+
+    item.addEventListener("click", () => {
+      dd.classList.remove("oc-open");
+      if (tab.key !== currentKey) switchTab(tab);
+    });
+    dd.appendChild(item);
+  }
+}
+
+// Init hamburger events
+(function initHamburger() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("hamburger-btn");
+    const dd = document.getElementById("hamburger-dropdown");
+    const addBtn = document.getElementById("hamburger-add");
+    if (btn && dd) {
+      btn.addEventListener("click", () => {
+        renderHamburgerDropdown();
+        dd.classList.toggle("oc-open");
+      });
+      document.addEventListener("click", (e) => {
+        if (!dd.contains(e.target) && e.target !== btn) dd.classList.remove("oc-open");
+      });
+    }
+    if (addBtn) addBtn.addEventListener("click", () => createNewTab());
+  });
+})();
+
 async function renderTabs() {
   if (!ui.tabBar || state.renderingTabs) return;
   state.renderingTabs = true;
@@ -611,9 +759,18 @@ async function _renderTabsInner() {
     const label = document.createElement("span");
     label.className = "openclaw-tab-label";
     label.textContent = tab.label;
+
+    // Double-click to rename (not main)
+    if (tab.key !== "main") {
+      label.addEventListener("dblclick", (e) => {
+        e.stopPropagation();
+        startTabRename(label, tab);
+      });
+      label.title = "Double-click to rename";
+    }
     row.appendChild(label);
 
-    // × button
+    // × button (far right via margin-left: auto in CSS)
     const closeBtn = document.createElement("span");
     closeBtn.className = "openclaw-tab-close";
     closeBtn.textContent = "×";
@@ -649,9 +806,15 @@ async function _renderTabsInner() {
   // + button
   const addBtn = document.createElement("div");
   addBtn.className = "openclaw-tab openclaw-tab-add";
-  addBtn.innerHTML = '<span class="openclaw-tab-label">+</span>';
+  const addLabel = document.createElement("span");
+  addLabel.className = "openclaw-tab-label";
+  addLabel.textContent = "+";
+  addBtn.appendChild(addLabel);
   addBtn.addEventListener("click", () => createNewTab());
   ui.tabBar.appendChild(addBtn);
+
+  // Check if we need hamburger mode
+  updateTabMode();
 }
 
 async function switchTab(tab) {
@@ -674,6 +837,8 @@ async function switchTab(tab) {
 
 async function resetTab(tab) {
   if (!state.gateway?.connected) return;
+  const ok = await confirmClose("Reset main tab?", "This will clear the conversation.");
+  if (!ok) return;
   try {
     await state.gateway.request("chat.send", {
       sessionKey: tab.key,
@@ -694,6 +859,8 @@ async function resetTab(tab) {
 
 async function closeTab(tab, currentKey) {
   if (!state.gateway?.connected || state.tabDeleteInProgress) return;
+  const ok = await confirmClose("Close tab?", `Close "${tab.label}"? Chat history will be lost.`);
+  if (!ok) return;
   state.tabDeleteInProgress = true;
   try {
     await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tab.key}`);
@@ -1873,6 +2040,69 @@ ui.tabBar.addEventListener("wheel", (e) => {
   e.preventDefault();
   ui.tabBar.scrollLeft += e.deltaY;
 }, { passive: false });
+
+// ─── Touch Gestures (pull-to-refresh + swipe between tabs) ──────────
+
+(function initTouchGestures() {
+  let touchStartX = 0, touchStartY = 0, pulling = false;
+  const pullIndicator = document.getElementById("pull-indicator");
+
+  if (ui.messagesContainer) {
+    ui.messagesContainer.addEventListener("touchstart", (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      pulling = false;
+    }, { passive: true });
+
+    ui.messagesContainer.addEventListener("touchmove", (e) => {
+      const deltaY = e.touches[0].clientY - touchStartY;
+      // Pull-to-refresh: only when scrolled to top
+      if (ui.messagesContainer.scrollTop <= 0 && deltaY > 0) {
+        if (deltaY > 60) {
+          pulling = true;
+          if (pullIndicator) pullIndicator.classList.add("oc-pulling");
+        }
+      }
+    }, { passive: true });
+
+    ui.messagesContainer.addEventListener("touchend", (e) => {
+      const deltaX = e.changedTouches[0].clientX - touchStartX;
+      const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+      // Pull-to-refresh
+      if (pulling) {
+        pulling = false;
+        if (pullIndicator) pullIndicator.classList.remove("oc-pulling");
+        // Reload history
+        state.messages = [];
+        ui.messagesContainer.innerHTML = "";
+        loadChatHistory().then(() => updateContextMeter());
+        return;
+      }
+
+      // Swipe between tabs (horizontal > vertical, min 80px)
+      if (Math.abs(deltaX) > 80 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+        const currentIdx = state.tabSessions.findIndex(t => t.key === state.sessionKey);
+        if (currentIdx < 0) return;
+        let nextIdx;
+        if (deltaX < 0) {
+          // Swipe left = next tab
+          nextIdx = currentIdx + 1;
+        } else {
+          // Swipe right = previous tab
+          nextIdx = currentIdx - 1;
+        }
+        if (nextIdx >= 0 && nextIdx < state.tabSessions.length) {
+          switchTab(state.tabSessions[nextIdx]);
+        }
+      }
+    }, { passive: true });
+  }
+})();
+
+// ─── Settings: confirm-close toggle ─────────────────────────────────
+// (Can be wired to a settings UI later; for now expose via console)
+window.ocResetCloseConfirm = () => { setCloseConfirmDisabled(false); console.log("Close confirmation re-enabled"); };
 
 // ─── Initialize ──────────────────────────────────────────────────────
 

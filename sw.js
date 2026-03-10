@@ -1,5 +1,8 @@
 // Service Worker for OpenClaw Chat PWA
-const CACHE_NAME = "openclaw-chat-v1";
+// ── BUMP THIS ON EVERY DEPLOY to bust PWA cache ──
+const CACHE_VERSION = "v2";
+const CACHE_NAME = `openclaw-chat-${CACHE_VERSION}`;
+
 const urlsToCache = [
   "/",
   "/index.html",
@@ -18,51 +21,63 @@ self.addEventListener("install", (event) => {
       });
     })
   );
+  // Activate immediately (don't wait for old tabs to close)
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - delete ALL old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
       );
     })
   );
+  // Take control of all clients immediately
   self.clients.claim();
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - network-first for HTML/JS/CSS, cache-first for assets
 self.addEventListener("fetch", (event) => {
   // Skip WebSocket requests
   if (event.request.url.startsWith("ws://") || event.request.url.startsWith("wss://")) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Return cached version or fetch from network
-      return (
-        response ||
-        fetch(event.request).then((fetchResponse) => {
-          // Cache successful GET requests
-          if (
-            event.request.method === "GET" &&
-            fetchResponse.status === 200
-          ) {
-            const responseToCache = fetchResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+  const url = new URL(event.request.url);
+  const isAppFile = url.pathname === "/" ||
+    url.pathname.endsWith(".html") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".css");
+
+  if (isAppFile) {
+    // Network-first for app files (ensures fresh code on deploy)
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.status === 200 && event.request.method === "GET") {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
-          return fetchResponse;
+          return response;
         })
-      );
-    })
-  );
+        .catch(() => caches.match(event.request))
+    );
+  } else {
+    // Cache-first for static assets (icons, images)
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        return cached || fetch(event.request).then((response) => {
+          if (event.request.method === "GET" && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        });
+      })
+    );
+  }
 });
