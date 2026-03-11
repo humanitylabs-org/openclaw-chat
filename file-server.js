@@ -213,7 +213,12 @@ const server = http.createServer((req, res) => {
   }
 
   const parsed = new URL(req.url, `http://localhost:${PORT}`);
-  const pathname = decodeURIComponent(parsed.pathname);
+  let pathname = decodeURIComponent(parsed.pathname);
+
+  // Strip /files prefix when proxied through Tailscale Serve (e.g. /files/health -> /health)
+  if (pathname.startsWith("/files")) {
+    pathname = pathname.slice(6) || "/";
+  }
 
   // API routes
   if (pathname.startsWith("/api/files")) {

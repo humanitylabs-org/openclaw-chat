@@ -408,6 +408,10 @@ async function connectToGateway() {
         }
 
         updateConnectionStatus(true);
+
+        // Auto-connect file server using the same gateway URL
+        if (typeof onChatConnected === "function") onChatConnected();
+
         resolve();
       },
       onClose: (info) => {

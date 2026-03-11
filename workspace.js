@@ -18,11 +18,37 @@ const workspace = {
   expandedDirs: new Set(),
 };
 
+// ─── Derive File Server URL from Gateway ────────────────────────────
+
+function deriveFileServerUrl() {
+  // Try to get the gateway URL from the chat connection state
+  const connData = localStorage.getItem("connection");
+  if (!connData) return;
+  try {
+    const { gatewayUrl } = JSON.parse(connData);
+    if (!gatewayUrl) return;
+    // Convert ws(s):// to http(s):// and append /files
+    let httpUrl = gatewayUrl
+      .replace(/^wss:\/\//, "https://")
+      .replace(/^ws:\/\//, "http://")
+      .replace(/\/+$/, "");
+    workspace.fileServerUrl = httpUrl + "/files";
+  } catch {}
+}
+
+// Called by app.js after successful chat connection
+function onChatConnected() {
+  deriveFileServerUrl();
+  if (workspace.fileServerUrl && !workspace.connected) {
+    connectFileServer();
+  }
+}
+
 // ─── Init ───────────────────────────────────────────────────────────
 
 function initWorkspace() {
-  const stored = localStorage.getItem("fileServerUrl");
-  if (stored) workspace.fileServerUrl = stored;
+  // Auto-derive file server URL from gateway connection (same host + /files path)
+  deriveFileServerUrl();
 
   buildWorkspaceDOM();
   setupSwipeGestures();
@@ -147,7 +173,7 @@ function buildWorkspaceDOM() {
   `;
   app.appendChild(dots);
 
-  // Settings link in file tree for file server URL
+  // File server status indicator (auto-connects via gateway URL)
   const settingsEl = document.createElement("div");
   settingsEl.className = "tree-settings";
   settingsEl.innerHTML = `
@@ -155,16 +181,8 @@ function buildWorkspaceDOM() {
       <span class="fs-dot"></span>
       <span class="fs-label">Not connected</span>
     </div>
-    <div class="tree-settings-input oc-hidden" id="fs-input-row">
-      <input type="text" id="fs-url-input" placeholder="http://100.x.x.x:18790" value="${workspace.fileServerUrl}">
-      <button onclick="saveFileServerUrl()">Connect</button>
-    </div>
   `;
   treePanel.appendChild(settingsEl);
-
-  document.getElementById("fs-status").addEventListener("click", () => {
-    document.getElementById("fs-input-row").classList.toggle("oc-hidden");
-  });
 }
 
 // ─── File Server Connection ─────────────────────────────────────────
@@ -243,14 +261,6 @@ function handleFileChange(msg) {
       }
     }
   }
-}
-
-function saveFileServerUrl() {
-  const input = document.getElementById("fs-url-input");
-  workspace.fileServerUrl = input.value.trim();
-  localStorage.setItem("fileServerUrl", workspace.fileServerUrl);
-  document.getElementById("fs-input-row").classList.add("oc-hidden");
-  connectFileServer();
 }
 
 function updateFsStatus(connected) {
