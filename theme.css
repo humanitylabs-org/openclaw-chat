@@ -158,6 +158,7 @@ body {
 
 .openclaw-tab-label {
   font-family: var(--font-sans);
+  color: var(--accent-color, inherit);
 }
 
 .openclaw-tab-label-input {
@@ -828,16 +829,18 @@ body {
 
 .tree-item.active {
   background: rgba(242, 242, 242, 0.06);
-  color: var(--text-normal);
+  color: var(--accent-color, var(--text-normal));
 }
 
 .tree-dir .tree-name {
   font-weight: 400;
-  color: rgba(242, 242, 242, 0.6);
+  color: var(--accent-color, rgba(242, 242, 242, 0.6));
+  opacity: 0.7;
 }
 
 .tree-dir:hover .tree-name {
-  color: rgba(242, 242, 242, 0.9);
+  color: var(--accent-color, rgba(242, 242, 242, 0.9));
+  opacity: 1;
 }
 
 .tree-arrow {
@@ -941,7 +944,7 @@ body {
 
 .editor-tab.active {
   background: rgba(255, 255, 255, 0.04);
-  color: var(--text-normal);
+  color: var(--accent-color, var(--text-normal));
   font-weight: 400;
 }
 

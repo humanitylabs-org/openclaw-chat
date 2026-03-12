@@ -1534,7 +1534,7 @@
       transition: background 0.2s;
     }
     .settings-toggle input:checked + .slider {
-      background: var(--interactive-accent);
+      background: var(--accent-color, var(--interactive-accent));
     }
     .settings-toggle .knob {
       position: absolute;
@@ -1575,7 +1575,7 @@
       box-shadow: 0 8px 40px rgba(0,0,0,0.4);
     }
     .onboard-step-num {
-      background: var(--interactive-accent);
+      background: var(--accent-color, var(--interactive-accent));
       color: var(--text-on-accent);
       width: 18px;
       height: 18px;

@@ -269,7 +269,10 @@ async function checkOpenTabsForChanges() {
       const r = await fetch(`${baseUrl}/api/files/${tab.path.split("/").map(encodeURIComponent).join("/")}`, { method: "HEAD", targetAddressSpace: "local" });
       if (!r.ok) { tab.deleted = true; continue; }
       const mtime = parseFloat(r.headers.get("X-File-Mtime") || "0");
-      if (mtime > tab.mtime + 100) {
+      // Use a 2-second buffer to avoid false positives from our own saves
+      if (mtime > tab.mtime + 2000) {
+        // Double-check: skip if we saved recently (within last 5 seconds)
+        if (tab._lastSaveTime && Date.now() - tab._lastSaveTime < 5000) continue;
         tab.externalChange = true;
         if (workspace.openTabs[workspace.activeTabIdx] === tab) {
           showBanner(`"${tab.name}" changed externally.`);
@@ -832,6 +835,7 @@ async function saveCurrentFile() {
       tab.savedContent = tab.content;
       tab.dirty = false;
       tab.mtime = data.mtime;
+      tab._lastSaveTime = Date.now();
       tab.externalChange = false;
       renderEditorTabs();
       renderEditorContent();
