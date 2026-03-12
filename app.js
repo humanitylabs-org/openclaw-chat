@@ -1479,6 +1479,13 @@ function formatMarkdown(text) {
   }
   html = html.replace(/<p>\s*<\/p>/g, "");
 
+  // Remove stray <br> between list items (fixes excessive spacing)
+  html = html.replace(/<\/li>\s*<br>\s*<li/g, '</li><li');
+  html = html.replace(/<ul>\s*<br>/g, '<ul>');
+  html = html.replace(/<ol>\s*<br>/g, '<ol>');
+  html = html.replace(/<br>\s*<\/ul>/g, '</ul>');
+  html = html.replace(/<br>\s*<\/ol>/g, '</ol>');
+
   return html;
 }
 

@@ -36,9 +36,12 @@ body {
 /* ── Onboarding ────────────────────────────────────────────── */
 
 .onboarding-step {
-  border-radius: 4px;
-  background: var(--background-secondary);
-  border-color: var(--background-modifier-border);
+  border-radius: 16px;
+  background: rgba(20, 20, 22, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
 }
 
 .onboarding-step h2 {
@@ -56,10 +59,11 @@ body {
 .input-group input {
   font-family: var(--font-sans);
   font-weight: 300;
-  border-radius: 4px;
-  background: var(--input-bg);
-  border-color: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(40, 40, 45, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-normal);
+  padding: 0.85rem;
 }
 
 .input-group input:focus {
@@ -78,16 +82,21 @@ body {
 .btn {
   font-family: var(--font-sans);
   font-weight: 500;
-  border-radius: 4px;
+  border-radius: 10px;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   letter-spacing: 0.02em;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.1s;
+  padding: 0.8rem 2rem;
 }
 
 .btn:hover {
   background: var(--interactive-accent-hover);
   opacity: 0.9;
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn:disabled {
@@ -188,10 +197,12 @@ body {
 }
 
 .openclaw-agent-dropdown {
-  background: var(--background-secondary);
-  border-color: var(--background-modifier-border);
-  border-radius: 4px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  background: rgba(20, 20, 22, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .openclaw-agent-item {
@@ -233,8 +244,11 @@ body {
 }
 
 .oc-hamburger-dropdown {
-  background: var(--background-secondary);
-  border-color: var(--background-modifier-border);
+  background: rgba(20, 20, 22, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .oc-hamburger-dropdown-item {
@@ -265,10 +279,19 @@ body {
 
 /* ── Confirm Modal ─────────────────────────────────────────── */
 
+.oc-confirm-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 .oc-confirm-box {
-  background: var(--background-secondary);
-  border-color: var(--background-modifier-border);
-  border-radius: 4px;
+  background: rgba(20, 20, 22, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
 }
 
 .oc-confirm-title {
@@ -314,8 +337,11 @@ body {
 .openclaw-banner {
   font-family: var(--font-sans);
   font-weight: 400;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 @keyframes openclaw-banner-pulse {
@@ -429,11 +455,13 @@ body {
 .openclaw-msg-assistant ul,
 .openclaw-msg-assistant ol {
   padding-left: 20px;
+  margin: 4px 0;
 }
 
 .openclaw-msg-assistant li {
-  margin-bottom: 3px;
-  line-height: 1.6;
+  margin-bottom: 1px;
+  line-height: 1.5;
+  padding: 0;
 }
 
 .openclaw-msg-assistant li::marker {
@@ -481,8 +509,11 @@ body {
 /* ── Typing Indicator ──────────────────────────────────────── */
 
 .openclaw-typing-inner {
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .openclaw-typing-text {
@@ -497,15 +528,26 @@ body {
 
 /* ── Input Area ────────────────────────────────────────────── */
 
+.openclaw-input-area {
+  background: rgba(11, 11, 13, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
 .openclaw-input-row {
-  border-radius: 4px;
-  background: var(--input-bg);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  background: rgba(40, 40, 45, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 4px 4px 4px 8px;
+  transition: border-color 0.2s, background 0.2s;
 }
 
 .openclaw-input-row:focus-within {
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(40, 40, 45, 0.75);
 }
 
 .openclaw-input {
@@ -540,11 +582,17 @@ body {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-radius: 50%;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.1s;
+  width: 34px;
+  height: 34px;
 }
 
 .openclaw-send-btn:hover {
   opacity: 0.85;
+}
+
+.openclaw-send-btn:active {
+  transform: scale(0.92);
 }
 
 .openclaw-send-btn:disabled {
@@ -620,15 +668,19 @@ body {
 /* ── Model Picker Modal ────────────────────────────────────── */
 
 .modal-overlay {
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .modal {
-  background: var(--background-secondary);
-  border-color: var(--background-modifier-border);
-  border-radius: 4px;
+  background: rgba(20, 20, 22, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
   font-family: var(--font-sans);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
 }
 
 .modal h3 {
@@ -966,6 +1018,11 @@ body {
   line-height: 1.8;
   color: var(--text-normal);
   letter-spacing: 0;
+  overflow-x: hidden;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Headings */
@@ -1040,6 +1097,8 @@ body {
   border-radius: 4px;
   background: var(--background-secondary);
   border-color: rgba(255, 255, 255, 0.04);
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .editor-preview .code-lang {
@@ -1089,13 +1148,13 @@ body {
 /* Lists */
 .editor-preview ul,
 .editor-preview ol {
-  margin: 6px 0;
+  margin: 4px 0;
   padding-left: 22px;
 }
 
 .editor-preview li {
-  margin-bottom: 3px;
-  line-height: 1.7;
+  margin-bottom: 2px;
+  line-height: 1.65;
 }
 
 .editor-preview li::marker {
@@ -1108,8 +1167,16 @@ body {
   padding-left: 2px;
 }
 
+.editor-preview .task {
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
 .editor-preview .task input[type="checkbox"] {
   accent-color: var(--text-muted);
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
 }
 
 .editor-preview .task-done {
@@ -1132,6 +1199,9 @@ body {
 .editor-preview table {
   font-family: var(--font-sans);
   font-weight: 300;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
 }
 
 .editor-preview th {
@@ -1223,17 +1293,21 @@ body {
 /* ── Panel Dots (mobile) ───────────────────────────────────── */
 
 .panel-dots {
-  background: rgba(11, 11, 13, 0.95);
-  border-top-color: rgba(255, 255, 255, 0.03);
+  background: rgba(11, 11, 13, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top-color: rgba(255, 255, 255, 0.04);
 }
 
 .panel-dots .dot {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
+  transition: all 0.3s ease;
 }
 
 .panel-dots .dot.active {
-  background: var(--text-normal);
-  box-shadow: 0 0 6px rgba(242, 242, 242, 0.2);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 8px rgba(242, 242, 242, 0.25);
+  transform: scale(1.3);
 }
 
 /* ══════════════════════════════════════════════════════════════
