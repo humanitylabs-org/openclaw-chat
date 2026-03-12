@@ -697,7 +697,13 @@ function renderHamburgerDropdown() {
     if (tab.key !== currentKey) {
       const closeBtn = document.createElement("span");
       closeBtn.className = "oc-dd-close";
-      closeBtn.textContent = "×";
+      if (tab.key === "main") {
+        closeBtn.textContent = "↻";
+        closeBtn.title = "Reset";
+      } else {
+        closeBtn.textContent = "×";
+        closeBtn.title = "Close";
+      }
       closeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         dd.classList.remove("oc-open");
@@ -767,12 +773,10 @@ async function _renderTabsInner() {
     if (s.key.includes(":cron:")) return false;
     if (s.key.includes(":subagent:")) return false;
     // Hide channel-specific sessions (telegram, signal, discord, whatsapp, irc, slack, etc.)
+    // Only show user conversation sessions (suffix has no colons)
+    // Excludes channel sessions, cron jobs, and sub-agents
     const suffix = s.key.slice(prefix.length);
-    if (suffix.includes("telegram:") || suffix.includes("signal:") ||
-        suffix.includes("discord:") || suffix.includes("whatsapp:") ||
-        suffix.includes("irc:") || suffix.includes("slack:") ||
-        suffix.includes("googlechat:") || suffix.includes("imessage:")) return false;
-    return true;
+    return !suffix.includes(":");
   });
 
   // Build tab list
@@ -781,60 +785,63 @@ async function _renderTabsInner() {
   if (mainSession) {
     const used = mainSession.totalTokens || 0;
     const max = mainSession.contextTokens || 200000;
-    const mainLabel = mainSession.label || mainSession.displayName || "Main";
-    state.tabSessions.push({ key: "main", label: mainLabel, pct: Math.min(100, Math.round((used / max) * 100)) });
+    state.tabSessions.push({ key: "main", label: "Home", pct: Math.min(100, Math.round((used / max) * 100)) });
   } else {
-    state.tabSessions.push({ key: "main", label: "Main", pct: 0 });
+    state.tabSessions.push({ key: "main", label: "Home", pct: 0 });
   }
 
   const others = convSessions
     .filter(s => s.key.slice(prefix.length) !== "main")
     .sort((a, b) => (a.createdAt || a.updatedAt || 0) - (b.createdAt || b.updatedAt || 0));
-  let num = 1;
   for (const s of others) {
     const sk = s.key.slice(prefix.length);
     const used = s.totalTokens || 0;
     const max = s.contextTokens || 200000;
     const pct = Math.min(100, Math.round((used / max) * 100));
-    const label = s.label || s.displayName || String(num);
+    const label = s.label || s.displayName || "Untitled";
     state.tabSessions.push({ key: sk, label, pct });
-    num++;
   }
 
   // Render each tab
   for (const tab of state.tabSessions) {
     const isCurrent = tab.key === currentKey;
+    const isHome = tab.key === "main";
     const tabEl = document.createElement("div");
-    tabEl.className = `openclaw-tab${isCurrent ? " active" : ""}`;
+    tabEl.className = `openclaw-tab${isCurrent ? " active" : ""}${isHome ? " openclaw-tab-home" : ""}`;
 
     const row = document.createElement("div");
     row.className = "openclaw-tab-row";
     const label = document.createElement("span");
     label.className = "openclaw-tab-label";
-    label.textContent = tab.label;
 
-    // Double-click to rename
-    label.addEventListener("dblclick", (e) => {
-      e.stopPropagation();
-      startTabRename(label, tab);
-    });
-    label.title = "Double-click to rename";
+    if (isHome) {
+      // Home tab: house icon + "Home", non-renameable
+      label.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px;margin-right:3px;opacity:0.7"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>Home';
+    } else {
+      label.textContent = tab.label;
+      // Double-click to rename
+      label.addEventListener("dblclick", (e) => {
+        e.stopPropagation();
+        startTabRename(label, tab);
+      });
+      label.title = "Double-click to rename";
+    }
     row.appendChild(label);
 
-    // × button (far right via margin-left: auto in CSS)
-    const closeBtn = document.createElement("span");
-    closeBtn.className = "openclaw-tab-close";
-    closeBtn.textContent = "×";
-    const isResetOnly = tab.key === "main";
+    // Action button: Home gets ↻ reset, others get × close
+    const actionBtn = document.createElement("span");
+    actionBtn.className = "openclaw-tab-close";
 
-    if (isResetOnly) {
-      closeBtn.title = "Reset conversation";
-      closeBtn.addEventListener("click", (e) => { e.stopPropagation(); resetTab(tab); });
+    if (isHome) {
+      actionBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
+      actionBtn.title = "Reset conversation";
+      actionBtn.addEventListener("click", (e) => { e.stopPropagation(); resetTab(tab); });
     } else {
-      closeBtn.title = "Close tab";
-      closeBtn.addEventListener("click", (e) => { e.stopPropagation(); closeTab(tab, currentKey); });
+      actionBtn.textContent = "×";
+      actionBtn.title = "Close tab";
+      actionBtn.addEventListener("click", (e) => { e.stopPropagation(); closeTab(tab, currentKey); });
     }
-    row.appendChild(closeBtn);
+    row.appendChild(actionBtn);
     tabEl.appendChild(row);
 
     // Meter bar
