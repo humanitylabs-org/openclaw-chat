@@ -753,12 +753,12 @@ function renderMobileTabSwitcher() {
   // Meter
   if (meterFill) meterFill.style.width = (current.pct || 0) + "%";
 
-  // Arrows
-  if (idx <= 0) arrowLeft.classList.add("oc-hidden");
-  else arrowLeft.classList.remove("oc-hidden");
+  // Arrows — always present for layout, just invisible when not applicable
+  arrowLeft.style.visibility = idx <= 0 ? "hidden" : "visible";
+  arrowLeft.style.pointerEvents = idx <= 0 ? "none" : "auto";
 
-  if (idx >= state.tabSessions.length - 1) arrowRight.classList.add("oc-hidden");
-  else arrowRight.classList.remove("oc-hidden");
+  arrowRight.style.visibility = idx >= state.tabSessions.length - 1 ? "hidden" : "visible";
+  arrowRight.style.pointerEvents = idx >= state.tabSessions.length - 1 ? "none" : "auto";
 
   // Action buttons
   actions.innerHTML = "";
@@ -775,19 +775,22 @@ function renderMobileTabSwitcher() {
   });
   actions.appendChild(resetBtn);
 
-  // Close button (non-home only)
+  // Close button (real for non-home, invisible spacer for home)
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "oc-tab-switcher-action";
+  closeBtn.textContent = "×";
+  closeBtn.style.fontSize = "16px";
   if (!isHome) {
-    const closeBtn = document.createElement("button");
-    closeBtn.className = "oc-tab-switcher-action";
     closeBtn.title = "Close tab";
-    closeBtn.textContent = "×";
-    closeBtn.style.fontSize = "16px";
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       closeTab(current, currentKey);
     });
-    actions.appendChild(closeBtn);
+  } else {
+    closeBtn.style.visibility = "hidden";
+    closeBtn.style.pointerEvents = "none";
   }
+  actions.appendChild(closeBtn);
 }
 
 function startSwitcherRename(labelEl, tab) {
