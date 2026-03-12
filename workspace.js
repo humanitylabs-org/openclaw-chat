@@ -28,12 +28,20 @@ function deriveFileServerUrl() {
   try {
     const { gatewayUrl } = JSON.parse(connData);
     if (!gatewayUrl) return;
-    // Convert ws(s):// to http(s):// and append /files
+    // Convert ws(s):// to http(s):// and use port 8443 for file server
     let httpUrl = gatewayUrl
       .replace(/^wss:\/\//, "https://")
       .replace(/^ws:\/\//, "http://")
       .replace(/\/+$/, "");
-    workspace.fileServerUrl = httpUrl + "/files";
+    // Replace the port (or add :8443) for the file server
+    try {
+      const u = new URL(httpUrl);
+      u.port = "8443";
+      workspace.fileServerUrl = u.toString().replace(/\/+$/, "");
+    } catch {
+      // Fallback: just swap/add port
+      workspace.fileServerUrl = httpUrl.replace(/:(\d+)$/, "") + ":8443";
+    }
   } catch {}
 }
 
