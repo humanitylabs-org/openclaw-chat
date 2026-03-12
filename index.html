@@ -252,6 +252,8 @@
       margin: 0;
       overflow: hidden;
       border-bottom: 1px solid var(--background-modifier-border);
+      min-height: 34px;
+      box-sizing: border-box;
     }
     .openclaw-tab-bar.oc-hamburger-mode { display: none; }
     .openclaw-tab-refresh {
@@ -1099,13 +1101,11 @@
       width: 250px;
       min-width: 250px;
       flex-shrink: 0;
-      border-right: 1px solid var(--background-modifier-border);
     }
 
     .panel-container.desktop .editor-panel {
       flex: 1;
       min-width: 0;
-      border-right: 1px solid var(--background-modifier-border);
     }
 
     .panel-container.desktop .chat-panel {
@@ -1128,13 +1128,14 @@
 
     /* Panel resizer */
     .panel-resizer {
-      width: 4px;
+      width: 1px;
       cursor: col-resize;
-      background: transparent;
+      background: var(--background-modifier-border);
       flex-shrink: 0;
       transition: background 0.15s;
       position: relative;
       z-index: 10;
+      padding: 0 1px;
     }
     .panel-resizer:hover,
     .panel-resizer:active {
@@ -1233,8 +1234,12 @@
 
     /* Search bar */
     .tree-search {
-      padding: 8px 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--background-modifier-border);
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
     }
     .tree-search input {
       width: 100%;
@@ -1458,7 +1463,8 @@
       display: flex;
       align-items: flex-end;
       overflow: hidden;
-      min-height: 32px;
+      min-height: 34px;
+      box-sizing: border-box;
     }
     .editor-tabs {
       display: flex;
