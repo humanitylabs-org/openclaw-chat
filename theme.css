@@ -83,7 +83,7 @@ body {
   font-family: var(--font-sans);
   font-weight: 500;
   border-radius: 10px;
-  background: var(--interactive-accent);
+  background: var(--accent-color, var(--interactive-accent));
   color: var(--text-on-accent);
   letter-spacing: 0.02em;
   transition: opacity 0.2s, transform 0.1s;
@@ -127,7 +127,7 @@ body {
 
 .spinner {
   border-color: rgba(255, 255, 255, 0.08);
-  border-top-color: var(--text-muted);
+  border-top-color: var(--accent-color, var(--text-muted));
 }
 
 /* ── Tab Bar ───────────────────────────────────────────────── */
@@ -324,7 +324,7 @@ body {
 }
 
 .oc-confirm-ok {
-  background: var(--interactive-accent);
+  background: var(--accent-color, var(--interactive-accent));
   color: var(--text-on-accent);
 }
 
@@ -401,14 +401,15 @@ body {
 }
 
 .openclaw-msg-assistant a {
-  color: var(--text-muted);
+  color: var(--accent-color, var(--text-muted));
   text-decoration: underline;
   text-underline-offset: 2px;
   transition: color 0.15s;
 }
 
 .openclaw-msg-assistant a:hover {
-  color: var(--text-normal);
+  color: var(--accent-color, var(--text-normal));
+  filter: brightness(1.2);
 }
 
 .openclaw-msg-assistant blockquote {
@@ -494,11 +495,13 @@ body {
 }
 
 .openclaw-tool-link {
-  color: var(--text-faint);
+  color: var(--accent-color, var(--text-faint));
+  opacity: 0.7;
 }
 
 .openclaw-tool-link:hover {
-  color: var(--text-muted);
+  color: var(--accent-color, var(--text-muted));
+  opacity: 1;
   text-decoration: underline;
 }
 
@@ -523,7 +526,8 @@ body {
 }
 
 .openclaw-dot {
-  background: var(--text-faint);
+  background: var(--accent-color, var(--text-faint));
+  opacity: 0.6;
 }
 
 /* ── Input Area ────────────────────────────────────────────── */
@@ -565,7 +569,7 @@ body {
 }
 
 .openclaw-brain-btn:hover {
-  color: var(--text-muted);
+  color: var(--accent-color, var(--text-muted));
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -1136,7 +1140,7 @@ body {
 }
 
 .editor-preview .internal-link {
-  color: var(--text-muted);
+  color: var(--accent-color, var(--text-muted));
   border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
 }
 
@@ -1305,10 +1309,21 @@ body {
 
 .editor-block {
   cursor: text;
-  border-radius: 4px;
-  padding: 2px 4px;
+  border-radius: 3px;
+  padding: 0 4px;
   margin: 0 -4px;
   transition: background 0.15s;
+}
+
+/* Kill all inner margins so lines sit tight */
+.editor-block p,
+.editor-block h1, .editor-block h2, .editor-block h3,
+.editor-block h4, .editor-block h5, .editor-block h6,
+.editor-block ul, .editor-block ol,
+.editor-block blockquote, .editor-block pre {
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .editor-block:hover {
@@ -1316,24 +1331,20 @@ body {
 }
 
 .editor-block-blank {
-  height: 0.5em;
+  height: 0.6em;
   padding: 0 4px;
-}
-
-.editor-block-blank:hover {
-  background: rgba(255, 255, 255, 0.02);
 }
 
 .editor-block.editing {
   background: rgba(255, 255, 255, 0.03);
   outline: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 4px;
+  padding: 2px 4px;
 }
 
 .editor-block-textarea {
   width: 100%;
-  min-height: 40px;
-  padding: 4px 2px;
+  min-height: 20px;
+  padding: 0 2px;
   margin: 0;
   border: none;
   outline: none;
@@ -1342,7 +1353,7 @@ body {
   font-family: var(--font-mono);
   font-weight: 300;
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.6;
   resize: none;
   overflow: hidden;
   box-sizing: border-box;
