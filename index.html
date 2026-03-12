@@ -187,11 +187,14 @@
       border-bottom: 1px solid var(--background-modifier-border);
       box-sizing: content-box;
     }
-    /* When hamburger bar is visible, it handles its own safe-area padding */
+    /* When hamburger bar is visible, hide the desktop tab bar and let hamburger handle layout */
     .openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) {
       padding-top: 0;
       min-height: 0;
       border-bottom: none;
+    }
+    .openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) > .openclaw-tab-bar#tab-bar {
+      display: none;
     }
     .openclaw-top-bar .openclaw-tab-bar {
       flex: 1;
@@ -418,48 +421,76 @@
     .oc-hamburger-bar {
       display: none;
       flex-shrink: 0;
-      align-items: center;
-      padding: 8px 12px;
-      padding-top: max(8px, env(safe-area-inset-top, 0px));
+      align-items: stretch;
+      padding: 0;
+      padding-top: env(safe-area-inset-top, 0px);
       border-bottom: 1px solid var(--background-modifier-border);
-      gap: 8px;
+      gap: 0;
+      min-height: var(--header-height);
+      box-sizing: content-box;
     }
     .oc-hamburger-bar.oc-visible { display: flex; }
     .oc-hamburger-btn {
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 20px;
       cursor: pointer;
-      padding: 6px 8px;
-      border-radius: 6px;
+      padding: 0 10px;
+      border-radius: 0;
       line-height: 1;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid var(--background-modifier-border);
     }
-    .oc-hamburger-btn:hover { background: rgba(128,128,128,0.15); }
-    .oc-hamburger-current {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-normal);
+    .oc-hamburger-btn:hover { background: rgba(128,128,128,0.1); }
+    .oc-hamburger-btn:active { background: rgba(128,128,128,0.18); }
+    .oc-hamburger-tabs-wrapper {
       flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      min-width: 0;
+      position: relative;
+      display: flex;
+      align-items: stretch;
     }
-    .oc-hamburger-add {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 20px;
-      cursor: pointer;
-      padding: 6px 8px;
-      border-radius: 6px;
-      line-height: 1;
+    .oc-mobile-tabs {
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      flex-wrap: nowrap !important;
     }
-    .oc-hamburger-add:hover { background: rgba(128,128,128,0.15); }
+    .oc-mobile-tabs::-webkit-scrollbar { display: none; }
+    .oc-mobile-tabs .openclaw-tab {
+      flex: 0 0 auto !important;
+      max-width: none !important;
+      min-width: 80px !important;
+      padding: 6px 10px 0 10px;
+    }
+    .oc-mobile-tabs .openclaw-tab-home {
+      min-width: 60px !important;
+    }
+    .oc-mobile-tabs .openclaw-tab-add {
+      min-width: auto !important;
+      padding: 6px 10px;
+    }
+    .oc-tabs-fade-right {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 32px;
+      background: linear-gradient(to right, transparent, var(--background-primary));
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 2;
+    }
+    .oc-tabs-fade-right.oc-visible { opacity: 1; }
     .oc-hamburger-dropdown {
       display: none;
-      position: absolute;
-      top: 100%;
+      position: fixed;
+      top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
       left: 0;
       right: 0;
       background: var(--background-secondary);
@@ -2253,9 +2284,13 @@
       <div class="openclaw-top-bar">
         <div class="openclaw-tab-bar" id="tab-bar"></div>
         <div class="oc-hamburger-bar" id="hamburger-bar" style="position:relative;">
-          <button class="oc-hamburger-btn" id="hamburger-btn">☰</button>
-          <span class="oc-hamburger-current" id="hamburger-current">Main</span>
-          <button class="oc-hamburger-add" id="hamburger-add">+</button>
+          <button class="oc-hamburger-btn" id="hamburger-btn">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="oc-hamburger-tabs-wrapper" id="hamburger-tabs-wrapper">
+            <div class="openclaw-tab-bar oc-mobile-tabs" id="mobile-tab-bar"></div>
+            <div class="oc-tabs-fade-right" id="tabs-fade-right"></div>
+          </div>
           <div class="oc-hamburger-dropdown" id="hamburger-dropdown"></div>
         </div>
         <div class="oc-pull-indicator" id="pull-indicator">↻ Release to refresh</div>
