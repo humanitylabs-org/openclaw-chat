@@ -241,7 +241,7 @@ async function checkOpenTabsForChanges() {
   for (const tab of workspace.openTabs) {
     if (tab.externalChange || tab.deleted) continue;
     try {
-      const r = await fetch(`${baseUrl}/api/files/${tab.path.split("/").map(encodeURIComponent).join("/")}`, { method: "HEAD" });
+      const r = await fetch(`${baseUrl}/api/files/${tab.path.split("/").map(encodeURIComponent).join("/")}`, { method: "HEAD", targetAddressSpace: "local" });
       if (!r.ok) { tab.deleted = true; continue; }
       const mtime = parseFloat(r.headers.get("X-File-Mtime") || "0");
       if (mtime > tab.mtime + 100) {
@@ -298,7 +298,7 @@ function updateFsStatus(connected) {
 async function loadFileTree() {
   if (!workspace.fileServerUrl) return;
   try {
-    const r = await fetch(`${workspace.fileServerUrl.replace(/\/+$/, "")}/api/files/`);
+    const r = await fetch(`${workspace.fileServerUrl.replace(/\/+$/, "")}/api/files/`, { targetAddressSpace: "local" });
     workspace.tree = await r.json();
     renderFileTree();
   } catch (e) {
@@ -487,7 +487,7 @@ async function openFile(filePath, fileName) {
   // Fetch content
   try {
     const baseUrl = workspace.fileServerUrl.replace(/\/+$/, "");
-    const r = await fetch(`${baseUrl}/api/files/${filePath.split("/").map(encodeURIComponent).join("/")}`);
+    const r = await fetch(`${baseUrl}/api/files/${filePath.split("/").map(encodeURIComponent).join("/")}`, { targetAddressSpace: "local" });
     if (!r.ok) throw new Error("Failed to fetch file");
     const content = await r.text();
     const mtime = parseFloat(r.headers.get("X-File-Mtime") || "0");
@@ -675,6 +675,7 @@ async function saveCurrentFile() {
       method: "PUT",
       headers: { "Content-Type": "text/plain" },
       body: tab.content,
+      targetAddressSpace: "local",
     });
     const data = await r.json();
     if (data.ok) {
@@ -699,7 +700,7 @@ async function reloadCurrentFile() {
 
   try {
     const baseUrl = workspace.fileServerUrl.replace(/\/+$/, "");
-    const r = await fetch(`${baseUrl}/api/files/${tab.path.split("/").map(encodeURIComponent).join("/")}`);
+    const r = await fetch(`${baseUrl}/api/files/${tab.path.split("/").map(encodeURIComponent).join("/")}`, { targetAddressSpace: "local" });
     if (!r.ok) throw new Error("File not found");
     tab.content = await r.text();
     tab.savedContent = tab.content;
