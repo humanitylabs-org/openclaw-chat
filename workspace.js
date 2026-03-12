@@ -182,6 +182,12 @@ function buildWorkspaceDOM() {
     <div style="display:flex;align-items:center;gap:8px;">
       <img src="/logo-64.png" width="18" height="18" style="border-radius:4px;opacity:0.6;flex-shrink:0;" alt="">
       <span style="font-size:11px;color:var(--text-faint);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">usemyclaw</span>
+      <button class="tree-settings-cogwheel" id="hard-refresh-btn" title="Reload app" onclick="location.reload(true)" style="opacity:0.4;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/>
+          <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/>
+        </svg>
+      </button>
       <button class="tree-settings-cogwheel" id="tree-settings-btn" title="Settings" onclick="toggleSettingsPopup()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
