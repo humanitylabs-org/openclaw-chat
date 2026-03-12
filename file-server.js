@@ -196,7 +196,9 @@ function parseWSFrame(buf) {
 // ─── HTTP Server ────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   // CORS (including Private Network Access for public origins -> tailnet)
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  // Echo specific origin (Chrome PNA requires explicit origin, not *)
+  const origin = req.headers["origin"];
+  res.setHeader("Access-Control-Allow-Origin", origin || "*");
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, PUT, POST, DELETE, OPTIONS"

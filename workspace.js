@@ -33,14 +33,8 @@ function deriveFileServerUrl() {
       .replace(/^wss:\/\//, "https://")
       .replace(/^ws:\/\//, "http://")
       .replace(/\/+$/, "");
-    // Use HTTPS directly on port 18795 (bypasses Tailscale Serve CORS/PNA issues)
-    try {
-      const u = new URL(httpUrl);
-      u.port = "18795";
-      workspace.fileServerUrl = u.toString().replace(/\/+$/, "");
-    } catch {
-      workspace.fileServerUrl = httpUrl.replace(/:(\d+)(\/|$)/, ":18795$2").replace(/\/+$/, "");
-    }
+    // Route through Tailscale Serve /files path (same origin as gateway, avoids PNA blocks)
+    workspace.fileServerUrl = httpUrl + "/files";
     console.log("[files] Derived file server URL:", workspace.fileServerUrl);
   } catch {}
 }
