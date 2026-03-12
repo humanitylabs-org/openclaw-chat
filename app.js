@@ -404,6 +404,64 @@ function showStatus(message, type) {
   ui.connectStatus.classList.remove("hidden");
 }
 
+function showPairingBanner() {
+  if (document.getElementById("pairing-banner")) return;
+
+  const deviceShort = state.deviceIdentity?.deviceId?.slice(0, 12) || "unknown";
+
+  const banner = document.createElement("div");
+  banner.id = "pairing-banner";
+  banner.innerHTML = `
+    <div style="
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      z-index: 10001; max-width: 420px; width: calc(100% - 2rem);
+      background: #1a1a1e; border: 1px solid rgba(74,158,255,0.3);
+      border-radius: 12px; padding: 1.2rem 1.4rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6); color: #eee;
+      font-size: 0.88em; line-height: 1.5;
+    ">
+      <div style="margin-bottom: 0.75rem;">
+        <strong style="color: #4a9eff; font-size: 1.05em;">🔐 Device pairing required</strong>
+      </div>
+      <p style="margin: 0 0 0.5rem; color: #ccc;">
+        This device (<code style="background:#28282d;padding:0.15em 0.4em;border-radius:4px;font-size:0.85em;">${deviceShort}</code>) needs to be approved by your gateway.
+      </p>
+
+      <div style="margin: 0.75rem 0;">
+        <p style="color: #999; font-size: 0.8em; margin-bottom: 0.35rem; font-weight: 500;">Option 1 — Run on the server:</p>
+        <div id="pairing-cmd" style="background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 0.55rem 0.75rem; font-family: monospace; font-size: 0.82em; color: #eee; cursor: pointer; position: relative; user-select: all;" title="Click to copy">
+          openclaw devices approve --latest
+          <span id="pairing-copy-feedback" style="position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-size: 0.75em; color: #888;">📋</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 0.5rem;">
+        <p style="color: #999; font-size: 0.8em; margin-bottom: 0.2rem; font-weight: 500;">Option 2 — Ask your bot:</p>
+        <p style="color: #ccc; font-size: 0.82em; margin: 0;">
+          Message your bot on Telegram, Discord, etc: <em>"approve the pending device"</em>
+        </p>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.06);">
+        <div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>
+        <span style="color: #888; font-size: 0.82em;">Waiting for approval — will connect automatically...</span>
+      </div>
+    </div>
+  `;
+
+  // Dim background
+  banner.style.cssText = "position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.6);";
+
+  document.body.appendChild(banner);
+
+  document.getElementById("pairing-cmd")?.addEventListener("click", () => {
+    navigator.clipboard.writeText("openclaw devices approve --latest").then(() => {
+      const fb = document.getElementById("pairing-copy-feedback");
+      if (fb) { fb.textContent = "✓ copied"; setTimeout(() => { fb.textContent = "📋"; }, 1500); }
+    }).catch(() => {});
+  });
+}
+
 async function connectToGateway() {
   return new Promise((resolve, reject) => {
     let helloReceived = false;
@@ -418,6 +476,10 @@ async function connectToGateway() {
         helloReceived = true;
         localStorage.setItem("deviceApproved", "true");
 
+        // Dismiss pairing banner if it was showing
+        document.getElementById("pairing-banner")?.remove();
+
+        // Handle onboarding step transition
         if (!ui.step2.classList.contains("hidden")) {
           ui.step2.classList.add("hidden");
           ui.step3.classList.remove("hidden");
@@ -435,12 +497,7 @@ async function connectToGateway() {
         updateConnectionStatus(false);
         if (!helloReceived && info.reason === "pairing required" && !pairingDetected) {
           pairingDetected = true;
-          // Show step2 with approval instructions (gateway auto-reconnects)
-          if (ui.step1 && !ui.step1.classList.contains("hidden")) {
-            ui.step1.classList.add("hidden");
-          }
-          ui.step2.classList.remove("hidden");
-          ui.requestId.textContent = state.deviceIdentity.deviceId.slice(0, 16);
+          showPairingBanner();
         }
       },
       onEvent: handleGatewayEvent,
