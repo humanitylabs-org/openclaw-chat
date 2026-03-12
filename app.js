@@ -815,8 +815,8 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
 
     if (isHome) {
-      // Home tab: house icon + "Home", non-renameable
-      label.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-1px;margin-right:3px;opacity:0.7"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>Home';
+      // Home tab: house icon only, non-renameable
+      label.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;opacity:0.8"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
     } else {
       label.textContent = tab.label;
       // Double-click to rename
@@ -836,12 +836,21 @@ async function _renderTabsInner() {
       actionBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
       actionBtn.title = "Reset conversation";
       actionBtn.addEventListener("click", (e) => { e.stopPropagation(); resetTab(tab); });
+      row.appendChild(actionBtn);
     } else {
+      // Other tabs get both reset and close buttons
+      const resetBtn = document.createElement("span");
+      resetBtn.className = "openclaw-tab-close openclaw-tab-reset";
+      resetBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
+      resetBtn.title = "Reset conversation";
+      resetBtn.addEventListener("click", (e) => { e.stopPropagation(); resetTab(tab); });
+      row.appendChild(resetBtn);
+
       actionBtn.textContent = "×";
       actionBtn.title = "Close tab";
       actionBtn.addEventListener("click", (e) => { e.stopPropagation(); closeTab(tab, currentKey); });
+      row.appendChild(actionBtn);
     }
-    row.appendChild(actionBtn);
     tabEl.appendChild(row);
 
     // Meter bar
@@ -896,7 +905,10 @@ async function switchTab(tab) {
 async function resetTab(tab) {
   console.log("[resetTab] called, connected:", !!state.gateway?.connected);
   if (!state.gateway?.connected) return;
-  const ok = await confirmClose("Reset main tab?", "This will clear the conversation.");
+  const isHome = tab.key === "main";
+  const title = isHome ? "Reset Home?" : `Reset "${tab.label}"?`;
+  const msg = "This will clear the conversation.";
+  const ok = await confirmClose(title, msg);
   if (!ok) return;
   try {
     await state.gateway.request("chat.send", {
@@ -905,13 +917,6 @@ async function resetTab(tab) {
       deliver: false,
       idempotencyKey: "reset-" + Date.now(),
     });
-    try {
-      await state.gateway.request("sessions.patch", {
-        key: `${agentPrefix()}${tab.key}`,
-        label: "Untitled",
-      });
-      tab.label = "Untitled";
-    } catch { /* label reset optional */ }
     if (tab.key === state.sessionKey) {
       state.messages = [];
       ui.messagesContainer.innerHTML = "";
