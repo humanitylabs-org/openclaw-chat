@@ -237,6 +237,12 @@ function connectFileServer() {
       workspace._lastFileError = err.message || String(err);
       updateFsStatus(false);
       checkAutoOpenSettings();
+
+      // Detect Chrome Private Network Access denial
+      const msg = (err.message || String(err)).toLowerCase();
+      if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("cors")) {
+        showPnaBanner();
+      }
     });
 }
 
@@ -308,6 +314,59 @@ function updateTreeStatusDot() {
   dot.style.background = allUp ? "" : partial ? "#ffc107" : "";
   dot.style.boxShadow = allUp ? "" : partial ? "0 0 4px rgba(255,193,7,0.3)" : "";
   dot.title = allUp ? "Connected" : partial ? (workspace.chatConnected ? "Chat only" : "Files only") : "Not connected";
+}
+
+// ─── Private Network Access Banner ──────────────────────────────────
+
+function showPnaBanner() {
+  // Only show once per page load, and only if chat is connected (so it's specifically the PNA issue)
+  if (workspace._pnaBannerShown || !workspace.chatConnected) return;
+  workspace._pnaBannerShown = true;
+
+  // Remove existing banner if any
+  document.getElementById("pna-banner")?.remove();
+
+  const banner = document.createElement("div");
+  banner.id = "pna-banner";
+  banner.innerHTML = `
+    <div style="
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      z-index: 10000; max-width: 420px; width: calc(100% - 2rem);
+      background: #1a1a1e; border: 1px solid rgba(255,193,7,0.3);
+      border-radius: 12px; padding: 1rem 1.2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5); color: #eee;
+      font-size: 0.88em; line-height: 1.5;
+    ">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+        <strong style="color: #ffc107;">🔒 Allow local network access</strong>
+        <span id="pna-dismiss" style="cursor: pointer; color: #888; font-size: 1.2em; line-height: 1; padding: 0 0.2rem;">&times;</span>
+      </div>
+      <p style="margin: 0 0 0.6rem; color: #ccc;">
+        Chrome is asking to connect to your local network. This is needed to browse your workspace files.
+      </p>
+      <p style="margin: 0 0 0.6rem; color: #ccc;">
+        <strong style="color: #eee;">Click the 🔒 icon in the address bar</strong> (or the banner at the top), then choose <strong style="color: #eee;">Allow</strong>.
+      </p>
+      <p style="margin: 0; color: #999; font-size: 0.85em;">
+        Your server is on a private Tailscale network — only your devices can reach it. This is safe.
+      </p>
+      <button id="pna-retry" style="
+        margin-top: 0.75rem; width: 100%; padding: 0.5rem;
+        background: rgba(255,193,7,0.15); border: 1px solid rgba(255,193,7,0.3);
+        border-radius: 8px; color: #ffc107; font-size: 0.85em;
+        cursor: pointer; transition: background 0.2s;
+      ">Retry connection</button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+
+  document.getElementById("pna-dismiss").addEventListener("click", () => banner.remove());
+  document.getElementById("pna-retry").addEventListener("click", () => {
+    banner.remove();
+    workspace._pnaBannerShown = false;
+    connectFileServer();
+  });
 }
 
 // ─── File Tree ──────────────────────────────────────────────────────
