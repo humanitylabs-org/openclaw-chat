@@ -73,7 +73,7 @@ function initWorkspace() {
 
   // Keyboard shortcuts
   document.addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "s" && workspace.editMode) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "s") {
       e.preventDefault();
       saveCurrentFile();
     }
@@ -638,6 +638,48 @@ function renderEditorTabs() {
   });
 }
 
+// Split markdown content into logical blocks for inline editing
+function splitIntoBlocks(text) {
+  if (!text) return [""];
+  // Split on double newlines, preserving code blocks as single blocks
+  const blocks = [];
+  let current = "";
+  let inCodeBlock = false;
+  for (const line of text.split("\n")) {
+    if (line.startsWith("```")) {
+      if (inCodeBlock) {
+        current += line + "\n";
+        blocks.push(current.replace(/\n$/, ""));
+        current = "";
+        inCodeBlock = false;
+        continue;
+      } else {
+        if (current.trim()) { blocks.push(current.replace(/\n$/, "")); current = ""; }
+        current = line + "\n";
+        inCodeBlock = true;
+        continue;
+      }
+    }
+    if (inCodeBlock) {
+      current += line + "\n";
+      continue;
+    }
+    if (line.trim() === "" && current.trim()) {
+      blocks.push(current.replace(/\n$/, ""));
+      current = "";
+    } else {
+      current += line + "\n";
+    }
+  }
+  if (current.trim()) blocks.push(current.replace(/\n$/, ""));
+  return blocks.length > 0 ? blocks : [""];
+}
+
+// Rejoin blocks back into full content
+function joinBlocks(blocks) {
+  return blocks.join("\n\n");
+}
+
 function renderEditorContent() {
   const area = document.getElementById("editor-area");
   if (!area) return;
@@ -648,99 +690,128 @@ function renderEditorContent() {
   }
 
   const tab = workspace.openTabs[workspace.activeTabIdx];
-
-  // Save scroll position before re-render
   const prevScrollTop = workspace._editorScrollTop || 0;
 
-  if (workspace.editMode) {
-    area.innerHTML = `
-      <textarea class="editor-textarea" id="editor-textarea" spellcheck="false">${escapeHtml(tab.content)}</textarea>
-      <div class="editor-mode-indicator edit" id="editor-mode-indicator">Edit</div>
-    `;
-    const textarea = document.getElementById("editor-textarea");
-    // Restore scroll position
-    textarea.scrollTop = prevScrollTop;
-    // Autosave with debounce
-    let autosaveTimer = null;
-    textarea.addEventListener("input", () => {
-      tab.content = textarea.value;
+  // Split into blocks and render each as a clickable unit
+  const blocks = splitIntoBlocks(tab.content);
+  // Store blocks on tab for inline editing
+  tab._blocks = blocks;
+
+  const preview = document.createElement("div");
+  preview.className = "editor-preview";
+  preview.id = "editor-preview-content";
+
+  blocks.forEach((block, idx) => {
+    const blockWrapper = document.createElement("div");
+    blockWrapper.className = "editor-block";
+    blockWrapper.setAttribute("data-block-idx", String(idx));
+    blockWrapper.innerHTML = renderMarkdown(block);
+
+    // Click to edit this block
+    blockWrapper.addEventListener("click", (e) => {
+      // Don't trigger on links or checkboxes
+      if (e.target.tagName === "A" || e.target.tagName === "INPUT") return;
+      // Don't trigger if already editing this block
+      if (blockWrapper.querySelector(".editor-block-textarea")) return;
+      startBlockEdit(blockWrapper, tab, idx);
+    });
+
+    preview.appendChild(blockWrapper);
+  });
+
+  area.innerHTML = "";
+  area.appendChild(preview);
+
+  // Restore scroll
+  preview.scrollTop = prevScrollTop;
+  preview.addEventListener("scroll", () => {
+    workspace._editorScrollTop = preview.scrollTop;
+  });
+}
+
+function startBlockEdit(blockWrapper, tab, blockIdx) {
+  const blocks = tab._blocks || splitIntoBlocks(tab.content);
+  const blockText = blocks[blockIdx] || "";
+
+  // Replace rendered content with textarea
+  blockWrapper.innerHTML = "";
+  blockWrapper.classList.add("editing");
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "editor-block-textarea";
+  textarea.value = blockText;
+  textarea.spellcheck = false;
+  blockWrapper.appendChild(textarea);
+
+  // Auto-resize textarea to fit content
+  const autoResize = () => {
+    textarea.style.height = "auto";
+    textarea.style.height = Math.max(40, textarea.scrollHeight) + "px";
+  };
+  autoResize();
+
+  let autosaveTimer = null;
+
+  const finishEdit = (save) => {
+    if (save) {
+      const newText = textarea.value;
+      blocks[blockIdx] = newText;
+      tab._blocks = blocks;
+      tab.content = joinBlocks(blocks);
       tab.dirty = tab.content !== tab.savedContent;
       renderEditorTabs();
-      if (autosaveTimer) clearTimeout(autosaveTimer);
-      autosaveTimer = setTimeout(() => {
-        if (tab.dirty) saveCurrentFile();
-      }, 1000);
-    });
-    // Track scroll position
-    textarea.addEventListener("scroll", () => {
-      workspace._editorScrollTop = textarea.scrollTop;
-    });
-    // Support tab key for indentation
-    textarea.addEventListener("keydown", (e) => {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        textarea.value = textarea.value.substring(0, start) + "  " + textarea.value.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + 2;
-        tab.content = textarea.value;
-        tab.dirty = tab.content !== tab.savedContent;
-        if (autosaveTimer) clearTimeout(autosaveTimer);
-        autosaveTimer = setTimeout(() => {
-          if (tab.dirty) saveCurrentFile();
-        }, 1000);
-      }
-    });
-    // Click outside the textarea (on the editor area) exits edit mode
-    // Use mousedown on the editor panel to detect clicks outside
-    const exitHandler = (e) => {
-      // If clicking on the textarea itself, do nothing
-      if (e.target === textarea || textarea.contains(e.target)) return;
-      // If clicking on editor tabs, do nothing
-      if (e.target.closest(".editor-tab-bar")) return;
-      // If clicking the indicator itself, do nothing (it's informational)
-      if (e.target.closest(".editor-mode-indicator")) return;
-      // Save and exit edit mode
-      workspace._editorScrollTop = textarea.scrollTop;
       if (tab.dirty) {
         if (autosaveTimer) clearTimeout(autosaveTimer);
         saveCurrentFile();
       }
-      document.removeEventListener("mousedown", exitHandler);
-      workspace.editMode = false;
-      renderEditorContent();
-    };
-    // Delay to avoid the same click that entered edit mode from triggering exit
-    setTimeout(() => document.addEventListener("mousedown", exitHandler), 100);
-    textarea.focus();
-  } else {
-    const rendered = renderMarkdown(tab.content);
-    area.innerHTML = `
-      <div class="editor-preview" id="editor-preview-content">${rendered}</div>
-      <div class="editor-mode-indicator reading" id="editor-mode-indicator">Reading</div>
-    `;
-    // Restore scroll position
-    const preview = document.getElementById("editor-preview-content");
-    if (preview) preview.scrollTop = prevScrollTop;
-    // Track scroll position on preview
-    if (preview) preview.addEventListener("scroll", () => {
-      workspace._editorScrollTop = preview.scrollTop;
-    });
-    // Double-click to enter edit mode
-    if (preview) {
-      preview.addEventListener("dblclick", (e) => {
-        // Don't trigger on links or checkboxes
-        if (e.target.tagName === "A" || e.target.tagName === "INPUT") return;
-        workspace._editorScrollTop = preview.scrollTop;
-        workspace.editMode = true;
-        renderEditorContent();
-      });
     }
-  }
+    // Re-render just this block
+    blockWrapper.classList.remove("editing");
+    blockWrapper.innerHTML = renderMarkdown(blocks[blockIdx] || "");
+    // Re-attach click handler
+    blockWrapper.addEventListener("click", (e) => {
+      if (e.target.tagName === "A" || e.target.tagName === "INPUT") return;
+      if (blockWrapper.querySelector(".editor-block-textarea")) return;
+      startBlockEdit(blockWrapper, tab, blockIdx);
+    });
+  };
+
+  textarea.addEventListener("input", () => {
+    autoResize();
+    // Live update the block content
+    blocks[blockIdx] = textarea.value;
+    tab._blocks = blocks;
+    tab.content = joinBlocks(blocks);
+    tab.dirty = tab.content !== tab.savedContent;
+    renderEditorTabs();
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      if (tab.dirty) saveCurrentFile();
+    }, 1000);
+  });
+
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); finishEdit(true); }
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      textarea.value = textarea.value.substring(0, start) + "  " + textarea.value.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + 2;
+      textarea.dispatchEvent(new Event("input"));
+    }
+  });
+
+  textarea.addEventListener("blur", () => {
+    // Small delay to allow click on another block
+    setTimeout(() => finishEdit(true), 150);
+  });
+
+  textarea.focus();
 }
 
 function toggleEditMode() {
-  workspace.editMode = !workspace.editMode;
+  // Legacy — no longer used but kept for compatibility
   renderEditorContent();
 }
 
@@ -1172,6 +1243,21 @@ function renderSettingsPopup() {
 
     <div class="settings-divider"></div>
 
+    <!-- Accent color -->
+    <div style="padding:6px 12px 8px;">
+      <span style="font-size:11px;color:var(--text-muted);">Accent color</span>
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;" id="accent-presets">
+        ${['#4a9eff','#a855f7','#22c55e','#f59e0b','#ef4444','#ec4899'].map(c =>
+          `<button class="accent-swatch${(localStorage.getItem('accentColor')||'#4a9eff')===c?' active':''}" data-color="${c}" style="
+            width:22px;height:22px;border-radius:50%;border:2px solid ${(localStorage.getItem('accentColor')||'#4a9eff')===c?'var(--text-normal)':'transparent'};
+            background:${c};cursor:pointer;padding:0;transition:border-color 0.15s;
+          " onclick="setAccentColor('${c}')"></button>`
+        ).join('')}
+      </div>
+    </div>
+
+    <div class="settings-divider"></div>
+
     <!-- Voice input (collapsible) -->
     <div>
       <button onclick="toggleVoiceSettings()" style="
@@ -1224,6 +1310,12 @@ function renderSettingsPopup() {
       ">🔄 Reconnect / Setup wizard</button>
     </div>
   `;
+}
+
+function setAccentColor(color) {
+  localStorage.setItem("accentColor", color);
+  document.documentElement.style.setProperty("--accent-color", color);
+  renderSettingsPopup();
 }
 
 function toggleVoiceSettings() {

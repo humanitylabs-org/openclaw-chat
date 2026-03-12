@@ -31,8 +31,9 @@
       --text-muted: #888;
       --text-faint: #555;
       --text-on-accent: #fff;
-      --interactive-accent: #4a9eff;
-      --interactive-accent-hover: #3a8ae6;
+      --accent-color: #4a9eff;
+      --interactive-accent: var(--accent-color);
+      --interactive-accent-hover: var(--accent-color);
       --header-height: 36px;
     }
 
@@ -1975,7 +1976,7 @@
     .editor-preview .callout-body { font-size: 14px; line-height: 1.6; }
     .editor-preview .callout-note, .editor-preview .callout-info {
       background: rgba(74,158,255,0.06);
-      border-color: #4a9eff;
+      border-color: var(--accent-color);
     }
     .editor-preview .callout-tip, .editor-preview .callout-success {
       background: rgba(76,175,80,0.06);
@@ -2243,6 +2244,13 @@
     </div>
   </div>
 
+  <script>
+    // Apply saved accent color before render to prevent flash
+    (function() {
+      var saved = localStorage.getItem("accentColor");
+      if (saved) document.documentElement.style.setProperty("--accent-color", saved);
+    })();
+  </script>
   <script src="/app.js?v=12"></script>
   <script src="/workspace.js?v=12"></script>
   <script>

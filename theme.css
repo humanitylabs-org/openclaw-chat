@@ -1301,6 +1301,53 @@ body {
   border-radius: 4px;
 }
 
+/* ── Inline Block Editing ──────────────────────────────────── */
+
+.editor-block {
+  cursor: text;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  transition: background 0.15s;
+}
+
+.editor-block:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.editor-block.editing {
+  background: rgba(255, 255, 255, 0.03);
+  outline: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 4px;
+}
+
+.editor-block-textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 4px 2px;
+  margin: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-normal);
+  font-family: var(--font-mono);
+  font-weight: 300;
+  font-size: 14px;
+  line-height: 1.8;
+  resize: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+body[data-theme="light"] .editor-block:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+body[data-theme="light"] .editor-block.editing {
+  background: rgba(0, 0, 0, 0.03);
+  outline-color: rgba(0, 0, 0, 0.08);
+}
+
 /* ── Panel Dots (mobile) ───────────────────────────────────── */
 
 .panel-dots {
