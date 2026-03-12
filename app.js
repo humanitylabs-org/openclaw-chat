@@ -899,7 +899,7 @@ function renderHamburgerDropdown() {
     });
     actions.appendChild(resetBtn);
 
-    // Close button (non-home tabs only)
+    // Close button (non-home tabs get real button, home gets invisible spacer)
     if (!isHome) {
       const closeBtn = document.createElement("span");
       closeBtn.className = "oc-dd-action-btn oc-dd-action-close";
@@ -911,6 +911,13 @@ function renderHamburgerDropdown() {
         closeTab(tab, currentKey);
       });
       actions.appendChild(closeBtn);
+    } else {
+      // Invisible spacer to keep alignment with other rows
+      const spacer = document.createElement("span");
+      spacer.className = "oc-dd-action-btn";
+      spacer.style.visibility = "hidden";
+      spacer.textContent = "×";
+      actions.appendChild(spacer);
     }
     item.appendChild(actions);
 
