@@ -150,7 +150,7 @@ body {
 
 .openclaw-tab.active {
   background: var(--background-primary);
-  color: var(--text-normal);
+  color: var(--accent-color, var(--text-normal));
   border-color: var(--background-modifier-border);
   border-bottom-color: var(--background-primary);
   font-weight: 500;
@@ -173,7 +173,7 @@ body {
 }
 
 .openclaw-tab-meter-fill {
-  background: var(--text-normal);
+  background: var(--accent-color, var(--text-normal));
   opacity: 0.3;
   border-radius: 1px;
 }
@@ -577,9 +577,9 @@ body {
   color: var(--text-muted);
 }
 
-/* Send button: white, monochrome */
+/* Send button: uses accent color */
 .openclaw-send-btn {
-  background: var(--interactive-accent);
+  background: var(--accent-color, var(--interactive-accent));
   color: var(--text-on-accent);
   border-radius: 50%;
   transition: opacity 0.15s, transform 0.1s;
@@ -1124,14 +1124,14 @@ body {
 
 /* Links */
 .editor-preview a {
-  color: var(--text-muted);
+  color: var(--accent-color, var(--text-muted));
   text-decoration: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   transition: color 0.15s, border-color 0.15s;
 }
 
 .editor-preview a:hover {
-  color: var(--text-normal);
+  color: var(--accent-color, var(--text-normal));
   border-bottom-color: rgba(255, 255, 255, 0.3);
 }
 
@@ -1312,6 +1312,15 @@ body {
 }
 
 .editor-block:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.editor-block-blank {
+  height: 0.5em;
+  padding: 0 4px;
+}
+
+.editor-block-blank:hover {
   background: rgba(255, 255, 255, 0.02);
 }
 

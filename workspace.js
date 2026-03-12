@@ -638,46 +638,36 @@ function renderEditorTabs() {
   });
 }
 
-// Split markdown content into logical blocks for inline editing
-function splitIntoBlocks(text) {
+// Split content into lines for inline editing, keeping code blocks as single units
+function splitIntoLines(text) {
   if (!text) return [""];
-  // Split on double newlines, preserving code blocks as single blocks
-  const blocks = [];
-  let current = "";
+  const lines = [];
   let inCodeBlock = false;
+  let codeBuffer = "";
   for (const line of text.split("\n")) {
     if (line.startsWith("```")) {
       if (inCodeBlock) {
-        current += line + "\n";
-        blocks.push(current.replace(/\n$/, ""));
-        current = "";
+        codeBuffer += line;
+        lines.push(codeBuffer);
+        codeBuffer = "";
         inCodeBlock = false;
-        continue;
       } else {
-        if (current.trim()) { blocks.push(current.replace(/\n$/, "")); current = ""; }
-        current = line + "\n";
         inCodeBlock = true;
-        continue;
+        codeBuffer = line + "\n";
       }
-    }
-    if (inCodeBlock) {
-      current += line + "\n";
-      continue;
-    }
-    if (line.trim() === "" && current.trim()) {
-      blocks.push(current.replace(/\n$/, ""));
-      current = "";
+    } else if (inCodeBlock) {
+      codeBuffer += line + "\n";
     } else {
-      current += line + "\n";
+      lines.push(line);
     }
   }
-  if (current.trim()) blocks.push(current.replace(/\n$/, ""));
-  return blocks.length > 0 ? blocks : [""];
+  if (codeBuffer) lines.push(codeBuffer.replace(/\n$/, ""));
+  return lines.length > 0 ? lines : [""];
 }
 
-// Rejoin blocks back into full content
-function joinBlocks(blocks) {
-  return blocks.join("\n\n");
+// Rejoin lines back into full content
+function joinLines(lines) {
+  return lines.join("\n");
 }
 
 function renderEditorContent() {
@@ -692,31 +682,35 @@ function renderEditorContent() {
   const tab = workspace.openTabs[workspace.activeTabIdx];
   const prevScrollTop = workspace._editorScrollTop || 0;
 
-  // Split into blocks and render each as a clickable unit
-  const blocks = splitIntoBlocks(tab.content);
-  // Store blocks on tab for inline editing
-  tab._blocks = blocks;
+  // Split into lines and render each as a clickable unit
+  const lines = splitIntoLines(tab.content);
+  tab._lines = lines;
 
   const preview = document.createElement("div");
   preview.className = "editor-preview";
   preview.id = "editor-preview-content";
 
-  blocks.forEach((block, idx) => {
-    const blockWrapper = document.createElement("div");
-    blockWrapper.className = "editor-block";
-    blockWrapper.setAttribute("data-block-idx", String(idx));
-    blockWrapper.innerHTML = renderMarkdown(block);
+  lines.forEach((line, idx) => {
+    const lineWrapper = document.createElement("div");
+    lineWrapper.className = "editor-block";
+    lineWrapper.setAttribute("data-line-idx", String(idx));
 
-    // Click to edit this block
-    blockWrapper.addEventListener("click", (e) => {
-      // Don't trigger on links or checkboxes
+    // Render blank lines as a thin spacer
+    if (line.trim() === "") {
+      lineWrapper.classList.add("editor-block-blank");
+      lineWrapper.innerHTML = "&nbsp;";
+    } else {
+      lineWrapper.innerHTML = renderMarkdown(line);
+    }
+
+    // Click to edit this line
+    lineWrapper.addEventListener("click", (e) => {
       if (e.target.tagName === "A" || e.target.tagName === "INPUT") return;
-      // Don't trigger if already editing this block
-      if (blockWrapper.querySelector(".editor-block-textarea")) return;
-      startBlockEdit(blockWrapper, tab, idx);
+      if (lineWrapper.querySelector(".editor-block-textarea")) return;
+      startBlockEdit(lineWrapper, tab, idx);
     });
 
-    preview.appendChild(blockWrapper);
+    preview.appendChild(lineWrapper);
   });
 
   area.innerHTML = "";
@@ -729,24 +723,25 @@ function renderEditorContent() {
   });
 }
 
-function startBlockEdit(blockWrapper, tab, blockIdx) {
-  const blocks = tab._blocks || splitIntoBlocks(tab.content);
-  const blockText = blocks[blockIdx] || "";
+function startBlockEdit(lineWrapper, tab, lineIdx) {
+  const lines = tab._lines || splitIntoLines(tab.content);
+  const lineText = lines[lineIdx] || "";
 
   // Replace rendered content with textarea
-  blockWrapper.innerHTML = "";
-  blockWrapper.classList.add("editing");
+  lineWrapper.innerHTML = "";
+  lineWrapper.classList.add("editing");
+  lineWrapper.classList.remove("editor-block-blank");
 
   const textarea = document.createElement("textarea");
   textarea.className = "editor-block-textarea";
-  textarea.value = blockText;
+  textarea.value = lineText;
   textarea.spellcheck = false;
-  blockWrapper.appendChild(textarea);
+  lineWrapper.appendChild(textarea);
 
   // Auto-resize textarea to fit content
   const autoResize = () => {
     textarea.style.height = "auto";
-    textarea.style.height = Math.max(40, textarea.scrollHeight) + "px";
+    textarea.style.height = Math.max(24, textarea.scrollHeight) + "px";
   };
   autoResize();
 
@@ -754,10 +749,9 @@ function startBlockEdit(blockWrapper, tab, blockIdx) {
 
   const finishEdit = (save) => {
     if (save) {
-      const newText = textarea.value;
-      blocks[blockIdx] = newText;
-      tab._blocks = blocks;
-      tab.content = joinBlocks(blocks);
+      lines[lineIdx] = textarea.value;
+      tab._lines = lines;
+      tab.content = joinLines(lines);
       tab.dirty = tab.content !== tab.savedContent;
       renderEditorTabs();
       if (tab.dirty) {
@@ -765,23 +759,28 @@ function startBlockEdit(blockWrapper, tab, blockIdx) {
         saveCurrentFile();
       }
     }
-    // Re-render just this block
-    blockWrapper.classList.remove("editing");
-    blockWrapper.innerHTML = renderMarkdown(blocks[blockIdx] || "");
+    // Re-render just this line
+    lineWrapper.classList.remove("editing");
+    const txt = lines[lineIdx] || "";
+    if (txt.trim() === "") {
+      lineWrapper.classList.add("editor-block-blank");
+      lineWrapper.innerHTML = "&nbsp;";
+    } else {
+      lineWrapper.innerHTML = renderMarkdown(txt);
+    }
     // Re-attach click handler
-    blockWrapper.addEventListener("click", (e) => {
+    lineWrapper.addEventListener("click", (e) => {
       if (e.target.tagName === "A" || e.target.tagName === "INPUT") return;
-      if (blockWrapper.querySelector(".editor-block-textarea")) return;
-      startBlockEdit(blockWrapper, tab, blockIdx);
+      if (lineWrapper.querySelector(".editor-block-textarea")) return;
+      startBlockEdit(lineWrapper, tab, lineIdx);
     });
   };
 
   textarea.addEventListener("input", () => {
     autoResize();
-    // Live update the block content
-    blocks[blockIdx] = textarea.value;
-    tab._blocks = blocks;
-    tab.content = joinBlocks(blocks);
+    lines[lineIdx] = textarea.value;
+    tab._lines = lines;
+    tab.content = joinLines(lines);
     tab.dirty = tab.content !== tab.savedContent;
     renderEditorTabs();
     if (autosaveTimer) clearTimeout(autosaveTimer);
@@ -803,7 +802,6 @@ function startBlockEdit(blockWrapper, tab, blockIdx) {
   });
 
   textarea.addEventListener("blur", () => {
-    // Small delay to allow click on another block
     setTimeout(() => finishEdit(true), 150);
   });
 
@@ -1247,9 +1245,9 @@ function renderSettingsPopup() {
     <div style="padding:6px 12px 8px;">
       <span style="font-size:11px;color:var(--text-muted);">Accent color</span>
       <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;" id="accent-presets">
-        ${['#4a9eff','#a855f7','#22c55e','#f59e0b','#ef4444','#ec4899'].map(c =>
-          `<button class="accent-swatch${(localStorage.getItem('accentColor')||'#4a9eff')===c?' active':''}" data-color="${c}" style="
-            width:22px;height:22px;border-radius:50%;border:2px solid ${(localStorage.getItem('accentColor')||'#4a9eff')===c?'var(--text-normal)':'transparent'};
+        ${['#F2F2F2','#8ba3c4','#9b8ec4','#7bab8e','#c4a76e','#c47e7e','#b87ea8'].map(c =>
+          `<button class="accent-swatch${(localStorage.getItem('accentColor')||'#F2F2F2')===c?' active':''}" data-color="${c}" style="
+            width:22px;height:22px;border-radius:50%;border:2px solid ${(localStorage.getItem('accentColor')||'#F2F2F2')===c?'var(--text-normal)':'transparent'};
             background:${c};cursor:pointer;padding:0;transition:border-color 0.15s;
           " onclick="setAccentColor('${c}')"></button>`
         ).join('')}
