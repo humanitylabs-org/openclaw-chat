@@ -717,89 +717,93 @@ function updateTabMode() {
   if (isMobile || perTab < 60) {
     tabBar.classList.add("oc-hamburger-mode");
     hamburgerBar.classList.add("oc-visible");
-    renderMobileTabBar();
+    renderMobileTabSwitcher();
   } else {
     tabBar.classList.remove("oc-hamburger-mode");
     hamburgerBar.classList.remove("oc-visible");
   }
 }
 
-function renderMobileTabBar() {
-  const mobileTabBar = document.getElementById("mobile-tab-bar");
-  if (!mobileTabBar) return;
-  mobileTabBar.innerHTML = "";
+function renderMobileTabSwitcher() {
+  const label = document.getElementById("tab-switcher-label");
+  const meterFill = document.getElementById("tab-switcher-meter-fill");
+  const actions = document.getElementById("tab-switcher-actions");
+  const arrowLeft = document.getElementById("tab-arrow-left");
+  const arrowRight = document.getElementById("tab-arrow-right");
+  if (!label || !actions || !arrowLeft || !arrowRight) return;
 
   const currentKey = state.sessionKey || "main";
-  for (const tab of state.tabSessions) {
-    const isHome = tab.key === "main";
-    const isCurrent = tab.key === currentKey;
-    const tabEl = document.createElement("div");
-    tabEl.className = `openclaw-tab${isHome ? " openclaw-tab-home" : ""}${isCurrent ? " active" : ""}`;
-    tabEl.dataset.key = tab.key;
+  const currentIdx = state.tabSessions.findIndex(t => t.key === currentKey);
+  const current = currentIdx >= 0 ? state.tabSessions[currentIdx] : state.tabSessions[0];
+  const idx = currentIdx >= 0 ? currentIdx : 0;
 
-    const row = document.createElement("div");
-    row.className = "openclaw-tab-row";
-
-    const label = document.createElement("span");
-    label.className = "openclaw-tab-label";
-    if (isHome) {
-      label.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;opacity:0.7"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
-    } else {
-      label.textContent = tab.label;
-    }
-    row.appendChild(label);
-    tabEl.appendChild(row);
-
-    // Context meter
-    const meter = document.createElement("div");
-    meter.className = "openclaw-tab-meter";
-    const fill = document.createElement("div");
-    fill.className = "openclaw-tab-meter-fill";
-    fill.style.width = (tab.pct || 0) + "%";
-    meter.appendChild(fill);
-    tabEl.appendChild(meter);
-
-    tabEl.addEventListener("click", () => {
-      if (!isCurrent) switchTab(tab);
-    });
-    mobileTabBar.appendChild(tabEl);
-  }
-
-  // Add button
-  const addBtn = document.createElement("div");
-  addBtn.className = "openclaw-tab openclaw-tab-add";
-  addBtn.innerHTML = '<div class="openclaw-tab-row"><span class="openclaw-tab-label" style="text-align:center">+</span></div>';
-  addBtn.addEventListener("click", () => createNewTab());
-  mobileTabBar.appendChild(addBtn);
-
-  // Scroll active tab into view
-  requestAnimationFrame(() => {
-    const activeEl = mobileTabBar.querySelector(".openclaw-tab.active");
-    if (activeEl) activeEl.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
-    updateMobileTabFade();
-  });
-}
-
-function updateMobileTabFade() {
-  const wrapper = document.getElementById("hamburger-tabs-wrapper");
-  const mobileTabBar = document.getElementById("mobile-tab-bar");
-  const fade = document.getElementById("tabs-fade-right");
-  if (!mobileTabBar || !fade) return;
-  const isOverflowing = mobileTabBar.scrollWidth > mobileTabBar.clientWidth;
-  const scrolledToEnd = mobileTabBar.scrollLeft + mobileTabBar.clientWidth >= mobileTabBar.scrollWidth - 4;
-  if (isOverflowing && !scrolledToEnd) {
-    fade.classList.add("oc-visible");
+  // Label
+  if (current.key === "main") {
+    label.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;opacity:0.7"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg> Home';
   } else {
-    fade.classList.remove("oc-visible");
+    label.textContent = current.label;
+  }
+
+  // Meter
+  if (meterFill) meterFill.style.width = (current.pct || 0) + "%";
+
+  // Arrows
+  if (idx <= 0) arrowLeft.classList.add("oc-hidden");
+  else arrowLeft.classList.remove("oc-hidden");
+
+  if (idx >= state.tabSessions.length - 1) arrowRight.classList.add("oc-hidden");
+  else arrowRight.classList.remove("oc-hidden");
+
+  // Action buttons
+  actions.innerHTML = "";
+  const isHome = current.key === "main";
+
+  // Reset button
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "oc-tab-switcher-action";
+  resetBtn.title = "Reset conversation";
+  resetBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
+  resetBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    resetTab(current);
+  });
+  actions.appendChild(resetBtn);
+
+  // Close button (non-home only)
+  if (!isHome) {
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "oc-tab-switcher-action";
+    closeBtn.title = "Close tab";
+    closeBtn.textContent = "×";
+    closeBtn.style.fontSize = "16px";
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeTab(current, currentKey);
+    });
+    actions.appendChild(closeBtn);
   }
 }
 
-// Listen for scroll on mobile tab bar to update fade
-(function initMobileTabScroll() {
+// Init tab switcher arrow events
+(function initTabSwitcher() {
   document.addEventListener("DOMContentLoaded", () => {
-    const mobileTabBar = document.getElementById("mobile-tab-bar");
-    if (mobileTabBar) {
-      mobileTabBar.addEventListener("scroll", updateMobileTabFade, { passive: true });
+    const arrowLeft = document.getElementById("tab-arrow-left");
+    const arrowRight = document.getElementById("tab-arrow-right");
+    if (arrowLeft) {
+      arrowLeft.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const currentKey = state.sessionKey || "main";
+        const idx = state.tabSessions.findIndex(t => t.key === currentKey);
+        if (idx > 0) switchTab(state.tabSessions[idx - 1]);
+      });
+    }
+    if (arrowRight) {
+      arrowRight.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const currentKey = state.sessionKey || "main";
+        const idx = state.tabSessions.findIndex(t => t.key === currentKey);
+        if (idx < state.tabSessions.length - 1) switchTab(state.tabSessions[idx + 1]);
+      });
     }
   });
 })();
@@ -878,6 +882,21 @@ function renderHamburgerDropdown() {
     });
     dd.appendChild(item);
   }
+
+  // "+ New Tab" item at the bottom
+  const addItem = document.createElement("div");
+  addItem.className = "oc-hamburger-dropdown-item";
+  addItem.style.justifyContent = "center";
+  addItem.style.color = "var(--text-muted)";
+  addItem.style.opacity = "0.7";
+  const addLabel = document.createElement("span");
+  addLabel.textContent = "+ New Tab";
+  addItem.appendChild(addLabel);
+  addItem.addEventListener("click", () => {
+    dd.classList.remove("oc-open");
+    createNewTab();
+  });
+  dd.appendChild(addItem);
 }
 
 // Inline rename inside hamburger dropdown
@@ -904,7 +923,7 @@ function startHamburgerRename(labelEl, tab, dd) {
     labelEl.textContent = tab.label;
     labelEl.title = "Double-click to rename";
     renderTabs();
-    renderMobileTabBar();
+    renderMobileTabSwitcher();
   };
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); finish(true); }

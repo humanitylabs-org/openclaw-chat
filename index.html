@@ -446,47 +446,92 @@
     }
     .oc-hamburger-btn:hover { background: rgba(128,128,128,0.1); }
     .oc-hamburger-btn:active { background: rgba(128,128,128,0.18); }
-    .oc-hamburger-tabs-wrapper {
+
+    /* ─── Tab Switcher (single-tab view with arrows) ─────────── */
+    .oc-tab-switcher {
       flex: 1;
       min-width: 0;
-      position: relative;
       display: flex;
-      align-items: stretch;
+      align-items: center;
+      gap: 0;
+      padding: 0 2px;
     }
-    .oc-mobile-tabs {
-      overflow-x: auto !important;
-      overflow-y: hidden !important;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      flex-wrap: nowrap !important;
+    .oc-tab-switcher-arrow {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 6px 6px;
+      border-radius: 6px;
+      line-height: 1;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.5;
+      transition: opacity 0.15s, background 0.15s;
     }
-    .oc-mobile-tabs::-webkit-scrollbar { display: none; }
-    .oc-mobile-tabs .openclaw-tab {
-      flex: 0 0 auto !important;
-      max-width: none !important;
-      min-width: 80px !important;
-      padding: 6px 10px 0 10px;
+    .oc-tab-switcher-arrow:hover { background: rgba(128,128,128,0.12); opacity: 0.9; }
+    .oc-tab-switcher-arrow:active { background: rgba(128,128,128,0.2); opacity: 1; }
+    .oc-tab-switcher-arrow.oc-hidden { visibility: hidden; pointer-events: none; }
+    .oc-tab-switcher-current {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 5px 4px 4px 4px;
     }
-    .oc-mobile-tabs .openclaw-tab-home {
-      min-width: 60px !important;
+    .oc-tab-switcher-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .oc-mobile-tabs .openclaw-tab-add {
-      min-width: auto !important;
-      padding: 6px 10px;
+    .oc-tab-switcher-label {
+      flex: 1;
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-normal);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .oc-tabs-fade-right {
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      width: 32px;
-      background: linear-gradient(to right, transparent, var(--background-primary));
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 2;
+    .oc-tab-switcher-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
     }
-    .oc-tabs-fade-right.oc-visible { opacity: 1; }
+    .oc-tab-switcher-action {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 3px 5px;
+      border-radius: 4px;
+      line-height: 1;
+      font-size: 14px;
+      opacity: 0.5;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .oc-tab-switcher-action:hover { opacity: 0.9; background: rgba(128,128,128,0.12); }
+    .oc-tab-switcher-action:active { opacity: 1; background: rgba(128,128,128,0.2); }
+    .oc-tab-switcher-meter {
+      width: 100%;
+      height: 3px;
+      background: rgba(128,128,128,0.15);
+      border-radius: 1.5px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .oc-tab-switcher-meter-fill {
+      height: 100%;
+      border-radius: 1.5px;
+      background: var(--text-normal);
+      opacity: 0.6;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
     .oc-hamburger-dropdown {
       display: none;
       position: fixed;
@@ -2287,9 +2332,22 @@
           <button class="oc-hamburger-btn" id="hamburger-btn">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
-          <div class="oc-hamburger-tabs-wrapper" id="hamburger-tabs-wrapper">
-            <div class="openclaw-tab-bar oc-mobile-tabs" id="mobile-tab-bar"></div>
-            <div class="oc-tabs-fade-right" id="tabs-fade-right"></div>
+          <div class="oc-tab-switcher" id="tab-switcher">
+            <button class="oc-tab-switcher-arrow oc-arrow-left" id="tab-arrow-left">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div class="oc-tab-switcher-current" id="tab-switcher-current">
+              <div class="oc-tab-switcher-row">
+                <span class="oc-tab-switcher-label" id="tab-switcher-label">Home</span>
+                <span class="oc-tab-switcher-actions" id="tab-switcher-actions"></span>
+              </div>
+              <div class="oc-tab-switcher-meter">
+                <div class="oc-tab-switcher-meter-fill" id="tab-switcher-meter-fill"></div>
+              </div>
+            </div>
+            <button class="oc-tab-switcher-arrow oc-arrow-right" id="tab-arrow-right">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
           </div>
           <div class="oc-hamburger-dropdown" id="hamburger-dropdown"></div>
         </div>
