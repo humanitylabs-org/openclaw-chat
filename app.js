@@ -605,18 +605,13 @@ function startTabRename(labelEl, tab) {
   const finish = async (save) => {
     const newName = input.value.trim();
     if (save && newName && newName !== tab.label) {
-      if (tab.key === "main") {
-        localStorage.setItem("openclaw-main-tab-name", newName);
+      try {
+        await state.gateway.request("sessions.patch", {
+          key: `${agentPrefix()}${tab.key}`,
+          label: newName,
+        });
         tab.label = newName;
-      } else {
-        try {
-          await state.gateway.request("sessions.patch", {
-            key: `${agentPrefix()}${tab.key}`,
-            label: newName,
-          });
-          tab.label = newName;
-        } catch { /* keep old name */ }
-      }
+      } catch { /* keep old name */ }
     }
     input.replaceWith(labelEl);
     labelEl.textContent = tab.label;
@@ -758,14 +753,14 @@ async function _renderTabsInner() {
 
   // Build tab list
   state.tabSessions = [];
-  const mainLabel = localStorage.getItem("openclaw-main-tab-name") || "Main";
   const mainSession = convSessions.find(s => s.key === `${prefix}main`);
   if (mainSession) {
     const used = mainSession.totalTokens || 0;
     const max = mainSession.contextTokens || 200000;
+    const mainLabel = mainSession.label || mainSession.displayName || "Main";
     state.tabSessions.push({ key: "main", label: mainLabel, pct: Math.min(100, Math.round((used / max) * 100)) });
   } else {
-    state.tabSessions.push({ key: "main", label: mainLabel, pct: 0 });
+    state.tabSessions.push({ key: "main", label: "Main", pct: 0 });
   }
 
   const others = convSessions
