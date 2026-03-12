@@ -182,10 +182,10 @@
       align-items: flex-end;
       gap: 0;
       flex-shrink: 0;
-      height: var(--header-height);
+      min-height: var(--header-height);
       padding-top: env(safe-area-inset-top, 0px);
       border-bottom: 1px solid var(--background-modifier-border);
-      box-sizing: border-box;
+      box-sizing: content-box;
     }
     .openclaw-top-bar .openclaw-tab-bar {
       flex: 1;
@@ -1482,6 +1482,19 @@
       max-height: calc(100vh - 80px);
       overflow-y: auto;
     }
+    @media (max-width: 1024px) {
+      .tree-settings-popup {
+        width: calc(100vw - 32px);
+        max-width: 340px;
+        max-height: calc(100vh - 120px);
+        left: 50% !important;
+        top: 50% !important;
+        bottom: auto !important;
+        transform: translate(-50%, -50%);
+        border-radius: 14px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      }
+    }
     .tree-settings-popup::-webkit-scrollbar { width: 3px; }
     .tree-settings-popup::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
     .settings-section-header {
@@ -2122,7 +2135,7 @@
       color: var(--text-normal);
     }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=7">
+  <link rel="stylesheet" href="/theme.css?v=8">
 </head>
 <body>
   <div class="app">
@@ -2251,8 +2264,8 @@
       if (saved) document.documentElement.style.setProperty("--accent-color", saved);
     })();
   </script>
-  <script src="/app.js?v=12"></script>
-  <script src="/workspace.js?v=12"></script>
+  <script src="/app.js?v=13"></script>
+  <script src="/workspace.js?v=13"></script>
   <script>
     // Init workspace panels after DOM is ready
     initWorkspace();

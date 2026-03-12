@@ -1468,11 +1468,16 @@ function setupSwipeGestures() {
     if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
     workspace.touchStartX = e.touches[0].clientX;
     workspace.touchStartY = e.touches[0].clientY;
+    // Track if touch started inside the chat messages area (to avoid conflicting with tab swipe)
+    const msgEl = document.getElementById("messages");
+    workspace._touchInMessages = msgEl && msgEl.contains(e.target);
   }, { passive: true });
 
   container.addEventListener("touchmove", (e) => {
     if (!workspace.isMobile) return;
     if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+    // If touch started inside chat messages on the chat panel, let chat tab swipe handle it
+    if (workspace._touchInMessages && workspace.currentPanel === 2) return;
 
     const dx = e.touches[0].clientX - workspace.touchStartX;
     const dy = e.touches[0].clientY - workspace.touchStartY;
@@ -1491,19 +1496,18 @@ function setupSwipeGestures() {
   container.addEventListener("touchend", (e) => {
     if (!workspace.isMobile) return;
     if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+    // If touch started inside chat messages on the chat panel, let chat tab swipe handle it
+    if (workspace._touchInMessages && workspace.currentPanel === 2) {
+      workspace._touchInMessages = false;
+      return;
+    }
+    workspace._touchInMessages = false;
 
     const dx = e.changedTouches[0].clientX - workspace.touchStartX;
 
     if (Math.abs(dx) > 50) {
       if (dx > 0 && workspace.currentPanel > 0) {
-        // Swiping right (finger moves right) = go to previous panel
-        // But if we're on the chat panel (2), check if chat tab swipe should handle it
-        if (workspace.currentPanel === 2 && typeof canSwipeToPrevTab === "function" && canSwipeToPrevTab()) {
-          // Let the chat tab swipe handler deal with it - just snap back
-          switchPanel(workspace.currentPanel);
-        } else {
-          switchPanel(workspace.currentPanel - 1);
-        }
+        switchPanel(workspace.currentPanel - 1);
       } else if (dx < 0 && workspace.currentPanel < 2) {
         switchPanel(workspace.currentPanel + 1);
       } else {

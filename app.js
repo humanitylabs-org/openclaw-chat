@@ -2485,13 +2485,13 @@ ui.tabBar.addEventListener("wheel", (e) => {
           // Swipe left = next tab
           nextIdx = currentIdx + 1;
         } else {
-          // Swipe right = previous tab, or go to editor panel if on first tab
+          // Swipe right = previous tab
           nextIdx = currentIdx - 1;
-          if (nextIdx < 0 && typeof switchPanel === "function") {
-            // On the first tab, swiping right goes to editor panel
-            switchPanel(1);
-            return;
-          }
+        }
+        if (nextIdx < 0 && typeof switchPanel === "function") {
+          // On the first tab, swiping right goes to editor panel
+          switchPanel(1);
+          return;
         }
         if (nextIdx >= 0 && nextIdx < state.tabSessions.length) {
           switchTab(state.tabSessions[nextIdx]);
