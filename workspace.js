@@ -101,15 +101,6 @@ function buildWorkspaceDOM() {
   treePanel.innerHTML = `
     <div class="tree-header">
       <span class="tree-title">Files</span>
-      <div class="tree-header-actions">
-        <button class="tree-icon-btn" onclick="toggleSearch()" title="Search files (⌘O)">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
-        </button>
-        <button class="tree-icon-btn" onclick="toggleTheme()" title="Toggle theme">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="4"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"/></svg>
-        </button>
-        <button class="tree-icon-btn" onclick="refreshFileTree()" title="Refresh">↻</button>
-      </div>
     </div>
     <div class="tree-search oc-hidden" id="tree-search">
       <input type="text" id="tree-search-input" placeholder="Search files..." oninput="filterFileTree(this.value)">
@@ -173,13 +164,22 @@ function buildWorkspaceDOM() {
   `;
   app.appendChild(dots);
 
-  // File server status indicator (auto-connects via gateway URL)
+  // Settings cogwheel in bottom-left
   const settingsEl = document.createElement("div");
   settingsEl.className = "tree-settings";
+  settingsEl.style.position = "relative";
   settingsEl.innerHTML = `
-    <div class="tree-settings-row" id="fs-status">
-      <span class="fs-dot"></span>
-      <span class="fs-label">Not connected</span>
+    <div id="tree-settings-popup" class="tree-settings-popup oc-hidden"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <button class="tree-settings-cogwheel" id="tree-settings-btn" title="Settings" onclick="toggleSettingsPopup()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8" cy="8" r="2.5"/>
+          <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"/>
+        </svg>
+      </button>
+      <div id="fs-status" style="display:flex;align-items:center;gap:6px;">
+        <span class="fs-dot"></span>
+      </div>
     </div>
   `;
   treePanel.appendChild(settingsEl);
@@ -267,13 +267,10 @@ function updateFsStatus(connected) {
   const el = document.getElementById("fs-status");
   if (!el) return;
   const dot = el.querySelector(".fs-dot");
-  const label = el.querySelector(".fs-label");
   if (connected) {
     dot.classList.add("connected");
-    label.textContent = "Connected";
   } else {
     dot.classList.remove("connected");
-    label.textContent = "Not connected";
   }
 }
 
@@ -310,7 +307,7 @@ function toggleSearch() {
 function filterFileTree(query) {
   if (!query.trim()) { renderFileTree(); return; }
   const q = query.toLowerCase();
-  const results = flattenTree(workspace.tree).filter(f => f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q));
+  const results = flattenTree(workspace.tree).filter(f => isObsidianVisible(f.name) && (f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q)));
   const container = document.getElementById("tree-content");
   if (!container) return;
   container.innerHTML = "";
@@ -351,9 +348,38 @@ function renderFileTree() {
   container.appendChild(buildTreeNodes(workspace.tree, 0));
 }
 
+// File extensions Obsidian shows in its file explorer
+const OBSIDIAN_VISIBLE_EXTENSIONS = new Set([
+  // Documents
+  'md', 'txt', 'pdf', 'canvas',
+  // Images
+  'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'ico',
+  // Audio
+  'mp3', 'wav', 'ogg', 'flac', 'm4a', 'webm', '3gp', 'aac',
+  // Video
+  'mp4', 'ogv', 'mov',
+]);
+
+function isObsidianVisible(fileName) {
+  const ext = fileName.split('.').pop().toLowerCase();
+  return OBSIDIAN_VISIBLE_EXTENSIONS.has(ext);
+}
+
+function hasVisibleChildren(items) {
+  for (const item of items) {
+    if (item.type === "file" && isObsidianVisible(item.name)) return true;
+    if (item.type === "dir" && item.children && hasVisibleChildren(item.children)) return true;
+  }
+  return false;
+}
+
 function buildTreeNodes(items, depth) {
   const frag = document.createDocumentFragment();
   for (const item of items) {
+    // Filter out code/config files that Obsidian wouldn't show
+    if (item.type === "file" && !isObsidianVisible(item.name)) continue;
+    // Skip directories that have no visible children
+    if (item.type === "dir" && item.children && !hasVisibleChildren(item.children)) continue;
     const row = document.createElement("div");
     row.className = `tree-item ${item.type === "dir" ? "tree-dir" : "tree-file"}`;
     row.style.paddingLeft = `${12 + depth * 16}px`;
@@ -532,25 +558,27 @@ function renderEditorContent() {
       <div class="editor-toolbar">
         <button class="editor-btn active" onclick="toggleEditMode()">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11.5 1.5l3 3-9 9H2.5v-3z"/></svg>
-          Editing
+          Edit
         </button>
         <button class="editor-btn" onclick="toggleEditMode()">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/></svg>
-          Preview
-        </button>
-        <div style="flex:1"></div>
-        <button class="editor-btn save-btn" onclick="saveCurrentFile()">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12.5 14.5h-9a1 1 0 01-1-1v-11a1 1 0 011-1h7l3 3v9a1 1 0 01-1 1z"/><path d="M5.5 14.5v-4h5v4M5.5 1.5v3h4"/></svg>
-          Save
+          Reading
         </button>
       </div>
       <textarea class="editor-textarea" id="editor-textarea" spellcheck="false">${escapeHtml(tab.content)}</textarea>
     `;
     const textarea = document.getElementById("editor-textarea");
+    // Autosave with debounce
+    let autosaveTimer = null;
     textarea.addEventListener("input", () => {
       tab.content = textarea.value;
       tab.dirty = tab.content !== tab.savedContent;
       renderEditorTabs();
+      // Debounced autosave
+      if (autosaveTimer) clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => {
+        if (tab.dirty) saveCurrentFile();
+      }, 1000);
     });
     // Support tab key for indentation
     textarea.addEventListener("keydown", (e) => {
@@ -562,6 +590,10 @@ function renderEditorContent() {
         textarea.selectionStart = textarea.selectionEnd = start + 2;
         tab.content = textarea.value;
         tab.dirty = tab.content !== tab.savedContent;
+        if (autosaveTimer) clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(() => {
+          if (tab.dirty) saveCurrentFile();
+        }, 1000);
       }
     });
     textarea.focus();
@@ -577,11 +609,6 @@ function renderEditorContent() {
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/></svg>
           Reading
         </button>
-        <div style="flex:1"></div>
-        ${tab.dirty ? `<button class="editor-btn save-btn" onclick="saveCurrentFile()">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12.5 14.5h-9a1 1 0 01-1-1v-11a1 1 0 011-1h7l3 3v9a1 1 0 01-1 1z"/><path d="M5.5 14.5v-4h5v4M5.5 1.5v3h4"/></svg>
-          Save
-        </button>` : ""}
       </div>
       <div class="editor-preview">${rendered}</div>
     `;
@@ -849,6 +876,62 @@ function toggleTheme() {
   const next = current === "dark" ? "light" : "dark";
   document.body.setAttribute("data-theme", next);
   localStorage.setItem("theme", next);
+  // Refresh popup if open
+  const popup = document.getElementById("tree-settings-popup");
+  if (popup && !popup.classList.contains("oc-hidden")) renderSettingsPopup();
+}
+
+function toggleSettingsPopup() {
+  const popup = document.getElementById("tree-settings-popup");
+  if (!popup) return;
+  if (popup.classList.contains("oc-hidden")) {
+    renderSettingsPopup();
+    popup.classList.remove("oc-hidden");
+    // Close on outside click
+    setTimeout(() => {
+      const closeHandler = (e) => {
+        if (!popup.contains(e.target) && e.target.id !== "tree-settings-btn" && !e.target.closest("#tree-settings-btn")) {
+          popup.classList.add("oc-hidden");
+          document.removeEventListener("click", closeHandler);
+        }
+      };
+      document.addEventListener("click", closeHandler);
+    }, 0);
+  } else {
+    popup.classList.add("oc-hidden");
+  }
+}
+
+function renderSettingsPopup() {
+  const popup = document.getElementById("tree-settings-popup");
+  if (!popup) return;
+  const currentTheme = document.body.getAttribute("data-theme") || "dark";
+  const themeLabel = currentTheme === "dark" ? "Dark" : "Light";
+  const themeIcon = currentTheme === "dark"
+    ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"/></svg>';
+  const connectedClass = workspace.connected ? ' style="color:#4caf50"' : '';
+  const connLabel = workspace.connected ? "Connected" : "Disconnected";
+  popup.innerHTML = `
+    <div class="tree-settings-popup-item" onclick="toggleTheme()">
+      ${themeIcon}
+      <span class="settings-label">Appearance</span>
+      <span class="settings-value">${themeLabel}</span>
+    </div>
+    <div class="tree-settings-popup-item" onclick="toggleSearch(); toggleSettingsPopup();">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
+      <span class="settings-label">Search files</span>
+      <span class="settings-value">⌘O</span>
+    </div>
+    <div class="tree-settings-popup-item" onclick="refreshFileTree(); toggleSettingsPopup();">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 8a6 6 0 0110.9-3.5M14 2v4h-4M14 8a6 6 0 01-10.9 3.5M2 14v-4h4"/></svg>
+      <span class="settings-label">Refresh files</span>
+    </div>
+    <div class="tree-settings-popup-item" style="cursor:default; pointer-events:none;">
+      <span class="fs-dot${workspace.connected ? ' connected' : ''}" style="width:8px;height:8px;"></span>
+      <span class="settings-label"${connectedClass}>${connLabel}</span>
+    </div>
+  `;
 }
 
 // ─── Panel Navigation (Mobile Swipe) ────────────────────────────────
@@ -891,7 +974,14 @@ function setupSwipeGestures() {
 
     if (Math.abs(dx) > 50) {
       if (dx > 0 && workspace.currentPanel > 0) {
-        switchPanel(workspace.currentPanel - 1);
+        // Swiping right (finger moves right) = go to previous panel
+        // But if we're on the chat panel (2), check if chat tab swipe should handle it
+        if (workspace.currentPanel === 2 && typeof canSwipeToPrevTab === "function" && canSwipeToPrevTab()) {
+          // Let the chat tab swipe handler deal with it - just snap back
+          switchPanel(workspace.currentPanel);
+        } else {
+          switchPanel(workspace.currentPanel - 1);
+        }
       } else if (dx < 0 && workspace.currentPanel < 2) {
         switchPanel(workspace.currentPanel + 1);
       } else {

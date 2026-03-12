@@ -320,7 +320,6 @@ const ui = {
   statusBanner: $("status-banner"),
   messagesContainer: $("messages"),
   messageInput: $("message-input"),
-  brainBtn: $("brain-btn"),
   attachBtn: $("attach-btn"),
   fileInput: $("file-input"),
   attachPreview: $("attach-preview"),
@@ -2124,8 +2123,7 @@ ui.messageInput.addEventListener("paste", (e) => {
   }
 });
 
-// Brain button -> model picker
-ui.brainBtn.addEventListener("click", () => openModelPicker());
+// Model label -> model picker
 ui.modelLabel.addEventListener("click", () => openModelPicker());
 
 // Attach button
@@ -2195,8 +2193,13 @@ ui.tabBar.addEventListener("wheel", (e) => {
           // Swipe left = next tab
           nextIdx = currentIdx + 1;
         } else {
-          // Swipe right = previous tab
+          // Swipe right = previous tab, or go to editor panel if on first tab
           nextIdx = currentIdx - 1;
+          if (nextIdx < 0 && typeof switchPanel === "function") {
+            // On the first tab, swiping right goes to editor panel
+            switchPanel(1);
+            return;
+          }
         }
         if (nextIdx >= 0 && nextIdx < state.tabSessions.length) {
           switchTab(state.tabSessions[nextIdx]);
@@ -2205,6 +2208,13 @@ ui.tabBar.addEventListener("wheel", (e) => {
     }, { passive: true });
   }
 })();
+
+// ─── Swipe coordination with workspace panels ──────────────────────
+// Called by workspace.js to check if chat has a previous tab to swipe to
+function canSwipeToPrevTab() {
+  const currentIdx = state.tabSessions.findIndex(t => t.key === state.sessionKey);
+  return currentIdx > 0;
+}
 
 // ─── Settings: confirm-close toggle ─────────────────────────────────
 // (Can be wired to a settings UI later; for now expose via console)

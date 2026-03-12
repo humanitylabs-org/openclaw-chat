@@ -757,24 +757,7 @@
       margin: 0 8px 2px;
     }
 
-    /* Brain (model) button */
-    .openclaw-brain-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      border: none;
-      background: transparent;
-      color: var(--text-faint);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      padding: 0;
-      transition: color 0.15s, background 0.15s;
-      font-size: 16px;
-    }
-    .openclaw-brain-btn:hover { color: var(--text-muted); background: rgba(128,128,128,0.1); }
+    /* Brain button removed — model picker via label only */
 
     /* Attach button */
     .openclaw-attach-btn {
@@ -1397,6 +1380,57 @@
       border-color: rgba(74, 158, 255, 0.35);
     }
 
+    /* Settings popup */
+    .tree-settings-popup {
+      position: absolute;
+      bottom: 48px;
+      left: 8px;
+      right: 8px;
+      background: var(--background-secondary);
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 10px;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+      padding: 8px;
+      z-index: 100;
+      font-size: 12px;
+    }
+    .tree-settings-popup-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.12s;
+    }
+    .tree-settings-popup-item:hover {
+      background: rgba(128,128,128,0.1);
+      color: var(--text-normal);
+    }
+    .tree-settings-popup-item svg { flex-shrink: 0; }
+    .tree-settings-popup-item .settings-label { flex: 1; }
+    .tree-settings-popup-item .settings-value {
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+    .tree-settings-cogwheel {
+      background: none;
+      border: none;
+      color: var(--text-faint);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tree-settings-cogwheel:hover {
+      color: var(--text-normal);
+      background: rgba(255,255,255,0.06);
+    }
+
     /* ─── Editor Panel ───────────────────────────────────────────── */
     .editor-tab-bar {
       flex-shrink: 0;
@@ -1669,6 +1703,11 @@
     .editor-preview .task-list {
       list-style: none;
       padding-left: 4px;
+      margin: 4px 0;
+    }
+    .editor-preview .task-list li {
+      margin-bottom: 1px;
+      line-height: 1.4;
     }
     .editor-preview .task {
       display: flex;
@@ -1676,7 +1715,7 @@
       gap: 8px;
     }
     .editor-preview .task input[type="checkbox"] {
-      margin-top: 5px;
+      margin-top: 4px;
       accent-color: var(--interactive-accent);
       width: 15px;
       height: 15px;
@@ -1950,7 +1989,6 @@
           <span class="openclaw-model-label" id="model-label" title="Click to change model"></span>
         </div>
         <div class="openclaw-input-row">
-          <button class="openclaw-brain-btn" id="brain-btn" aria-label="Switch model" title="Switch model"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9.813 2.012a.75.75 0 01.69.726L10.5 5.5l2.762-.003a.75.75 0 01.053 1.499L10.5 7l.003 2.763a.75.75 0 01-1.5.052L9 7H6.237a.75.75 0 01-.052-1.499L9 5.5l-.003-2.762a.75.75 0 01.816-.726zM18.259 8.715a.75.75 0 01.69.726l.001 1.559h1.559a.75.75 0 01.052 1.499L19 12.5l.001 1.559a.75.75 0 01-1.5.052L17.5 12.5h-1.559a.75.75 0 01-.052-1.499l1.611-.001-.001-1.559a.75.75 0 01.76-.726zM12.259 13.715a.75.75 0 01.69.726L13 16.5l2.059-.001a.75.75 0 01.052 1.499L13 18l.001 2.059a.75.75 0 01-1.5.052L11.5 18l-2.059.001a.75.75 0 01-.052-1.499L11.5 16.5l-.001-2.059a.75.75 0 01.76-.726z"/></svg></button>
           <button class="openclaw-attach-btn" id="attach-btn" aria-label="Attach file" title="Attach file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
           <input type="file" id="file-input" accept="image/*,.md,.txt,.json,.csv,.pdf,.yaml,.yml,.js,.ts,.py,.html,.css" multiple class="oc-hidden">
           <textarea id="message-input" class="openclaw-input" placeholder="Message..." rows="1"></textarea>
