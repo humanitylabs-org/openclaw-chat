@@ -595,7 +595,6 @@ function confirmClose(title, msg) {
 
 // Inline rename for a tab label
 function startTabRename(labelEl, tab) {
-  if (tab.key === "main") return; // Main is never renamable
   const input = document.createElement("input");
   input.className = "openclaw-tab-label-input";
   input.value = tab.label;
@@ -606,13 +605,18 @@ function startTabRename(labelEl, tab) {
   const finish = async (save) => {
     const newName = input.value.trim();
     if (save && newName && newName !== tab.label) {
-      try {
-        await state.gateway.request("sessions.patch", {
-          key: `${agentPrefix()}${tab.key}`,
-          label: newName,
-        });
+      if (tab.key === "main") {
+        localStorage.setItem("openclaw-main-tab-name", newName);
         tab.label = newName;
-      } catch { /* keep old name */ }
+      } else {
+        try {
+          await state.gateway.request("sessions.patch", {
+            key: `${agentPrefix()}${tab.key}`,
+            label: newName,
+          });
+          tab.label = newName;
+        } catch { /* keep old name */ }
+      }
     }
     input.replaceWith(labelEl);
     labelEl.textContent = tab.label;
@@ -754,13 +758,14 @@ async function _renderTabsInner() {
 
   // Build tab list
   state.tabSessions = [];
+  const mainLabel = localStorage.getItem("openclaw-main-tab-name") || "Main";
   const mainSession = convSessions.find(s => s.key === `${prefix}main`);
   if (mainSession) {
     const used = mainSession.totalTokens || 0;
     const max = mainSession.contextTokens || 200000;
-    state.tabSessions.push({ key: "main", label: "Main", pct: Math.min(100, Math.round((used / max) * 100)) });
+    state.tabSessions.push({ key: "main", label: mainLabel, pct: Math.min(100, Math.round((used / max) * 100)) });
   } else {
-    state.tabSessions.push({ key: "main", label: "Main", pct: 0 });
+    state.tabSessions.push({ key: "main", label: mainLabel, pct: 0 });
   }
 
   const others = convSessions
@@ -789,14 +794,12 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
     label.textContent = tab.label;
 
-    // Double-click to rename (not main)
-    if (tab.key !== "main") {
-      label.addEventListener("dblclick", (e) => {
-        e.stopPropagation();
-        startTabRename(label, tab);
-      });
-      label.title = "Double-click to rename";
-    }
+    // Double-click to rename
+    label.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      startTabRename(label, tab);
+    });
+    label.title = "Double-click to rename";
     row.appendChild(label);
 
     // × button (far right via margin-left: auto in CSS)
@@ -2111,11 +2114,122 @@ function renderAttachPreview() {
   updateSendButton();
 }
 
+// ─── Voice Input (STT) ───────────────────────────────────────────────
+
+const voiceState = {
+  mediaRecorder: null,
+  audioChunks: [],
+  recording: false,
+  transcribing: false,
+};
+
+const SEND_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94l18.04-8.25a.75.75 0 000-1.39L3.478 2.405z"/></svg>';
+const MIC_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>';
+
+function isSTTConfigured() {
+  return !!localStorage.getItem("openclaw-stt-key");
+}
+
+function getSTTConfig() {
+  return {
+    url: localStorage.getItem("openclaw-stt-url") || "https://api.openai.com/v1/audio/transcriptions",
+    key: localStorage.getItem("openclaw-stt-key") || "",
+    model: localStorage.getItem("openclaw-stt-model") || "whisper-1",
+  };
+}
+
 function updateSendButton() {
-  if (ui.messageInput.value.trim() || state.pendingAttachments.length > 0) {
+  const hasContent = ui.messageInput.value.trim() || state.pendingAttachments.length > 0;
+  const sttReady = isSTTConfigured();
+
+  if (hasContent || voiceState.recording || voiceState.transcribing) {
     ui.sendBtn.classList.remove("oc-opacity-low");
-  } else {
+  } else if (!sttReady) {
     ui.sendBtn.classList.add("oc-opacity-low");
+  } else {
+    ui.sendBtn.classList.remove("oc-opacity-low");
+  }
+
+  // Morph between send arrow and mic
+  if (voiceState.recording) {
+    ui.sendBtn.innerHTML = MIC_ICON;
+    ui.sendBtn.classList.remove("oc-opacity-low", "mic-mode", "transcribing");
+    ui.sendBtn.classList.add("recording");
+  } else if (voiceState.transcribing) {
+    ui.sendBtn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>';
+    ui.sendBtn.classList.remove("oc-opacity-low", "mic-mode", "recording");
+    ui.sendBtn.classList.add("transcribing");
+  } else if (!hasContent && sttReady) {
+    ui.sendBtn.innerHTML = MIC_ICON;
+    ui.sendBtn.classList.remove("recording", "transcribing");
+    ui.sendBtn.classList.add("mic-mode");
+  } else {
+    ui.sendBtn.innerHTML = SEND_ICON;
+    ui.sendBtn.classList.remove("mic-mode", "recording", "transcribing");
+  }
+}
+
+async function handleMicClick() {
+  if (voiceState.transcribing) return;
+
+  if (voiceState.recording) {
+    voiceState.mediaRecorder.stop();
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
+    voiceState.mediaRecorder = new MediaRecorder(stream, { mimeType });
+    voiceState.audioChunks = [];
+
+    voiceState.mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) voiceState.audioChunks.push(e.data);
+    };
+
+    voiceState.mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      voiceState.recording = false;
+      voiceState.transcribing = true;
+      updateSendButton();
+
+      const blob = new Blob(voiceState.audioChunks, { type: voiceState.mediaRecorder.mimeType });
+      const config = getSTTConfig();
+      const ext = voiceState.mediaRecorder.mimeType.includes("webm") ? "webm" : "m4a";
+
+      try {
+        const formData = new FormData();
+        formData.append("file", blob, `recording.${ext}`);
+        formData.append("model", config.model);
+
+        const response = await fetch(config.url, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${config.key}` },
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error(`STT failed: ${response.status}`);
+        const result = await response.json();
+        const text = result.text || "";
+        if (text) {
+          ui.messageInput.value = text;
+          autoResize();
+        }
+      } catch (err) {
+        console.error("Transcription failed:", err);
+      } finally {
+        voiceState.transcribing = false;
+        voiceState.mediaRecorder = null;
+        voiceState.audioChunks = [];
+        updateSendButton();
+      }
+    };
+
+    voiceState.mediaRecorder.start();
+    voiceState.recording = true;
+    updateSendButton();
+  } catch (err) {
+    console.error("Mic access failed:", err);
   }
 }
 
@@ -2127,6 +2241,11 @@ function autoResize() {
 // ─── Input Handlers ──────────────────────────────────────────────────
 
 ui.sendBtn.addEventListener("click", () => {
+  // Mic mode: handle voice recording
+  if (ui.sendBtn.classList.contains("mic-mode") || ui.sendBtn.classList.contains("recording")) {
+    handleMicClick();
+    return;
+  }
   if (ui.messageInput.value.trim() || state.pendingAttachments.length > 0) {
     sendMessage(ui.messageInput.value);
   }

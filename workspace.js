@@ -113,7 +113,7 @@ function buildWorkspaceDOM() {
   treePanel.id = "tree-panel";
   treePanel.className = "panel tree-panel";
   treePanel.innerHTML = `
-    <div class="tree-search" id="tree-search" style="padding-top:10px;">
+    <div class="tree-search" id="tree-search">
       <input type="text" id="tree-search-input" placeholder="Search files..." oninput="filterFileTree(this.value)">
     </div>
     <div class="tree-content" id="tree-content"></div>
@@ -922,6 +922,43 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// ─── Settings Helpers ───────────────────────────────────────────────
+
+function toggleCloseConfirm(disabled) {
+  localStorage.setItem("openclaw-confirm-close-disabled", disabled ? "true" : "false");
+}
+
+function setChatWidth(value) {
+  localStorage.setItem("openclaw-chat-width", value);
+  const chatPanel = document.getElementById("chat-panel");
+  if (chatPanel && !workspace.isMobile) {
+    chatPanel.style.width = value;
+    chatPanel.style.minWidth = value;
+  }
+}
+
+function saveVoiceSettings() {
+  const urlInput = document.getElementById("settings-stt-url");
+  const keyInput = document.getElementById("settings-stt-key");
+  const modelInput = document.getElementById("settings-stt-model");
+  if (!urlInput || !keyInput || !modelInput) return;
+
+  localStorage.setItem("openclaw-stt-url", urlInput.value.trim());
+  localStorage.setItem("openclaw-stt-key", keyInput.value.trim());
+  localStorage.setItem("openclaw-stt-model", modelInput.value.trim());
+
+  // Update send button state in app.js
+  if (typeof updateSendButton === "function") updateSendButton();
+
+  // Show brief confirmation
+  const popup = document.getElementById("tree-settings-popup");
+  if (popup) {
+    const oldHtml = popup.innerHTML;
+    popup.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--interactive-accent);font-size:12px;">✓ Saved</div>';
+    setTimeout(() => { popup.innerHTML = oldHtml; renderSettingsPopup(); }, 800);
+  }
+}
+
 // ─── Theme Toggle ───────────────────────────────────────────────────
 
 function toggleTheme() {
@@ -979,10 +1016,6 @@ function checkAutoOpenSettings() {
 function renderSettingsPopup() {
   const popup = document.getElementById("tree-settings-popup");
   if (!popup) return;
-  const currentTheme = document.body.getAttribute("data-theme") || "dark";
-  const themeIcon = currentTheme === "dark"
-    ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/></svg>'
-    : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"/></svg>';
 
   // Get connection info
   let gatewayUrl = '';
@@ -999,31 +1032,38 @@ function renderSettingsPopup() {
   const connLabel = allConnected ? 'Connected' : chatUp ? 'Chat only' : filesUp ? 'Files only' : 'Not connected';
   const isEditing = workspace._settingsEditing || !gatewayUrl || !token;
 
+  // Get preferences
+  const currentTheme = document.body.getAttribute("data-theme") || "dark";
+  const confirmDisabled = localStorage.getItem("openclaw-confirm-close-disabled") === "true";
+  const chatWidth = localStorage.getItem("openclaw-chat-width") || "420";
+
+  // Get voice input settings
+  const sttUrl = localStorage.getItem("openclaw-stt-url") || "https://api.openai.com/v1/audio/transcriptions";
+  const sttKey = localStorage.getItem("openclaw-stt-key") || "";
+  const sttModel = localStorage.getItem("openclaw-stt-model") || "whisper-1";
+
   popup.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 10px 8px;border-bottom:1px solid var(--background-modifier-border);">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px 8px;border-bottom:1px solid var(--background-modifier-border);">
       <img src="/logo-64.png" width="28" height="28" style="border-radius:6px;flex-shrink:0;" alt="">
       <div style="flex:1;">
         <div style="font-size:12px;font-weight:500;color:var(--text-normal);line-height:1.2;">usemyclaw.com</div>
         <div style="font-size:10px;color:var(--text-faint);margin-top:1px;">OpenClaw Web Client</div>
       </div>
-      <button onclick="toggleTheme()" title="${currentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}" style="
-        background:none;border:none;color:var(--text-faint);cursor:pointer;
-        padding:6px;border-radius:6px;display:flex;align-items:center;
-        transition:all 0.15s;
-      " onmouseover="this.style.color='var(--text-normal)';this.style.background='rgba(128,128,128,0.1)'"
-         onmouseout="this.style.color='var(--text-faint)';this.style.background='none'">
-        ${themeIcon}
-      </button>
     </div>
-    <div style="padding:8px 10px;">
+
+    <!-- 🔗 Connection -->
+    <div class="settings-section-header">🔗 Connection</div>
+    <div style="padding:0 12px 8px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <span class="fs-dot ${allConnected ? 'connected' : ''}" style="width:8px;height:8px;flex-shrink:0;${!allConnected && (chatUp || filesUp) ? 'background:#ffc107;box-shadow:0 0 4px rgba(255,193,7,0.3);' : ''}"></span>
-        <span style="font-size:12px;${connColor ? 'color:' + connColor : ''};flex:1;">${connLabel}</span>
-        ${gatewayUrl && token ? `<button id="settings-modify-btn" onclick="toggleSettingsEditing()" style="
+        <span style="font-size:11px;${connColor ? 'color:' + connColor : 'color:var(--text-muted)'};flex:1;">${connLabel}</span>
+        ${gatewayUrl && token ? `<button onclick="toggleSettingsEditing()" style="
           background:none;border:1px solid var(--background-modifier-border);
           color:var(--text-faint);padding:2px 8px;border-radius:4px;
           font-size:10px;cursor:pointer;transition:all 0.15s;
-        ">${workspace._settingsEditing ? 'Cancel' : 'Modify'}</button>` : ''}
+        " onmouseover="this.style.borderColor='var(--interactive-accent)';this.style.color='var(--interactive-accent)'"
+           onmouseout="this.style.borderColor='var(--background-modifier-border)';this.style.color='var(--text-faint)'">${workspace._settingsEditing ? 'Cancel' : 'Modify'}</button>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div>
@@ -1054,15 +1094,83 @@ function renderSettingsPopup() {
             background:var(--interactive-accent);color:var(--text-on-accent);
             border:none;cursor:pointer;font-weight:500;transition:opacity 0.15s;
             margin-top:2px;
-          ">Save & Reconnect</button>
+          " onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Save & Reconnect</button>
         ` : ''}
       </div>
       ${!isEditing && !allConnected && (chatUp || filesUp) ? `
-        <div style="font-size:10px;color:var(--text-faint);margin-top:6px;padding-top:6px;border-top:1px solid var(--background-modifier-border);">
+        <div style="font-size:10px;color:var(--text-faint);margin-top:6px;padding-top:6px;border-top:1px solid rgba(128,128,128,0.1);">
           ${chatUp && !filesUp ? '⚠ File server not responding.' + (workspace._lastFileError ? '<br><span style="font-family:var(--font-mono,monospace);font-size:9px;opacity:0.7;">' + escapeHtml(workspace._lastFileError) + '</span>' : '') : ''}
           ${filesUp && !chatUp ? '⚠ Chat disconnected.' : ''}
         </div>
       ` : ''}
+    </div>
+
+    <div class="settings-divider"></div>
+
+    <!-- ⚙️ Preferences -->
+    <div class="settings-section-header">⚙️ Preferences</div>
+    <div style="padding:0 12px 8px;">
+      <div class="settings-toggle-row">
+        <span>Light mode</span>
+        <label class="settings-toggle">
+          <input type="checkbox" ${currentTheme === "light" ? "checked" : ""} onchange="toggleTheme()">
+          <span class="slider"></span>
+          <span class="knob"></span>
+        </label>
+      </div>
+      <div class="settings-toggle-row">
+        <span>Skip close confirmation</span>
+        <label class="settings-toggle">
+          <input type="checkbox" ${confirmDisabled ? "checked" : ""} onchange="toggleCloseConfirm(this.checked)">
+          <span class="slider"></span>
+          <span class="knob"></span>
+        </label>
+      </div>
+      <div class="settings-toggle-row">
+        <span>Chat panel width</span>
+        <select onchange="setChatWidth(this.value)">
+          <option value="420" ${chatWidth === "420" ? "selected" : ""}>Normal (420px)</option>
+          <option value="600" ${chatWidth === "600" ? "selected" : ""}>Wide (600px)</option>
+          <option value="80vw" ${chatWidth === "80vw" ? "selected" : ""}>Full (80vw)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="settings-divider"></div>
+
+    <!-- 🎙️ Voice Input -->
+    <div class="settings-section-header">🎙️ Voice Input</div>
+    <div style="padding:0 12px 8px;">
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div>
+          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Provider URL</label>
+          <input id="settings-stt-url" type="text" value="${escapeHtml(sttUrl)}"
+            style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">API Key</label>
+          <input id="settings-stt-key" type="password" value="${escapeHtml(sttKey)}" placeholder="sk-..."
+            style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Model</label>
+          <input id="settings-stt-model" type="text" value="${escapeHtml(sttModel)}"
+            style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:var(--text-normal);outline:none;box-sizing:border-box;">
+        </div>
+        <button onclick="saveVoiceSettings()" style="
+          width:100%;padding:7px;font-size:11px;border-radius:4px;
+          background:rgba(74,158,255,0.1);color:var(--interactive-accent);
+          border:1px solid rgba(74,158,255,0.2);cursor:pointer;font-weight:500;
+          transition:all 0.15s;margin-top:2px;
+        " onmouseover="this.style.background='rgba(74,158,255,0.15)'"
+           onmouseout="this.style.background='rgba(74,158,255,0.1)'">Save Voice Settings</button>
+      </div>
     </div>
   `;
 }
@@ -1214,6 +1322,15 @@ function updateLayout() {
     dots.classList.add("oc-hidden");
     if (resizerL) resizerL.classList.remove("oc-hidden");
     if (resizerR) resizerR.classList.remove("oc-hidden");
+    // Apply saved chat width
+    const savedWidth = localStorage.getItem("openclaw-chat-width");
+    if (savedWidth) {
+      const chatPanel = document.getElementById("chat-panel");
+      if (chatPanel) {
+        chatPanel.style.width = savedWidth;
+        chatPanel.style.minWidth = savedWidth;
+      }
+    }
   }
 }
 
