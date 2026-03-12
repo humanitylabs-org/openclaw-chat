@@ -878,10 +878,19 @@ async function resetTab(tab) {
 }
 
 async function closeTab(tab, currentKey) {
-  if (!state.gateway?.connected || state.tabDeleteInProgress) return;
+  if (!state.gateway?.connected) return;
+  // Safety: reset stuck flag after 5s
+  if (state.tabDeleteInProgress) {
+    if (state._tabDeleteTimer && Date.now() - state._tabDeleteTimer > 5000) {
+      state.tabDeleteInProgress = false;
+    } else {
+      return;
+    }
+  }
   const ok = await confirmClose("Close tab?", `Close "${tab.label}"? Chat history will be lost.`);
   if (!ok) return;
   state.tabDeleteInProgress = true;
+  state._tabDeleteTimer = Date.now();
   try {
     await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tab.key}`);
   } catch (err) {
@@ -898,6 +907,7 @@ async function closeTab(tab, currentKey) {
     await loadChatHistory();
   }
   state.tabDeleteInProgress = false;
+  state._tabDeleteTimer = null;
   await renderTabs();
   await updateContextMeter();
 }

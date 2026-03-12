@@ -1253,7 +1253,8 @@ function setupResizer() {
       }, { once: true });
     });
     function onResizeRight(e) {
-      const newWidth = Math.max(300, Math.min(700, startWidth - (e.clientX - startX)));
+      const maxChat = Math.max(700, window.innerWidth * 0.8);
+      const newWidth = Math.max(300, Math.min(maxChat, startWidth - (e.clientX - startX)));
       chatPanel.style.width = newWidth + "px";
       chatPanel.style.minWidth = newWidth + "px";
     }
