@@ -466,6 +466,7 @@ function updateConnectionStatus(connected) {
   // Update workspace connection state
   if (typeof workspace !== 'undefined') {
     workspace.chatConnected = connected;
+    if (typeof updateTreeStatusDot === "function") updateTreeStatusDot();
     // Refresh popup if open
     const popup = document.getElementById("tree-settings-popup");
     if (popup && !popup.classList.contains("oc-hidden")) renderSettingsPopup();

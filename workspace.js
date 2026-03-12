@@ -175,22 +175,35 @@ function buildWorkspaceDOM() {
   `;
   app.appendChild(dots);
 
-  // Settings cogwheel in bottom-left
+  // Bottom bar: branding + cogwheel + status dot
   const settingsEl = document.createElement("div");
   settingsEl.className = "tree-settings";
-  settingsEl.style.position = "relative";
   settingsEl.innerHTML = `
-    <div id="tree-settings-popup" class="tree-settings-popup oc-hidden"></div>
-    <div style="display:flex;align-items:center;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <img src="/logo-64.png" width="18" height="18" style="border-radius:4px;opacity:0.6;flex-shrink:0;" alt="">
+      <span style="font-size:11px;color:var(--text-faint);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">usemyclaw</span>
       <button class="tree-settings-cogwheel" id="tree-settings-btn" title="Settings" onclick="toggleSettingsPopup()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
         </svg>
       </button>
+      <span id="tree-status-dot" class="fs-dot" style="width:7px;height:7px;flex-shrink:0;"></span>
     </div>
   `;
   treePanel.appendChild(settingsEl);
+
+  // Settings popup — appended to body so nothing clips it
+  const popup = document.createElement("div");
+  popup.id = "tree-settings-popup";
+  popup.className = "tree-settings-popup oc-hidden";
+  document.body.appendChild(popup);
+
+  // Onboarding overlay — appended to body
+  const onboardOverlay = document.createElement("div");
+  onboardOverlay.id = "onboard-overlay";
+  onboardOverlay.className = "onboard-overlay oc-hidden";
+  document.body.appendChild(onboardOverlay);
 }
 
 // ─── File Server Connection ─────────────────────────────────────────
@@ -283,14 +296,18 @@ function handleFileChange(msg) {
 }
 
 function updateFsStatus(connected) {
-  const el = document.getElementById("fs-status");
-  if (!el) return;
-  const dot = el.querySelector(".fs-dot");
-  if (connected) {
-    dot.classList.add("connected");
-  } else {
-    dot.classList.remove("connected");
-  }
+  updateTreeStatusDot();
+}
+
+function updateTreeStatusDot() {
+  const dot = document.getElementById("tree-status-dot");
+  if (!dot) return;
+  const allUp = workspace.connected && workspace.chatConnected;
+  const partial = workspace.connected || workspace.chatConnected;
+  dot.classList.toggle("connected", allUp);
+  dot.style.background = allUp ? "" : partial ? "#ffc107" : "";
+  dot.style.boxShadow = allUp ? "" : partial ? "0 0 4px rgba(255,193,7,0.3)" : "";
+  dot.title = allUp ? "Connected" : partial ? (workspace.chatConnected ? "Chat only" : "Files only") : "Not connected";
 }
 
 // ─── File Tree ──────────────────────────────────────────────────────
@@ -928,15 +945,6 @@ function toggleCloseConfirm(disabled) {
   localStorage.setItem("openclaw-confirm-close-disabled", disabled ? "true" : "false");
 }
 
-function setChatWidth(value) {
-  localStorage.setItem("openclaw-chat-width", value);
-  const chatPanel = document.getElementById("chat-panel");
-  if (chatPanel && !workspace.isMobile) {
-    chatPanel.style.width = value;
-    chatPanel.style.minWidth = value;
-  }
-}
-
 function saveVoiceSettings() {
   const urlInput = document.getElementById("settings-stt-url");
   const keyInput = document.getElementById("settings-stt-key");
@@ -1008,16 +1016,30 @@ function openSettingsPopup() {
   setTimeout(() => document.addEventListener("mousedown", workspace._settingsCloseHandler), 50);
 }
 
-// Auto-open settings if not connected, auto-close when connected (unless editing/more open)
+// Auto-open onboarding if no credentials, auto-close when connected
 function checkAutoOpenSettings() {
+  let gatewayUrl = '', token = '';
+  try {
+    const d = JSON.parse(localStorage.getItem("connection") || '{}');
+    gatewayUrl = d.gatewayUrl || '';
+    token = d.token || '';
+  } catch {}
+  const hasCredentials = !!(gatewayUrl && token);
   const allConnected = workspace.connected && workspace.chatConnected;
-  const popup = document.getElementById("tree-settings-popup");
-  if (!popup) return;
-  if (!allConnected && popup.classList.contains("oc-hidden")) {
-    openSettingsPopup();
-  } else if (allConnected && !popup.classList.contains("oc-hidden") && !workspace._settingsEditing && !workspace._settingsShowMore) {
-    popup.classList.add("oc-hidden");
-    workspace._settingsCloseHandler && document.removeEventListener("mousedown", workspace._settingsCloseHandler);
+
+  // No credentials → show onboarding overlay
+  if (!hasCredentials) {
+    const overlay = document.getElementById("onboard-overlay");
+    if (overlay && overlay.classList.contains("oc-hidden")) {
+      openOnboarding();
+    }
+    return;
+  }
+
+  // Connected → close onboarding if open
+  if (allConnected) {
+    closeOnboarding();
+    updateTreeStatusDot();
   }
 }
 
@@ -1025,113 +1047,46 @@ function renderSettingsPopup() {
   const popup = document.getElementById("tree-settings-popup");
   if (!popup) return;
 
-  // Get connection info
-  let gatewayUrl = '';
-  let token = '';
+  // Get state
+  let gatewayUrl = '', token = '';
   try {
-    const connData = JSON.parse(localStorage.getItem("connection") || '{}');
-    gatewayUrl = connData.gatewayUrl || '';
-    token = connData.token || '';
+    const d = JSON.parse(localStorage.getItem("connection") || '{}');
+    gatewayUrl = d.gatewayUrl || '';
+    token = d.token || '';
   } catch {}
-  const filesUp = workspace.connected;
-  const chatUp = workspace.chatConnected;
-  const allConnected = filesUp && chatUp;
-  const hasCredentials = !!(gatewayUrl && token);
-  const isOnboarding = !hasCredentials;
-  const isEditing = workspace._settingsEditing;
-  const showMore = workspace._settingsShowMore;
-
-  // ── Onboarding: clean 1-2-3 connect flow ──
-  if (isOnboarding) {
-    popup.innerHTML = `
-      <div style="padding:16px 14px 12px;">
-        <div style="font-size:14px;font-weight:600;color:var(--text-normal);margin-bottom:12px;">Connect to OpenClaw</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div>
-            <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;">
-              <span style="background:var(--interactive-accent);color:var(--text-on-accent);width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;">1</span>
-              Gateway URL
-            </label>
-            <input id="settings-gateway-url" type="text" placeholder="https://your-server.tail1234.ts.net"
-              style="width:100%;padding:8px 10px;font-size:12px;border-radius:6px;
-                background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
-                color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;">
-              <span style="background:var(--interactive-accent);color:var(--text-on-accent);width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;">2</span>
-              Auth Token
-            </label>
-            <input id="settings-token" type="password" placeholder="Paste your token"
-              style="width:100%;padding:8px 10px;font-size:12px;border-radius:6px;
-                background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
-                color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
-          </div>
-          <button onclick="saveConnectionSettings()" style="
-            width:100%;padding:10px;font-size:13px;border-radius:6px;
-            background:var(--interactive-accent);color:var(--text-on-accent);
-            border:none;cursor:pointer;font-weight:600;transition:opacity 0.15s;
-            display:flex;align-items:center;justify-content:center;gap:6px;
-          " onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-            <span style="background:rgba(255,255,255,0.2);width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;">3</span>
-            Connect
-          </button>
-        </div>
-        <div style="font-size:10px;color:var(--text-faint);margin-top:10px;text-align:center;">
-          🔒 Credentials stored locally. Never sent to our servers.
-        </div>
-      </div>
-    `;
-    return;
-  }
-
-  // ── Connected state: minimal + expandable ──
-  const connColor = allConnected ? '#4caf50' : (chatUp || filesUp) ? '#ffc107' : 'var(--text-faint)';
-  const connLabel = allConnected ? 'Connected' : chatUp ? 'Chat only' : filesUp ? 'Files only' : 'Disconnected';
+  const allUp = workspace.connected && workspace.chatConnected;
+  const partial = workspace.connected || workspace.chatConnected;
+  const connColor = allUp ? '#4caf50' : partial ? '#ffc107' : 'var(--text-faint)';
+  const connLabel = allUp ? 'Connected' : partial ? (workspace.chatConnected ? 'Chat only' : 'Files only') : 'Not connected';
   const currentTheme = document.body.getAttribute("data-theme") || "dark";
-  const chatWidth = localStorage.getItem("openclaw-chat-width") || "420";
+  const showVoice = workspace._settingsShowVoice;
+  const sttKey = localStorage.getItem("openclaw-stt-key") || "";
+  const sttUrl = localStorage.getItem("openclaw-stt-url") || "https://api.openai.com/v1/audio/transcriptions";
+  const sttModel = localStorage.getItem("openclaw-stt-model") || "whisper-1";
+  const confirmDisabled = localStorage.getItem("openclaw-confirm-close-disabled") === "true";
 
-  let html = `
-    <!-- Status bar -->
-    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--background-modifier-border);">
-      <span class="fs-dot ${allConnected ? 'connected' : ''}" style="width:8px;height:8px;flex-shrink:0;${!allConnected && (chatUp || filesUp) ? 'background:#ffc107;box-shadow:0 0 4px rgba(255,193,7,0.3);' : ''}"></span>
-      <span style="font-size:12px;color:${connColor};flex:1;font-weight:500;">${connLabel}</span>
-      <button onclick="toggleSettingsEditing()" style="
-        background:none;border:1px solid var(--background-modifier-border);
-        color:var(--text-faint);padding:2px 8px;border-radius:4px;
-        font-size:10px;cursor:pointer;
-      ">${isEditing ? 'Cancel' : 'Modify'}</button>
-    </div>
-  `;
+  // Try to extract hostname for display
+  let gwHost = '';
+  try { gwHost = new URL(gatewayUrl.replace(/^ws/, 'http')).hostname; } catch {}
 
-  // Connection fields (only when editing)
-  if (isEditing) {
-    html += `
-      <div style="padding:8px 12px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--background-modifier-border);">
-        <div>
-          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Gateway URL</label>
-          <input id="settings-gateway-url" type="text" value="${escapeHtml(gatewayUrl)}"
-            style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
-              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
-              color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Auth Token</label>
-          <input id="settings-token" type="password" value="${escapeHtml(token)}"
-            style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
-              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
-              color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
-        </div>
-        <button onclick="saveConnectionSettings()" style="
-          width:100%;padding:7px;font-size:11px;border-radius:4px;
-          background:var(--interactive-accent);color:var(--text-on-accent);
-          border:none;cursor:pointer;font-weight:500;">Save & Reconnect</button>
+  popup.innerHTML = `
+    <!-- Branding header -->
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px 8px;">
+      <img src="/logo-64.png" width="22" height="22" style="border-radius:5px;flex-shrink:0;" alt="">
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:500;color:var(--text-normal);line-height:1.2;">usemyclaw.com</div>
       </div>
-    `;
-  }
+    </div>
 
-  // Quick settings (always visible)
-  html += `
+    <!-- Connection status -->
+    <div style="display:flex;align-items:center;gap:8px;padding:4px 12px 10px;">
+      <span class="fs-dot ${allUp ? 'connected' : ''}" style="width:7px;height:7px;flex-shrink:0;${!allUp && partial ? 'background:#ffc107;box-shadow:0 0 4px rgba(255,193,7,0.3);' : ''}"></span>
+      <span style="font-size:11px;color:${connColor};flex:1;">${connLabel}${gwHost && allUp ? ' · ' + gwHost : ''}</span>
+    </div>
+
+    <div class="settings-divider"></div>
+
+    <!-- Settings -->
     <div style="padding:6px 0;">
       <div class="settings-toggle-row">
         <span>Light mode</span>
@@ -1142,123 +1097,192 @@ function renderSettingsPopup() {
         </label>
       </div>
       <div class="settings-toggle-row">
-        <span>Chat width</span>
-        <select onchange="setChatWidth(this.value)">
-          <option value="420" ${chatWidth === "420" ? "selected" : ""}>Normal</option>
-          <option value="600" ${chatWidth === "600" ? "selected" : ""}>Wide</option>
-          <option value="80vw" ${chatWidth === "80vw" ? "selected" : ""}>Full</option>
-        </select>
+        <span>Confirm tab close</span>
+        <label class="settings-toggle">
+          <input type="checkbox" ${!confirmDisabled ? "checked" : ""} onchange="toggleCloseConfirm(!this.checked)">
+          <span class="slider"></span>
+          <span class="knob"></span>
+        </label>
       </div>
     </div>
-  `;
 
-  // "More" expander
-  const confirmDisabled = localStorage.getItem("openclaw-confirm-close-disabled") === "true";
-  const sttUrl = localStorage.getItem("openclaw-stt-url") || "https://api.openai.com/v1/audio/transcriptions";
-  const sttKey = localStorage.getItem("openclaw-stt-key") || "";
-  const sttModel = localStorage.getItem("openclaw-stt-model") || "whisper-1";
+    <div class="settings-divider"></div>
 
-  html += `
-    <div style="border-top:1px solid var(--background-modifier-border);">
-      <button onclick="toggleMoreSettings()" style="
-        width:100%;padding:8px 12px;background:none;border:none;
-        color:var(--text-faint);font-size:11px;cursor:pointer;text-align:left;
+    <!-- Voice input (collapsible) -->
+    <div>
+      <button onclick="toggleVoiceSettings()" style="
+        width:100%;padding:7px 12px;background:none;border:none;
+        color:var(--text-muted);font-size:11px;cursor:pointer;text-align:left;
         display:flex;align-items:center;justify-content:space-between;
       ">
-        <span>More settings</span>
-        <span style="font-size:10px;">${showMore ? '▴' : '▾'}</span>
+        <span>🎙️ Voice input${sttKey ? ' · configured' : ''}</span>
+        <span style="font-size:9px;opacity:0.5;">${showVoice ? '▴' : '▾'}</span>
       </button>
-      <div style="display:${showMore ? 'block' : 'none'};">
-        <div style="padding:0 12px 4px;">
-          <div class="settings-toggle-row" style="padding-left:0;padding-right:0;">
-            <span>Skip close confirmation</span>
-            <label class="settings-toggle">
-              <input type="checkbox" ${confirmDisabled ? "checked" : ""} onchange="toggleCloseConfirm(this.checked)">
-              <span class="slider"></span>
-              <span class="knob"></span>
-            </label>
-          </div>
+      ${showVoice ? `
+      <div style="padding:0 12px 10px;display:flex;flex-direction:column;gap:5px;">
+        <div>
+          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Provider URL</label>
+          <input id="settings-stt-url" type="text" value="${escapeHtml(sttUrl)}"
+            style="width:100%;padding:5px 8px;font-size:11px;border-radius:4px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
         </div>
-        <div class="settings-divider"></div>
-        <div class="settings-section-header">🎙️ Voice Input</div>
-        <div style="padding:0 12px 10px;display:flex;flex-direction:column;gap:5px;">
-          <div>
-            <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Provider URL</label>
-            <input id="settings-stt-url" type="text" value="${escapeHtml(sttUrl)}"
-              style="width:100%;padding:5px 8px;font-size:11px;border-radius:4px;
-                background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
-                color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
-          </div>
-          <div>
-            <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">API Key</label>
-            <input id="settings-stt-key" type="password" value="${escapeHtml(sttKey)}" placeholder="sk-..."
-              style="width:100%;padding:5px 8px;font-size:11px;border-radius:4px;
-                background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
-                color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
-          </div>
-          <div>
-            <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Model</label>
-            <input id="settings-stt-model" type="text" value="${escapeHtml(sttModel)}"
-              style="width:100%;padding:5px 8px;font-size:11px;border-radius:4px;
-                background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
-                color:var(--text-normal);outline:none;box-sizing:border-box;">
-          </div>
-          <button onclick="saveVoiceSettings()" style="
-            width:100%;padding:6px;font-size:11px;border-radius:4px;
-            background:rgba(74,158,255,0.1);color:var(--interactive-accent);
-            border:1px solid rgba(74,158,255,0.2);cursor:pointer;font-weight:500;">Save Voice Settings</button>
+        <div>
+          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">API Key</label>
+          <input id="settings-stt-key" type="password" value="${escapeHtml(sttKey)}" placeholder="sk-..."
+            style="width:100%;padding:5px 8px;font-size:11px;border-radius:4px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
         </div>
-      </div>
+        <div>
+          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Model</label>
+          <input id="settings-stt-model" type="text" value="${escapeHtml(sttModel)}"
+            style="width:100%;padding:5px 8px;font-size:11px;border-radius:4px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:var(--text-normal);outline:none;box-sizing:border-box;">
+        </div>
+        <button onclick="saveVoiceSettings()" style="
+          width:100%;padding:6px;font-size:11px;border-radius:4px;
+          background:rgba(128,128,128,0.06);color:var(--text-muted);
+          border:1px solid var(--background-modifier-border);cursor:pointer;">Save</button>
+      </div>` : ''}
+    </div>
+
+    <div class="settings-divider"></div>
+
+    <!-- Actions -->
+    <div style="padding:6px 12px 10px;">
+      <button onclick="openOnboarding()" style="
+        width:100%;padding:7px;font-size:11px;border-radius:4px;
+        background:none;color:var(--text-faint);
+        border:1px solid var(--background-modifier-border);cursor:pointer;
+        transition:all 0.15s;
+      ">🔄 Reconnect / Setup wizard</button>
     </div>
   `;
-
-  popup.innerHTML = html;
 }
 
-function toggleMoreSettings() {
-  workspace._settingsShowMore = !workspace._settingsShowMore;
+function toggleVoiceSettings() {
+  workspace._settingsShowVoice = !workspace._settingsShowVoice;
   renderSettingsPopup();
-  // Reposition since height changed
+  repositionPopup();
+}
+
+function repositionPopup() {
   const popup = document.getElementById("tree-settings-popup");
   const btn = document.getElementById("tree-settings-btn");
   if (popup && btn) {
     const rect = btn.getBoundingClientRect();
     popup.style.bottom = (window.innerHeight - rect.top + 8) + "px";
+    popup.style.left = Math.max(8, rect.left) + "px";
   }
 }
 
 function toggleSettingsEditing() {
   workspace._settingsEditing = !workspace._settingsEditing;
   renderSettingsPopup();
-  if (workspace._settingsEditing) {
-    // Focus the URL field
-    setTimeout(() => {
-      const urlInput = document.getElementById("settings-gateway-url");
-      if (urlInput) urlInput.focus();
-    }, 50);
-  }
 }
 
-function saveConnectionSettings() {
-  const urlInput = document.getElementById("settings-gateway-url");
-  const tokenInput = document.getElementById("settings-token");
+// ─── Onboarding Overlay ─────────────────────────────────────────────
+
+function openOnboarding() {
+  // Close settings popup
+  const popup = document.getElementById("tree-settings-popup");
+  if (popup) popup.classList.add("oc-hidden");
+
+  const overlay = document.getElementById("onboard-overlay");
+  if (!overlay) return;
+  renderOnboarding();
+  overlay.classList.remove("oc-hidden");
+}
+
+function closeOnboarding() {
+  const overlay = document.getElementById("onboard-overlay");
+  if (overlay) overlay.classList.add("oc-hidden");
+}
+
+function renderOnboarding() {
+  const overlay = document.getElementById("onboard-overlay");
+  if (!overlay) return;
+
+  // Pre-fill existing values
+  let gatewayUrl = '', token = '';
+  try {
+    const d = JSON.parse(localStorage.getItem("connection") || '{}');
+    gatewayUrl = d.gatewayUrl || '';
+    token = d.token || '';
+  } catch {}
+
+  overlay.innerHTML = `
+    <div class="onboard-card">
+      <button onclick="closeOnboarding()" style="
+        position:absolute;top:12px;right:12px;background:none;border:none;
+        color:var(--text-faint);font-size:18px;cursor:pointer;padding:4px 8px;
+        border-radius:4px;line-height:1;
+      ">✕</button>
+      <div style="text-align:center;margin-bottom:20px;">
+        <img src="/logo-64.png" width="40" height="40" style="border-radius:8px;margin-bottom:8px;" alt="">
+        <div style="font-size:16px;font-weight:600;color:var(--text-normal);">Connect to OpenClaw</div>
+        <div style="font-size:12px;color:var(--text-faint);margin-top:4px;">Enter your gateway details to get started.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+            <span class="onboard-step-num">1</span>
+            Gateway URL
+          </label>
+          <input id="onboard-gateway-url" type="text" value="${escapeHtml(gatewayUrl)}"
+            placeholder="https://your-server.tail1234.ts.net"
+            style="width:100%;padding:10px 12px;font-size:13px;border-radius:8px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+            <span class="onboard-step-num">2</span>
+            Auth Token
+          </label>
+          <input id="onboard-token" type="password" value="${escapeHtml(token)}"
+            placeholder="Paste your token"
+            style="width:100%;padding:10px 12px;font-size:13px;border-radius:8px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:var(--text-normal);font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;">
+        </div>
+        <button onclick="submitOnboarding()" style="
+          width:100%;padding:12px;font-size:14px;border-radius:8px;
+          background:var(--interactive-accent);color:var(--text-on-accent);
+          border:none;cursor:pointer;font-weight:600;transition:opacity 0.15s;
+          display:flex;align-items:center;justify-content:center;gap:8px;
+        ">
+          <span class="onboard-step-num" style="background:rgba(255,255,255,0.2);">3</span>
+          Connect
+        </button>
+      </div>
+      <div style="font-size:10px;color:var(--text-faint);margin-top:14px;text-align:center;">
+        🔒 Stored locally. Never sent to our servers.
+      </div>
+    </div>
+  `;
+}
+
+function submitOnboarding() {
+  const urlInput = document.getElementById("onboard-gateway-url");
+  const tokenInput = document.getElementById("onboard-token");
   if (!urlInput || !tokenInput) return;
   const newUrl = urlInput.value.trim();
   const newToken = tokenInput.value.trim();
   if (!newUrl || !newToken) return;
 
-  // Save to localStorage (single source of truth)
+  // Save and reconnect (reuse existing logic)
   localStorage.setItem("connection", JSON.stringify({ gatewayUrl: newUrl, token: newToken }));
 
-  workspace._settingsEditing = false;
-
-  // Reconnect file server (derives URL from same gateway)
+  // Reconnect file server
   workspace.connected = false;
-  updateFsStatus(false);
+  updateTreeStatusDot();
   deriveFileServerUrl();
   if (workspace.fileServerUrl) connectFileServer();
 
-  // Reconnect chat (uses same gateway URL)
+  // Reconnect chat
   if (typeof state !== 'undefined') {
     state.gatewayUrl = newUrl;
     state.token = newToken;
@@ -1266,7 +1290,12 @@ function saveConnectionSettings() {
     connectToGateway().catch(err => console.error("Reconnect failed:", err));
   }
 
-  renderSettingsPopup();
+  closeOnboarding();
+}
+
+// Legacy — redirect to onboarding flow
+function saveConnectionSettings() {
+  openOnboarding();
 }
 
 // ─── Panel Navigation (Mobile Swipe) ────────────────────────────────
@@ -1374,15 +1403,6 @@ function updateLayout() {
     dots.classList.add("oc-hidden");
     if (resizerL) resizerL.classList.remove("oc-hidden");
     if (resizerR) resizerR.classList.remove("oc-hidden");
-    // Apply saved chat width
-    const savedWidth = localStorage.getItem("openclaw-chat-width");
-    if (savedWidth) {
-      const chatPanel = document.getElementById("chat-panel");
-      if (chatPanel) {
-        chatPanel.style.width = savedWidth;
-        chatPanel.style.minWidth = savedWidth;
-      }
-    }
   }
 }
 

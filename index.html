@@ -1521,6 +1521,44 @@
     .settings-toggle input:checked ~ .knob {
       left: 16px;
     }
+
+    /* Onboarding overlay */
+    .onboard-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .onboard-overlay.oc-hidden { display: none; }
+    .onboard-card {
+      position: relative;
+      background: var(--background-secondary);
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 14px;
+      padding: 28px 24px 20px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    }
+    .onboard-step-num {
+      background: var(--interactive-accent);
+      color: var(--text-on-accent);
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
     .tree-settings-popup-item {
       display: flex;
       align-items: center;
