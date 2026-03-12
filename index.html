@@ -1431,6 +1431,13 @@
       color: var(--text-normal);
       background: rgba(255,255,255,0.06);
     }
+    .settings-field-input {
+      transition: opacity 0.15s, border-color 0.15s;
+    }
+    .settings-field-input:focus {
+      border-color: var(--interactive-accent) !important;
+      opacity: 1 !important;
+    }
 
     /* ─── Editor Panel ───────────────────────────────────────────── */
     .editor-tab-bar {
@@ -1922,7 +1929,7 @@
       color: var(--text-normal);
     }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=5">
+  <link rel="stylesheet" href="/theme.css?v=6">
 </head>
 <body>
   <div class="app">
@@ -2030,8 +2037,8 @@
     </div>
   </div>
 
-  <script src="/app.js?v=5"></script>
-  <script src="/workspace.js?v=5"></script>
+  <script src="/app.js?v=6"></script>
+  <script src="/workspace.js?v=6"></script>
   <script>
     // Init workspace panels after DOM is ready
     initWorkspace();

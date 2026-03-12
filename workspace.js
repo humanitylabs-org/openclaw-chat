@@ -836,10 +836,17 @@ function renderMarkdown(text) {
     return '<ul>' + match + '</ul>';
   });
 
+  // Before paragraph conversion, remove blank lines between consecutive list items
+  // This prevents </p><p> and <br> from appearing inside <ul>/<ol>
+  html = html.replace(/(<\/li>)\s*\n\s*\n\s*(<li)/g, '$1\n$2');
+
   // Paragraphs
   html = html.replace(/\n\n/g, "</p><p>");
   html = html.replace(/\n/g, "<br>");
   html = "<p>" + html + "</p>";
+
+  // Clean up <br> between list items inside ul/ol
+  html = html.replace(/<\/li>\s*<br>\s*<li/g, '</li><li');
 
   // Clean up: remove <p> wrapping around block elements
   const blocks = ['h[1-6]', 'pre', 'ul', 'ol', 'table', 'blockquote', 'hr', 'div'];
@@ -936,19 +943,108 @@ function renderSettingsPopup() {
   const themeIcon = currentTheme === "dark"
     ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/></svg>'
     : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"/></svg>';
-  const connectedClass = workspace.connected ? ' style="color:#4caf50"' : '';
-  const connLabel = workspace.connected ? "Connected" : "Disconnected";
+
+  // Get connection info
+  let gatewayUrl = '';
+  let token = '';
+  try {
+    const connData = JSON.parse(localStorage.getItem("connection") || '{}');
+    gatewayUrl = connData.gatewayUrl || '';
+    token = connData.token || '';
+  } catch {}
+  const isConnected = workspace.connected;
+  const connDot = isConnected ? 'connected' : '';
+  const connColor = isConnected ? 'color:#4caf50' : '';
+  const connLabel = isConnected ? 'Connected' : 'Disconnected';
+  const isEditing = workspace._settingsEditing || false;
+
   popup.innerHTML = `
     <div class="tree-settings-popup-item" onclick="toggleTheme()">
       ${themeIcon}
       <span class="settings-label">Appearance</span>
       <span class="settings-value">${themeLabel}</span>
     </div>
-    <div class="tree-settings-popup-item" style="cursor:default; pointer-events:none;">
-      <span class="fs-dot${workspace.connected ? ' connected' : ''}" style="width:8px;height:8px;"></span>
-      <span class="settings-label"${connectedClass}>${connLabel}</span>
+    <div style="padding:6px 10px; border-top:1px solid var(--background-modifier-border); margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span class="fs-dot ${connDot}" style="width:8px;height:8px;flex-shrink:0;"></span>
+        <span style="font-size:12px;${connColor};flex:1;">${connLabel}</span>
+        <button id="settings-modify-btn" onclick="toggleSettingsEditing()" style="
+          background:none;border:1px solid var(--background-modifier-border);
+          color:var(--text-faint);padding:2px 8px;border-radius:4px;
+          font-size:10px;cursor:pointer;transition:all 0.15s;
+        ">${isEditing ? 'Cancel' : 'Modify'}</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <input id="settings-gateway-url" class="settings-field-input" type="text"
+          value="${escapeHtml(gatewayUrl)}" placeholder="Gateway URL"
+          ${isEditing ? '' : 'disabled'}
+          style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
+            background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+            color:${isEditing ? 'var(--text-normal)' : 'var(--text-faint)'};
+            font-family:var(--font-mono,monospace);outline:none;
+            ${isEditing ? '' : 'opacity:0.5;cursor:default;'}">
+        <input id="settings-token" class="settings-field-input" type="password"
+          value="${escapeHtml(token)}" placeholder="Auth Token"
+          ${isEditing ? '' : 'disabled'}
+          style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
+            background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+            color:${isEditing ? 'var(--text-normal)' : 'var(--text-faint)'};
+            font-family:var(--font-mono,monospace);outline:none;
+            ${isEditing ? '' : 'opacity:0.5;cursor:default;'}">
+        ${isEditing ? `
+          <button onclick="saveConnectionSettings()" style="
+            width:100%;padding:6px;font-size:11px;border-radius:4px;
+            background:var(--interactive-accent);color:var(--text-on-accent);
+            border:none;cursor:pointer;font-weight:500;transition:opacity 0.15s;
+          ">Save & Reconnect</button>
+        ` : ''}
+      </div>
     </div>
   `;
+}
+
+function toggleSettingsEditing() {
+  workspace._settingsEditing = !workspace._settingsEditing;
+  renderSettingsPopup();
+  if (workspace._settingsEditing) {
+    // Focus the URL field
+    setTimeout(() => {
+      const urlInput = document.getElementById("settings-gateway-url");
+      if (urlInput) urlInput.focus();
+    }, 50);
+  }
+}
+
+function saveConnectionSettings() {
+  const urlInput = document.getElementById("settings-gateway-url");
+  const tokenInput = document.getElementById("settings-token");
+  if (!urlInput || !tokenInput) return;
+  const newUrl = urlInput.value.trim();
+  const newToken = tokenInput.value.trim();
+  if (!newUrl || !newToken) return;
+
+  // Save to localStorage
+  localStorage.setItem("connection", JSON.stringify({ gatewayUrl: newUrl, token: newToken }));
+
+  // Update workspace file server URL
+  workspace._settingsEditing = false;
+  deriveFileServerUrl();
+
+  // Reconnect file server
+  workspace.connected = false;
+  updateFsStatus(false);
+  if (workspace.fileServerUrl) connectFileServer();
+
+  // Trigger chat reconnection if available
+  if (typeof state !== 'undefined' && state.gateway) {
+    state.gatewayUrl = newUrl;
+    state.token = newToken;
+    state.gateway.stop();
+    // Reconnect with new credentials
+    connectToGateway().catch(err => console.error("Reconnect failed:", err));
+  }
+
+  renderSettingsPopup();
 }
 
 // ─── Panel Navigation (Mobile Swipe) ────────────────────────────────

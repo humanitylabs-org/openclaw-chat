@@ -1165,11 +1165,22 @@ body {
 .editor-preview .task-list {
   list-style: none;
   padding-left: 2px;
+  margin: 4px 0;
+}
+
+.editor-preview .task-list li {
+  margin-bottom: 0;
+  padding: 1px 0;
+  line-height: 1.5;
+}
+
+.editor-preview .task-list br {
+  display: none;
 }
 
 .editor-preview .task {
   gap: 8px;
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 .editor-preview .task input[type="checkbox"] {
@@ -1444,4 +1455,123 @@ body[data-theme="light"] .openclaw-audio-play-btn {
   background: var(--input-bg);
   color: var(--text-normal);
   border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Chat input area - light mode */
+body[data-theme="light"] .openclaw-input-area {
+  background: rgba(250, 250, 250, 0.92);
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+body[data-theme="light"] .openclaw-input-row {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body[data-theme="light"] .openclaw-input-row:focus-within {
+  border-color: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+body[data-theme="light"] .openclaw-input {
+  color: var(--text-normal);
+}
+
+body[data-theme="light"] .openclaw-input::placeholder {
+  color: var(--text-faint);
+}
+
+body[data-theme="light"] .openclaw-attach-btn {
+  color: var(--text-faint);
+}
+
+body[data-theme="light"] .openclaw-attach-btn:hover {
+  color: var(--text-normal);
+}
+
+body[data-theme="light"] .openclaw-model-label {
+  color: var(--text-faint);
+}
+
+body[data-theme="light"] .openclaw-model-label:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-muted);
+}
+
+body[data-theme="light"] .openclaw-status-dot {
+  border-color: var(--background-secondary);
+}
+
+body[data-theme="light"] .openclaw-attach-chip {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Settings popup - light mode */
+body[data-theme="light"] .tree-settings-popup {
+  background: var(--background-secondary);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+}
+
+body[data-theme="light"] .tree-settings-popup-item {
+  color: var(--text-muted);
+}
+
+body[data-theme="light"] .tree-settings-popup-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-normal);
+}
+
+body[data-theme="light"] .tree-settings-cogwheel {
+  color: var(--text-faint);
+}
+
+body[data-theme="light"] .tree-settings-cogwheel:hover {
+  color: var(--text-normal);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Connection fields in settings - light mode */
+body[data-theme="light"] .settings-field-input {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--text-normal);
+}
+
+body[data-theme="light"] .settings-field-input:disabled {
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--text-faint);
+}
+
+/* Modal overlays - light mode */
+body[data-theme="light"] .modal {
+  background: rgba(250, 250, 250, 0.95);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+}
+
+body[data-theme="light"] .oc-confirm-box {
+  background: rgba(250, 250, 250, 0.95);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body[data-theme="light"] .openclaw-agent-dropdown {
+  background: rgba(250, 250, 250, 0.95);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body[data-theme="light"] .oc-hamburger-dropdown {
+  background: var(--background-secondary);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Editor mode indicator - light mode */
+body[data-theme="light"] .editor-mode-indicator.reading {
+  background: rgba(26, 26, 26, 0.06);
+  color: var(--text-muted);
+}
+
+body[data-theme="light"] .editor-mode-indicator.edit {
+  background: rgba(76, 175, 80, 0.08);
+  color: #2e7d32;
 }
