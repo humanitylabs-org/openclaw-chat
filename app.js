@@ -742,6 +742,12 @@ function renderMobileTabSwitcher() {
     label.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;opacity:0.7"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg> Home';
   } else {
     label.textContent = current.label;
+    label.title = "Double-click to rename";
+    label.style.cursor = "default";
+    label.ondblclick = (e) => {
+      e.stopPropagation();
+      startSwitcherRename(label, current);
+    };
   }
 
   // Meter
@@ -782,6 +788,39 @@ function renderMobileTabSwitcher() {
     });
     actions.appendChild(closeBtn);
   }
+}
+
+function startSwitcherRename(labelEl, tab) {
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = tab.label;
+  input.maxLength = 30;
+  input.style.cssText = "font-size:14px;font-weight:600;background:rgba(128,128,128,0.2);border:1px solid var(--interactive-accent);border-radius:4px;color:var(--text-normal);padding:2px 6px;width:100%;outline:none;min-height:24px;";
+  labelEl.textContent = "";
+  labelEl.appendChild(input);
+  input.focus();
+  input.select();
+  const finish = async (save) => {
+    const newName = input.value.trim();
+    if (save && newName && newName !== tab.label) {
+      try {
+        await state.gateway.request("sessions.patch", {
+          key: `${agentPrefix()}${tab.key}`,
+          label: newName,
+        });
+        tab.label = newName;
+      } catch { /* keep old name */ }
+    }
+    renderTabs();
+    renderMobileTabSwitcher();
+  };
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); finish(true); }
+    if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    e.stopPropagation();
+  });
+  input.addEventListener("blur", () => finish(true));
+  input.addEventListener("click", (e) => e.stopPropagation());
 }
 
 // Init tab switcher arrow events
