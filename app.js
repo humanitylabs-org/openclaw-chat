@@ -875,6 +875,13 @@ async function resetTab(tab) {
       deliver: false,
       idempotencyKey: "reset-" + Date.now(),
     });
+    try {
+      await state.gateway.request("sessions.patch", {
+        key: `${agentPrefix()}${tab.key}`,
+        label: "Untitled",
+      });
+      tab.label = "Untitled";
+    } catch { /* label reset optional */ }
     if (tab.key === state.sessionKey) {
       state.messages = [];
       ui.messagesContainer.innerHTML = "";
@@ -915,7 +922,9 @@ async function closeTab(tab, currentKey) {
 
 async function createNewTab() {
   if (!state.gateway?.connected) return;
-  const nums = state.tabSessions.map(t => parseInt(t.label)).filter(n => !isNaN(n));
+  const nums = state.tabSessions
+    .map(t => { const m = t.key.match(/^tab-(\d+)$/); return m ? parseInt(m[1]) : NaN; })
+    .filter(n => !isNaN(n));
   const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1;
   const sessionKey = `tab-${nextNum}`;
   try {
@@ -929,7 +938,7 @@ async function createNewTab() {
     try {
       await state.gateway.request("sessions.patch", {
         key: `${agentPrefix()}${sessionKey}`,
-        label: String(nextNum),
+        label: "Untitled",
       });
     } catch { /* label optional */ }
 
