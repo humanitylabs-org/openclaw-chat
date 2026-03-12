@@ -1,0 +1,1373 @@
+/* ══════════════════════════════════════════════════════════════
+   Vajra Design System — OpenClaw Chat PWA Theme
+   Full monochrome redesign with IBM Plex typography
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Design Tokens ─────────────────────────────────────────── */
+
+:root {
+  --background-primary: #0B0B0D;
+  --background-secondary: #141416;
+  --background-modifier-border: rgba(255, 255, 255, 0.06);
+  --background-modifier-hover: rgba(255, 255, 255, 0.04);
+  --text-normal: #F2F2F2;
+  --text-muted: #AAAAAA;
+  --text-faint: #666666;
+  --text-on-accent: #0B0B0D;
+  --interactive-accent: #F2F2F2;
+  --interactive-accent-hover: #FFFFFF;
+  --surface: #1A1A1E;
+  --input-bg: #28282D;
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Fira Code', monospace;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+
+body {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Onboarding ────────────────────────────────────────────── */
+
+.onboarding-step {
+  border-radius: 4px;
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+}
+
+.onboarding-step h2 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.input-group label {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.input-group input {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  border-radius: 4px;
+  background: var(--input-bg);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-normal);
+}
+
+.input-group input:focus {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.input-group input::placeholder {
+  color: var(--text-faint);
+}
+
+.input-group small {
+  font-family: var(--font-sans);
+  color: var(--text-faint);
+}
+
+.btn {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  border-radius: 4px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  letter-spacing: 0.02em;
+  transition: opacity 0.2s;
+}
+
+.btn:hover {
+  background: var(--interactive-accent-hover);
+  opacity: 0.9;
+}
+
+.btn:disabled {
+  background: var(--input-bg);
+  color: var(--text-faint);
+}
+
+.status-message {
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-weight: 300;
+}
+
+.status-message.error {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+}
+
+.status-message.success {
+  background: rgba(76, 175, 80, 0.08);
+  color: #4caf50;
+}
+
+.status-message.info {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+
+.spinner {
+  border-color: rgba(255, 255, 255, 0.08);
+  border-top-color: var(--text-muted);
+}
+
+/* ── Tab Bar ───────────────────────────────────────────────── */
+
+.openclaw-tab-bar {
+  border-bottom-color: var(--background-modifier-border);
+}
+
+.openclaw-tab {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  border-radius: 4px 4px 0 0;
+  color: var(--text-faint);
+}
+
+.openclaw-tab:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+}
+
+.openclaw-tab.active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border);
+  border-bottom-color: var(--background-primary);
+  font-weight: 500;
+}
+
+.openclaw-tab-label {
+  font-family: var(--font-sans);
+}
+
+.openclaw-tab-label-input {
+  font-family: var(--font-sans);
+  background: var(--input-bg);
+  border-color: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.openclaw-tab-meter {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 1px;
+}
+
+.openclaw-tab-meter-fill {
+  background: var(--text-normal);
+  opacity: 0.3;
+  border-radius: 1px;
+}
+
+.openclaw-tab-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.openclaw-tab-add:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Agent Switcher ────────────────────────────────────────── */
+
+.openclaw-agent-btn {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.openclaw-agent-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.openclaw-agent-dropdown {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.openclaw-agent-item {
+  border-radius: 4px;
+}
+
+.openclaw-agent-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.openclaw-agent-item.active {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.openclaw-agent-item-name {
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+.openclaw-agent-item-sub {
+  font-family: var(--font-sans);
+  color: var(--text-faint);
+}
+
+/* ── Hamburger Menu ────────────────────────────────────────── */
+
+.oc-hamburger-bar {
+  border-bottom-color: var(--background-modifier-border);
+}
+
+.oc-hamburger-btn:hover,
+.oc-hamburger-add:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.oc-hamburger-current {
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+.oc-hamburger-dropdown {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+}
+
+.oc-hamburger-dropdown-item {
+  font-family: var(--font-sans);
+}
+
+.oc-hamburger-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.oc-hamburger-dropdown-item.oc-active {
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.oc-hamburger-dropdown-item .oc-dd-meter {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.oc-hamburger-dropdown-item .oc-dd-meter-fill {
+  background: var(--text-normal);
+  opacity: 0.3;
+}
+
+.oc-hamburger-dropdown-item .oc-dd-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Confirm Modal ─────────────────────────────────────────── */
+
+.oc-confirm-box {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.oc-confirm-title {
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+.oc-confirm-msg {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  color: var(--text-muted);
+}
+
+.oc-confirm-check {
+  font-family: var(--font-sans);
+  color: var(--text-faint);
+}
+
+.oc-confirm-buttons button {
+  border-radius: 4px;
+  font-family: var(--font-sans);
+}
+
+.oc-confirm-cancel {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.oc-confirm-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.oc-confirm-ok {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.oc-confirm-ok:hover {
+  opacity: 0.9;
+}
+
+/* ── Status Banner ─────────────────────────────────────────── */
+
+.openclaw-banner {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+@keyframes openclaw-banner-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ── Messages ──────────────────────────────────────────────── */
+
+.openclaw-messages:empty::after {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  color: var(--text-faint);
+}
+
+.openclaw-msg {
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-weight: 300;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.openclaw-msg-user {
+  background: var(--input-bg);
+  color: var(--text-normal);
+  border-bottom-right-radius: 2px;
+}
+
+.openclaw-msg-user .openclaw-msg-text {
+  color: var(--text-normal);
+}
+
+.openclaw-msg-assistant {
+  background: transparent;
+  color: var(--text-normal);
+}
+
+.openclaw-msg-assistant code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 300;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+}
+
+.openclaw-msg-assistant pre {
+  border-radius: 4px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  font-family: var(--font-mono);
+  font-weight: 300;
+}
+
+.openclaw-msg-assistant pre code {
+  background: none;
+}
+
+.openclaw-msg-assistant a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+
+.openclaw-msg-assistant a:hover {
+  color: var(--text-normal);
+}
+
+.openclaw-msg-assistant blockquote {
+  border-left-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-muted);
+}
+
+/* Message markdown headings */
+.openclaw-msg-assistant h1,
+.openclaw-msg-assistant h2,
+.openclaw-msg-assistant h3,
+.openclaw-msg-assistant h4 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-normal);
+}
+
+.openclaw-msg-assistant h1 { font-size: 1.4em; margin: 16px 0 8px; }
+.openclaw-msg-assistant h2 { font-size: 1.2em; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--background-modifier-border); }
+.openclaw-msg-assistant h3 { font-size: 1.05em; margin: 12px 0 4px; }
+
+.openclaw-msg-assistant table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.openclaw-msg-assistant th {
+  text-align: left;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.openclaw-msg-assistant td {
+  padding: 4px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.openclaw-msg-assistant ul,
+.openclaw-msg-assistant ol {
+  padding-left: 20px;
+}
+
+.openclaw-msg-assistant li {
+  margin-bottom: 3px;
+  line-height: 1.6;
+}
+
+.openclaw-msg-assistant li::marker {
+  color: var(--text-faint);
+}
+
+.openclaw-msg-assistant hr {
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+  margin: 12px 0;
+}
+
+/* Message images */
+.openclaw-msg-img {
+  border-radius: 4px;
+}
+
+/* Full-size overlay */
+.openclaw-img-overlay img {
+  border-radius: 4px;
+}
+
+/* ── Tool Calls ────────────────────────────────────────────── */
+
+.openclaw-tool-item {
+  font-family: var(--font-mono);
+  font-weight: 300;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.openclaw-tool-link {
+  color: var(--text-faint);
+}
+
+.openclaw-tool-link:hover {
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+.openclaw-tool-dots .openclaw-dot {
+  background: var(--text-faint);
+}
+
+/* ── Typing Indicator ──────────────────────────────────────── */
+
+.openclaw-typing-inner {
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.openclaw-typing-text {
+  font-family: var(--font-mono);
+  font-weight: 300;
+  color: var(--text-faint);
+}
+
+.openclaw-dot {
+  background: var(--text-faint);
+}
+
+/* ── Input Area ────────────────────────────────────────────── */
+
+.openclaw-input-row {
+  border-radius: 4px;
+  background: var(--input-bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 4px 4px 4px 8px;
+}
+
+.openclaw-input-row:focus-within {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.openclaw-input {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  color: var(--text-normal);
+}
+
+.openclaw-input::placeholder {
+  color: var(--text-faint);
+}
+
+.openclaw-brain-btn {
+  color: var(--text-faint);
+}
+
+.openclaw-brain-btn:hover {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.openclaw-attach-btn {
+  color: var(--text-faint);
+}
+
+.openclaw-attach-btn:hover {
+  color: var(--text-muted);
+}
+
+/* Send button: white, monochrome */
+.openclaw-send-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 50%;
+  transition: opacity 0.15s;
+}
+
+.openclaw-send-btn:hover {
+  opacity: 0.85;
+}
+
+.openclaw-send-btn:disabled {
+  opacity: 0.15;
+}
+
+/* Status dot */
+.openclaw-status-dot {
+  background: var(--text-faint);
+  border-color: var(--input-bg);
+}
+
+.openclaw-status-dot.connected {
+  background: #4caf50;
+}
+
+/* Abort button */
+.openclaw-abort-btn {
+  background: #e53935;
+  border-radius: 50%;
+}
+
+/* Reconnect */
+.openclaw-reconnect-btn {
+  color: #e53935;
+}
+
+.openclaw-reconnect-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Attachment Preview ────────────────────────────────────── */
+
+.openclaw-attach-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+}
+
+.openclaw-attach-thumb {
+  border-radius: 3px;
+}
+
+.openclaw-attach-name {
+  font-family: var(--font-sans);
+  font-weight: 300;
+}
+
+/* ── Audio Player ──────────────────────────────────────────── */
+
+.openclaw-audio-play-btn {
+  background: var(--input-bg);
+  color: var(--text-normal);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+.openclaw-audio-play-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.openclaw-audio-progress {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 2px;
+}
+
+.openclaw-audio-bar {
+  background: var(--text-muted);
+  border-radius: 2px;
+}
+
+/* ── Model Picker Modal ────────────────────────────────────── */
+
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+  border-radius: 4px;
+  font-family: var(--font-sans);
+}
+
+.modal h3 {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.openclaw-picker-row {
+  border-radius: 4px;
+  font-family: var(--font-sans);
+}
+
+.openclaw-picker-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.openclaw-picker-row.active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.openclaw-picker-dot {
+  color: var(--text-normal);
+}
+
+.openclaw-picker-meta {
+  font-family: var(--font-mono);
+  color: var(--text-faint);
+}
+
+.openclaw-picker-back {
+  font-family: var(--font-sans);
+}
+
+.openclaw-picker-back:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.openclaw-picker-footer {
+  border-top-color: var(--background-modifier-border);
+  font-family: var(--font-sans);
+  color: var(--text-faint);
+}
+
+.openclaw-picker-footer a {
+  color: var(--text-faint);
+}
+
+/* ── Model Label ───────────────────────────────────────────── */
+
+.openclaw-model-label {
+  font-family: var(--font-mono);
+  font-weight: 300;
+  color: var(--text-faint);
+}
+
+.openclaw-model-label:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FILE TREE — Obsidian Style
+   ══════════════════════════════════════════════════════════════ */
+
+.tree-panel {
+  background: rgba(11, 11, 13, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.tree-header {
+  border-bottom-color: rgba(255, 255, 255, 0.03);
+  padding: 12px 14px 10px;
+}
+
+.tree-title {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.tree-icon-btn {
+  color: var(--text-faint);
+  opacity: 0.6;
+}
+
+.tree-icon-btn:hover {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  opacity: 1;
+}
+
+/* Search */
+.tree-search input {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  color: var(--text-normal);
+}
+
+.tree-search input:focus {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tree-search input::placeholder {
+  color: var(--text-faint);
+}
+
+.search-match {
+  color: var(--text-normal);
+  font-weight: 500;
+}
+
+/* Tree items — tight, Obsidian-like */
+.tree-content {
+  padding: 4px 0;
+}
+
+.tree-item {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  font-size: 13px;
+  color: rgba(242, 242, 242, 0.5);
+  padding: 3px 14px;
+  margin: 0 4px;
+  border-radius: 4px;
+  transition: all 0.12s;
+  gap: 6px;
+}
+
+.tree-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(242, 242, 242, 0.85);
+}
+
+.tree-item.active {
+  background: rgba(242, 242, 242, 0.06);
+  color: var(--text-normal);
+}
+
+.tree-dir .tree-name {
+  font-weight: 400;
+  color: rgba(242, 242, 242, 0.6);
+}
+
+.tree-dir:hover .tree-name {
+  color: rgba(242, 242, 242, 0.9);
+}
+
+.tree-arrow {
+  color: rgba(255, 255, 255, 0.15);
+  font-size: 8px;
+}
+
+.tree-arrow.open {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.tree-item:hover .tree-arrow {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.tree-name {
+  font-weight: 300;
+  letter-spacing: 0;
+}
+
+/* File server status */
+.tree-settings {
+  border-top-color: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.tree-settings-row {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  color: var(--text-faint);
+}
+
+.fs-dot {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fs-dot.connected {
+  background: #4caf50;
+  box-shadow: 0 0 4px rgba(76, 175, 80, 0.3);
+}
+
+.tree-settings-input input {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+}
+
+.tree-settings-input input:focus {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.tree-settings-input button {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  background: rgba(242, 242, 242, 0.06);
+  color: var(--text-muted);
+  border-color: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.tree-settings-input button:hover {
+  background: rgba(242, 242, 242, 0.1);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   EDITOR — Obsidian Reading/Edit Mode
+   ══════════════════════════════════════════════════════════════ */
+
+/* Panel borders */
+.panel-container.desktop .tree-panel {
+  border-right-color: var(--background-modifier-border);
+}
+
+.panel-container.desktop .editor-panel {
+  border-right-color: var(--background-modifier-border);
+}
+
+.panel-resizer:hover,
+.panel-resizer:active {
+  background: rgba(242, 242, 242, 0.15);
+}
+
+/* Editor tab bar */
+.editor-tab-bar {
+  border-bottom-color: var(--background-modifier-border);
+}
+
+.editor-tab {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  border-radius: 4px 4px 0 0;
+  color: var(--text-faint);
+}
+
+.editor-tab:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+}
+
+.editor-tab.active {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-normal);
+  font-weight: 400;
+}
+
+.editor-tab-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Editor banner */
+.editor-banner {
+  background: rgba(255, 193, 7, 0.06);
+  color: #ffc107;
+  font-family: var(--font-sans);
+  font-weight: 300;
+}
+
+.editor-banner button {
+  border-color: rgba(255, 193, 7, 0.2);
+  border-radius: 4px;
+  font-family: var(--font-sans);
+}
+
+/* Toolbar */
+.editor-toolbar {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom-color: var(--background-modifier-border);
+}
+
+.editor-btn {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  border-radius: 4px;
+  color: var(--text-faint);
+}
+
+.editor-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-normal);
+}
+
+.editor-btn.active {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-normal);
+}
+
+.editor-btn.save-btn {
+  background: rgba(242, 242, 242, 0.08);
+  color: var(--text-muted);
+}
+
+.editor-btn.save-btn:hover {
+  background: rgba(242, 242, 242, 0.12);
+  color: var(--text-normal);
+}
+
+/* Textarea (edit mode) */
+.editor-textarea {
+  font-family: var(--font-mono);
+  font-weight: 300;
+  font-size: 14px;
+  line-height: 1.8;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+/* Empty state */
+.editor-empty {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  color: var(--text-faint);
+}
+
+/* ── Editor Preview — Obsidian Reading View ────────────────── */
+
+.editor-preview {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-normal);
+  letter-spacing: 0;
+}
+
+/* Headings */
+.editor-preview h1 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 1.8em;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 1.6em 0 0.5em;
+  color: var(--text-normal);
+}
+
+.editor-preview h1:first-child {
+  margin-top: 0;
+}
+
+.editor-preview h2 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 1.4em;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin: 1.4em 0 0.4em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-normal);
+}
+
+.editor-preview h3 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 1.15em;
+  line-height: 1.4;
+  margin: 1.2em 0 0.3em;
+  color: var(--text-normal);
+}
+
+.editor-preview h4 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 1em;
+  margin: 1em 0 0.2em;
+  color: var(--text-normal);
+}
+
+.editor-preview h5,
+.editor-preview h6 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Body text */
+.editor-preview p {
+  margin: 0.5em 0;
+}
+
+/* Inline code */
+.editor-preview code {
+  font-family: var(--font-mono);
+  font-weight: 300;
+  font-size: 0.85em;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--text-normal);
+}
+
+/* Code blocks */
+.editor-preview .code-block {
+  border-radius: 4px;
+  background: var(--background-secondary);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+.editor-preview .code-lang {
+  font-family: var(--font-mono);
+  font-weight: 300;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+}
+
+.editor-preview pre {
+  font-family: var(--font-mono);
+  font-weight: 300;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.editor-preview pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* Links */
+.editor-preview a {
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.editor-preview a:hover {
+  color: var(--text-normal);
+  border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+.editor-preview .internal-link {
+  color: var(--text-muted);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.editor-preview .internal-link:hover {
+  color: var(--text-normal);
+  border-bottom-style: solid;
+}
+
+/* Lists */
+.editor-preview ul,
+.editor-preview ol {
+  margin: 6px 0;
+  padding-left: 22px;
+}
+
+.editor-preview li {
+  margin-bottom: 3px;
+  line-height: 1.7;
+}
+
+.editor-preview li::marker {
+  color: var(--text-faint);
+}
+
+/* Task lists */
+.editor-preview .task-list {
+  list-style: none;
+  padding-left: 2px;
+}
+
+.editor-preview .task input[type="checkbox"] {
+  accent-color: var(--text-muted);
+}
+
+.editor-preview .task-done {
+  color: var(--text-faint);
+}
+
+/* Blockquotes */
+.editor-preview blockquote {
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 14px;
+  margin: 10px 0;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.015);
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* Tables */
+.editor-preview table {
+  font-family: var(--font-sans);
+  font-weight: 300;
+}
+
+.editor-preview th {
+  font-weight: 500;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.editor-preview td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.editor-preview tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Callouts */
+.editor-preview .callout {
+  border-radius: 4px;
+  border-left-width: 3px;
+  font-family: var(--font-sans);
+}
+
+.editor-preview .callout-title {
+  font-weight: 500;
+  font-family: var(--font-sans);
+}
+
+.editor-preview .callout-body {
+  font-weight: 300;
+}
+
+.editor-preview .callout-note,
+.editor-preview .callout-info {
+  background: rgba(170, 170, 170, 0.04);
+  border-color: var(--text-faint);
+}
+
+.editor-preview .callout-tip,
+.editor-preview .callout-success {
+  background: rgba(76, 175, 80, 0.04);
+  border-color: #4caf50;
+}
+
+.editor-preview .callout-warning,
+.editor-preview .callout-caution {
+  background: rgba(255, 193, 7, 0.04);
+  border-color: #ffc107;
+}
+
+.editor-preview .callout-danger,
+.editor-preview .callout-bug {
+  background: rgba(239, 68, 68, 0.04);
+  border-color: #ef4444;
+}
+
+.editor-preview .callout-example,
+.editor-preview .callout-abstract {
+  background: rgba(170, 170, 170, 0.03);
+  border-color: var(--text-muted);
+}
+
+.editor-preview .callout-quote {
+  background: rgba(255, 255, 255, 0.015);
+  border-color: var(--text-faint);
+}
+
+/* Horizontal rules */
+.editor-preview hr {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 28px 0;
+}
+
+.editor-preview del {
+  color: var(--text-faint);
+}
+
+.editor-preview mark {
+  background: rgba(242, 242, 242, 0.12);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.editor-preview img {
+  border-radius: 4px;
+}
+
+/* ── Panel Dots (mobile) ───────────────────────────────────── */
+
+.panel-dots {
+  background: rgba(11, 11, 13, 0.95);
+  border-top-color: rgba(255, 255, 255, 0.03);
+}
+
+.panel-dots .dot {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.panel-dots .dot.active {
+  background: var(--text-normal);
+  box-shadow: 0 0 6px rgba(242, 242, 242, 0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LIGHT THEME
+   ══════════════════════════════════════════════════════════════ */
+
+body[data-theme="light"] {
+  --background-primary: #FAFAFA;
+  --background-secondary: #F0F0F0;
+  --background-modifier-border: rgba(0, 0, 0, 0.08);
+  --background-modifier-hover: rgba(0, 0, 0, 0.03);
+  --text-normal: #1a1a1a;
+  --text-muted: #555555;
+  --text-faint: #999999;
+  --text-on-accent: #FAFAFA;
+  --interactive-accent: #1a1a1a;
+  --interactive-accent-hover: #000000;
+  --surface: #E8E8E8;
+  --input-bg: #E5E5E5;
+}
+
+body[data-theme="light"] .tree-panel {
+  background: rgba(240, 240, 240, 0.95);
+}
+
+body[data-theme="light"] .tree-item {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+body[data-theme="light"] .tree-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.85);
+}
+
+body[data-theme="light"] .tree-item.active {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-normal);
+}
+
+body[data-theme="light"] .tree-dir .tree-name {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+body[data-theme="light"] .tree-arrow {
+  color: rgba(0, 0, 0, 0.15);
+}
+
+body[data-theme="light"] .tree-arrow.open {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+body[data-theme="light"] .tree-settings {
+  background: rgba(0, 0, 0, 0.02);
+  border-top-color: rgba(0, 0, 0, 0.05);
+}
+
+body[data-theme="light"] .editor-textarea {
+  background: #FFFFFF;
+}
+
+body[data-theme="light"] .editor-preview code {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+body[data-theme="light"] .editor-preview .code-block {
+  background: #F5F5F5;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body[data-theme="light"] .editor-preview mark {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+body[data-theme="light"] .editor-preview blockquote {
+  border-left-color: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+body[data-theme="light"] .editor-preview a {
+  color: var(--text-muted);
+  border-bottom-color: rgba(0, 0, 0, 0.15);
+}
+
+body[data-theme="light"] .editor-preview a:hover {
+  color: var(--text-normal);
+  border-bottom-color: rgba(0, 0, 0, 0.4);
+}
+
+body[data-theme="light"] .openclaw-msg-user {
+  background: var(--input-bg);
+  color: var(--text-normal);
+}
+
+body[data-theme="light"] .panel-dots {
+  background: rgba(240, 240, 240, 0.95);
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+body[data-theme="light"] .panel-dots .dot {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+body[data-theme="light"] .panel-dots .dot.active {
+  background: var(--text-normal);
+}
+
+body[data-theme="light"] .fs-dot {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+body[data-theme="light"] .openclaw-input-row {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+body[data-theme="light"] .tree-search input {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+body[data-theme="light"] .tree-search input:focus {
+  border-color: rgba(0, 0, 0, 0.15);
+  background: #FFFFFF;
+}
+
+body[data-theme="light"] .openclaw-tool-item {
+  color: var(--text-faint);
+}
+
+body[data-theme="light"] .openclaw-typing-inner {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+body[data-theme="light"] .openclaw-audio-play-btn {
+  background: var(--input-bg);
+  color: var(--text-normal);
+  border-color: rgba(0, 0, 0, 0.1);
+}

@@ -4,8 +4,8 @@
   "description": "Chat with your OpenClaw AI assistant",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1a1a",
-  "theme_color": "#1a1a1a",
+  "background_color": "#0B0B0D",
+  "theme_color": "#0B0B0D",
   "orientation": "portrait-primary",
   "icons": [
     {

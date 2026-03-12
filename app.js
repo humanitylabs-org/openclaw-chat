@@ -1376,21 +1376,116 @@ function formatMarkdown(text) {
   // Remove VOICE: refs from display
   text = text.replace(/VOICE:([^\s]+)/g, "");
 
-  let formatted = text
-    // Code blocks
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-    // Bold
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    // Italic
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    // Inline code
-    .replace(/`(.+?)`/g, "<code>$1</code>")
-    // Links
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-    // Line breaks
-    .replace(/\n/g, "<br>");
+  // Protect code blocks
+  const codeBlocks = [];
+  let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    const langLabel = lang ? `<div style="font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:10px;color:var(--text-faint,#666);padding:4px 10px 0;letter-spacing:0.06em;text-transform:uppercase">${lang}</div>` : "";
+    codeBlocks.push(`<pre style="margin:6px 0;background:var(--background-secondary,#141416);border:1px solid var(--background-modifier-border,rgba(255,255,255,0.06));border-radius:4px;overflow-x:auto">${langLabel}<code style="display:block;padding:8px 12px;font-size:12px;line-height:1.6;background:none">${escapeHtmlChat(code)}</code></pre>`);
+    return `\x00CB${idx}\x00`;
+  });
 
-  return formatted;
+  // Protect inline code
+  const inlineCodes = [];
+  processed = processed.replace(/`([^`]+)`/g, (_, code) => {
+    const idx = inlineCodes.length;
+    inlineCodes.push(`<code>${escapeHtmlChat(code)}</code>`);
+    return `\x00IC${idx}\x00`;
+  });
+
+  // Escape remaining HTML
+  let html = escapeHtmlChat(processed);
+
+  // Restore protected elements
+  html = html.replace(/\x00CB(\d+)\x00/g, (_, i) => codeBlocks[i]);
+  html = html.replace(/\x00IC(\d+)\x00/g, (_, i) => inlineCodes[i]);
+
+  // Tables
+  html = html.replace(/^(\|.+\|)\n(\|[\s\-:|]+\|)\n((?:\|.+\|\n?)+)/gm, (_, header, align, body) => {
+    const parseAligns = (row) => row.split('|').filter(c => c.trim()).map(c => {
+      c = c.trim();
+      if (c.startsWith(':') && c.endsWith(':')) return 'center';
+      if (c.endsWith(':')) return 'right';
+      return 'left';
+    });
+    const aligns = parseAligns(align);
+    const ths = header.split('|').filter(c => c.trim()).map((c, i) =>
+      `<th style="text-align:${aligns[i]||'left'}">${c.trim()}</th>`
+    ).join('');
+    const rows = body.trim().split('\n').map(row => {
+      const cells = row.split('|').filter(c => c.trim()).map((c, i) =>
+        `<td style="text-align:${aligns[i]||'left'}">${c.trim()}</td>`
+      ).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    return `<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`;
+  });
+
+  // Blockquotes
+  html = html.replace(/^(&gt;\s?.+\n?)+/gm, (match) => {
+    const inner = match.replace(/^&gt;\s?/gm, '').trim();
+    return `<blockquote>${inner}</blockquote>`;
+  });
+
+  // Headers
+  html = html.replace(/^####\s+(.+)$/gm, "<h4>$1</h4>");
+  html = html.replace(/^###\s+(.+)$/gm, "<h3>$1</h3>");
+  html = html.replace(/^##\s+(.+)$/gm, "<h2>$1</h2>");
+  html = html.replace(/^#\s+(.+)$/gm, "<h1>$1</h1>");
+
+  // Horizontal rules
+  html = html.replace(/^---+$/gm, "<hr>");
+
+  // Bold & italic
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
+  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+
+  // Strikethrough
+  html = html.replace(/~~(.+?)~~/g, "<del>$1</del>");
+
+  // Images
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:4px">');
+
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+  // Unordered lists
+  html = html.replace(/^[\-\*]\s+(.+)$/gm, "<li>$1</li>");
+
+  // Ordered lists
+  html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ol-item">$1</li>');
+
+  // Wrap consecutive li items
+  html = html.replace(/((?:<li(?:\s[^>]*)?>.*?<\/li>\s*)+)/g, (match) => {
+    if (match.includes('class="ol-item"')) return '<ol>' + match.replace(/ class="ol-item"/g, '') + '</ol>';
+    return '<ul>' + match + '</ul>';
+  });
+
+  // Paragraphs
+  html = html.replace(/\n\n/g, "</p><p>");
+  html = html.replace(/\n/g, "<br>");
+  html = "<p>" + html + "</p>";
+
+  // Clean up: remove <p> around block elements
+  const blocks = ['h[1-6]', 'pre', 'ul', 'ol', 'table', 'blockquote', 'hr', 'div'];
+  for (const tag of blocks) {
+    html = html.replace(new RegExp(`<p>\\s*(<${tag}[\\s>])`, 'g'), '$1');
+    html = html.replace(new RegExp(`(</${tag}>)\\s*</p>`, 'g'), '$1');
+    if (tag === 'hr') {
+      html = html.replace(/<p>\s*(<hr>)/g, '$1');
+      html = html.replace(/(<hr>)\s*<\/p>/g, '$1');
+    }
+  }
+  html = html.replace(/<p>\s*<\/p>/g, "");
+
+  return html;
+}
+
+function escapeHtmlChat(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 function constructAudioUrl(path) {
