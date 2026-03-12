@@ -358,6 +358,15 @@ async function initApp() {
   }
 }
 
+// Click-to-copy for approve command
+document.getElementById("approve-cmd")?.addEventListener("click", () => {
+  const cmd = "openclaw devices approve --latest";
+  navigator.clipboard.writeText(cmd).then(() => {
+    const fb = document.getElementById("approve-copy-feedback");
+    if (fb) { fb.textContent = "✓"; setTimeout(() => { fb.textContent = "📋"; }, 1500); }
+  }).catch(() => {});
+});
+
 ui.connectBtn.addEventListener("click", async () => {
   const gatewayUrl = ui.gatewayUrlInput.value.trim();
   const token = ui.tokenInput.value.trim();
@@ -372,12 +381,16 @@ ui.connectBtn.addEventListener("click", async () => {
     state.deviceIdentity = await getOrCreateDeviceIdentity();
     localStorage.setItem("connection", JSON.stringify({ gatewayUrl, token }));
 
-    ui.step1.classList.add("hidden");
-    ui.step2.classList.remove("hidden");
-    ui.requestId.textContent = state.deviceIdentity.deviceId.slice(0, 16);
+    showStatus("Connecting...", "info");
     await connectToGateway();
   } catch (err) {
     console.error("Connection error:", err);
+    // Show step1 again if we're not in pairing flow
+    if (ui.step1.classList.contains("hidden") && ui.step2.classList.contains("hidden")) {
+      ui.step1.classList.remove("hidden");
+    } else if (ui.step2.classList.contains("hidden")) {
+      ui.step1.classList.remove("hidden");
+    }
     showStatus("Connection failed: " + err.message, "error");
     ui.connectBtn.disabled = false;
   }
@@ -394,6 +407,7 @@ function showStatus(message, type) {
 async function connectToGateway() {
   return new Promise((resolve, reject) => {
     let helloReceived = false;
+    let pairingDetected = false;
 
     state.gateway = new GatewayClient({
       url: state.gatewayUrl,
@@ -419,8 +433,14 @@ async function connectToGateway() {
       onClose: (info) => {
         console.log("Gateway connection closed:", info);
         updateConnectionStatus(false);
-        if (!helloReceived && info.reason === "pairing required") {
-          showStatus("Device needs approval. Please approve in Control UI.", "info");
+        if (!helloReceived && info.reason === "pairing required" && !pairingDetected) {
+          pairingDetected = true;
+          // Show step2 with approval instructions (gateway auto-reconnects)
+          if (ui.step1 && !ui.step1.classList.contains("hidden")) {
+            ui.step1.classList.add("hidden");
+          }
+          ui.step2.classList.remove("hidden");
+          ui.requestId.textContent = state.deviceIdentity.deviceId.slice(0, 16);
         }
       },
       onEvent: handleGatewayEvent,
@@ -428,8 +448,11 @@ async function connectToGateway() {
 
     state.gateway.start();
 
+    // Timeout only if no pairing flow — pairing waits indefinitely for approval
     setTimeout(() => {
-      if (!helloReceived) reject(new Error("Connection timeout - device may need approval"));
+      if (!helloReceived && !pairingDetected) {
+        reject(new Error("Connection timeout — check your gateway URL and token"));
+      }
     }, 30000);
   });
 }

@@ -2118,16 +2118,32 @@
 
       <div id="step2" class="onboarding-step hidden">
         <h2>🔐 Approve this device</h2>
-        <p style="margin-bottom: 1rem; color: var(--text-muted);">
-          Request ID: <strong id="request-id" style="color: var(--text-normal);">—</strong>
+        <p style="margin-bottom: 0.75rem; color: var(--text-muted);">
+          Device ID: <strong id="request-id" style="color: var(--text-normal); font-family: monospace; font-size: 0.85em;">—</strong>
         </p>
-        <p style="margin-bottom: 1.5rem; color: var(--text-muted);">
-          Open your gateway Control UI and approve this device.
+        <p style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9em;">
+          Your gateway needs to approve this device before you can connect. Choose one:
         </p>
+
+        <div style="margin-bottom: 1rem;">
+          <p style="color: var(--text-muted); font-size: 0.8em; margin-bottom: 0.4rem; font-weight: 500;">Option 1 — Run on the server:</p>
+          <div id="approve-cmd" style="background: #1a1a1e; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 0.6rem 0.8rem; font-family: monospace; font-size: 0.82em; color: var(--text-normal); cursor: pointer; position: relative; user-select: all;" title="Click to copy">
+            openclaw devices approve --latest
+            <span id="approve-copy-feedback" style="position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-size: 0.75em; color: var(--text-muted); transition: opacity 0.2s;">📋</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+          <p style="color: var(--text-muted); font-size: 0.8em; margin-bottom: 0.25rem; font-weight: 500;">Option 2 — Ask your bot:</p>
+          <p style="color: var(--text-muted); font-size: 0.82em;">
+            If you already have a channel connected (Telegram, Discord, etc.), just tell your bot: <em>"approve the pending device"</em>
+          </p>
+        </div>
+
         <div class="status-message info">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <div class="spinner"></div>
-            <span>Checking... ⏳</span>
+            <span>Waiting for approval...</span>
           </div>
         </div>
       </div>
