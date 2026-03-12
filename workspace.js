@@ -325,8 +325,7 @@ function updateTreeStatusDot() {
 // ─── Private Network Access Banner ──────────────────────────────────
 
 function showPnaBanner() {
-  // Only show once per page load, and only if chat is connected (so it's specifically the PNA issue)
-  if (workspace._pnaBannerShown || !workspace.chatConnected) return;
+  if (workspace._pnaBannerShown) return;
   workspace._pnaBannerShown = true;
 
   // Remove existing banner if any
@@ -348,13 +347,13 @@ function showPnaBanner() {
         <span id="pna-dismiss" style="cursor: pointer; color: #888; font-size: 1.2em; line-height: 1; padding: 0 0.2rem;">&times;</span>
       </div>
       <p style="margin: 0 0 0.6rem; color: #ccc;">
-        Chrome is asking to connect to your local network. This is needed to browse your workspace files.
+        Chrome blocked access to your local network. The file browser needs this to connect to your server.
       </p>
       <p style="margin: 0 0 0.6rem; color: #ccc;">
-        <strong style="color: #eee;">Click the 🔒 icon in the address bar</strong> (or the banner at the top), then choose <strong style="color: #eee;">Allow</strong>.
+        Click the <strong style="color: #eee;">⚙ icon in the address bar</strong>, find <strong style="color: #eee;">"Access other devices on your local network"</strong>, switch it to <strong style="color: #eee;">Allow</strong>, then hit Retry below.
       </p>
       <p style="margin: 0; color: #999; font-size: 0.85em;">
-        Your server is on a private Tailscale network — only your devices can reach it. This is safe.
+        This only reaches your private Tailscale network — no one else can access it. Completely safe.
       </p>
       <button id="pna-retry" style="
         margin-top: 0.75rem; width: 100%; padding: 0.5rem;
