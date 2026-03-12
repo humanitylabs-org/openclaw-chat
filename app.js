@@ -334,23 +334,28 @@ const ui = {
 async function initApp() {
   const stored = localStorage.getItem("connection");
   if (stored) {
-    const data = JSON.parse(stored);
-    state.gatewayUrl = data.gatewayUrl;
-    state.token = data.token;
-    state.sessionKey = localStorage.getItem("sessionKey") || "main";
-    state.currentModel = localStorage.getItem("currentModel") || "";
-    state.activeAgent = JSON.parse(localStorage.getItem("activeAgent") || '{"id":"main","name":"Agent","emoji":"🤖","creature":""}');
-    state.deviceIdentity = await getOrCreateDeviceIdentity();
-
-    const approvalStatus = localStorage.getItem("deviceApproved");
-    if (approvalStatus === "true") {
-      await startChat();
-      return;
-    }
+    try {
+      const data = JSON.parse(stored);
+      state.gatewayUrl = data.gatewayUrl || "";
+      state.token = data.token || "";
+    } catch {}
   }
 
-  ui.onboarding.style.display = "flex";
-  ui.chatContainer.classList.remove("active");
+  state.sessionKey = localStorage.getItem("sessionKey") || "main";
+  state.currentModel = localStorage.getItem("currentModel") || "";
+  state.activeAgent = JSON.parse(localStorage.getItem("activeAgent") || '{"id":"main","name":"Agent","emoji":"🤖","creature":""}');
+  state.deviceIdentity = await getOrCreateDeviceIdentity();
+
+  // Always show chat container — settings cogwheel handles connection setup
+  ui.onboarding.style.display = "none";
+  ui.chatContainer.classList.add("active");
+
+  if (state.gatewayUrl && state.token) {
+    await startChat();
+  } else {
+    // No credentials yet — settings will auto-open via workspace checkAutoOpenSettings
+    updateConnectionStatus(false);
+  }
 }
 
 ui.connectBtn.addEventListener("click", async () => {
@@ -456,13 +461,19 @@ function updateConnectionStatus(connected) {
   } else {
     ui.sendBtn.classList.add("oc-hidden");
     ui.messageInput.disabled = true;
-    ui.messageInput.placeholder = "Disconnected — open settings to reconnect";
+    ui.messageInput.placeholder = "Disconnected — open settings to connect";
   }
-  // Update settings popup if open
+  // Update workspace connection state
   if (typeof workspace !== 'undefined') {
     workspace.chatConnected = connected;
+    // Refresh popup if open
     const popup = document.getElementById("tree-settings-popup");
     if (popup && !popup.classList.contains("oc-hidden")) renderSettingsPopup();
+    // Auto-close settings when fully connected
+    if (connected && workspace.connected && popup && !popup.classList.contains("oc-hidden")) {
+      popup.classList.add("oc-hidden");
+      workspace._settingsCloseHandler && document.removeEventListener("mousedown", workspace._settingsCloseHandler);
+    }
   }
 }
 

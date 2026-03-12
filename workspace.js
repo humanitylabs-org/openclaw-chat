@@ -44,6 +44,7 @@ function onChatConnected() {
   if (workspace.fileServerUrl && !workspace.connected) {
     connectFileServer();
   }
+  checkAutoOpenSettings();
 }
 
 // ─── Init ───────────────────────────────────────────────────────────
@@ -82,6 +83,9 @@ function initWorkspace() {
 
   if (workspace.fileServerUrl) connectFileServer();
   updateLayout();
+
+  // Auto-open settings if not connected after a short delay
+  setTimeout(() => checkAutoOpenSettings(), 2000);
 }
 
 // ─── DOM Construction ───────────────────────────────────────────────
@@ -101,10 +105,7 @@ function buildWorkspaceDOM() {
   treePanel.id = "tree-panel";
   treePanel.className = "panel tree-panel";
   treePanel.innerHTML = `
-    <div class="tree-header">
-      <span class="tree-title">Files</span>
-    </div>
-    <div class="tree-search" id="tree-search">
+    <div class="tree-search" id="tree-search" style="padding-top:10px;">
       <input type="text" id="tree-search-input" placeholder="Search files..." oninput="filterFileTree(this.value)">
     </div>
     <div class="tree-content" id="tree-content"></div>
@@ -199,11 +200,13 @@ function connectFileServer() {
         updateFsStatus(true);
         loadFileTree();
         startFilePolling();
+        checkAutoOpenSettings();
       }
     })
     .catch(() => {
       workspace.connected = false;
       updateFsStatus(false);
+      checkAutoOpenSettings();
     });
 }
 
@@ -917,20 +920,41 @@ function toggleSettingsPopup() {
   const popup = document.getElementById("tree-settings-popup");
   if (!popup) return;
   if (popup.classList.contains("oc-hidden")) {
-    renderSettingsPopup();
-    popup.classList.remove("oc-hidden");
-    // Close on outside click
-    setTimeout(() => {
-      const closeHandler = (e) => {
-        if (!popup.contains(e.target) && e.target.id !== "tree-settings-btn" && !e.target.closest("#tree-settings-btn")) {
-          popup.classList.add("oc-hidden");
-          document.removeEventListener("click", closeHandler);
-        }
-      };
-      document.addEventListener("click", closeHandler);
-    }, 0);
+    openSettingsPopup();
   } else {
     popup.classList.add("oc-hidden");
+    workspace._settingsCloseHandler && document.removeEventListener("mousedown", workspace._settingsCloseHandler);
+  }
+}
+
+function openSettingsPopup() {
+  const popup = document.getElementById("tree-settings-popup");
+  if (!popup) return;
+  renderSettingsPopup();
+  popup.classList.remove("oc-hidden");
+  // Close only when clicking OUTSIDE the popup and the cogwheel button
+  workspace._settingsCloseHandler && document.removeEventListener("mousedown", workspace._settingsCloseHandler);
+  workspace._settingsCloseHandler = (e) => {
+    const popup = document.getElementById("tree-settings-popup");
+    const btn = document.getElementById("tree-settings-btn");
+    if (!popup || !btn) return;
+    if (popup.contains(e.target) || btn.contains(e.target) || e.target === btn) return;
+    popup.classList.add("oc-hidden");
+    document.removeEventListener("mousedown", workspace._settingsCloseHandler);
+  };
+  setTimeout(() => document.addEventListener("mousedown", workspace._settingsCloseHandler), 50);
+}
+
+// Auto-open settings if not fully connected, auto-close when fully connected
+function checkAutoOpenSettings() {
+  const allConnected = workspace.connected && workspace.chatConnected;
+  const popup = document.getElementById("tree-settings-popup");
+  if (!popup) return;
+  if (!allConnected && popup.classList.contains("oc-hidden")) {
+    openSettingsPopup();
+  } else if (allConnected && !popup.classList.contains("oc-hidden") && !workspace._settingsEditing) {
+    popup.classList.add("oc-hidden");
+    workspace._settingsCloseHandler && document.removeEventListener("mousedown", workspace._settingsCloseHandler);
   }
 }
 
@@ -938,7 +962,6 @@ function renderSettingsPopup() {
   const popup = document.getElementById("tree-settings-popup");
   if (!popup) return;
   const currentTheme = document.body.getAttribute("data-theme") || "dark";
-  const themeLabel = currentTheme === "dark" ? "Dark" : "Light";
   const themeIcon = currentTheme === "dark"
     ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/></svg>'
     : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"/></svg>';
@@ -955,34 +978,37 @@ function renderSettingsPopup() {
   const chatUp = workspace.chatConnected;
   const allConnected = filesUp && chatUp;
   const connColor = allConnected ? '#4caf50' : (chatUp || filesUp) ? '#ffc107' : '';
-  const connLabel = allConnected ? 'Connected' : chatUp ? 'Chat only' : filesUp ? 'Files only' : 'Disconnected';
-  const isEditing = workspace._settingsEditing || false;
+  const connLabel = allConnected ? 'Connected' : chatUp ? 'Chat only' : filesUp ? 'Files only' : 'Not connected';
+  const isEditing = workspace._settingsEditing || !gatewayUrl || !token;
 
   popup.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 10px 8px;border-bottom:1px solid var(--background-modifier-border);">
       <img src="/logo-64.png" width="28" height="28" style="border-radius:6px;flex-shrink:0;" alt="">
-      <div>
+      <div style="flex:1;">
         <div style="font-size:12px;font-weight:500;color:var(--text-normal);line-height:1.2;">usemyclaw.com</div>
         <div style="font-size:10px;color:var(--text-faint);margin-top:1px;">OpenClaw Web Client</div>
       </div>
+      <button onclick="toggleTheme()" title="${currentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}" style="
+        background:none;border:none;color:var(--text-faint);cursor:pointer;
+        padding:6px;border-radius:6px;display:flex;align-items:center;
+        transition:all 0.15s;
+      " onmouseover="this.style.color='var(--text-normal)';this.style.background='rgba(128,128,128,0.1)'"
+         onmouseout="this.style.color='var(--text-faint)';this.style.background='none'">
+        ${themeIcon}
+      </button>
     </div>
-    <div class="tree-settings-popup-item" onclick="toggleTheme()" style="margin-top:4px;">
-      ${themeIcon}
-      <span class="settings-label">Appearance</span>
-      <span class="settings-value">${themeLabel}</span>
-    </div>
-    <div style="padding:8px 10px; border-top:1px solid var(--background-modifier-border); margin-top:4px;">
+    <div style="padding:8px 10px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <span class="fs-dot ${allConnected ? 'connected' : ''}" style="width:8px;height:8px;flex-shrink:0;${!allConnected && (chatUp || filesUp) ? 'background:#ffc107;box-shadow:0 0 4px rgba(255,193,7,0.3);' : ''}"></span>
         <span style="font-size:12px;${connColor ? 'color:' + connColor : ''};flex:1;">${connLabel}</span>
-        <button id="settings-modify-btn" onclick="toggleSettingsEditing()" style="
+        ${gatewayUrl && token ? `<button id="settings-modify-btn" onclick="toggleSettingsEditing()" style="
           background:none;border:1px solid var(--background-modifier-border);
           color:var(--text-faint);padding:2px 8px;border-radius:4px;
           font-size:10px;cursor:pointer;transition:all 0.15s;
-        ">${isEditing ? 'Cancel' : 'Modify'}</button>
+        ">${workspace._settingsEditing ? 'Cancel' : 'Modify'}</button>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
-        <div style="position:relative;">
+        <div>
           <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Gateway URL</label>
           <input id="settings-gateway-url" class="settings-field-input" type="text"
             value="${escapeHtml(gatewayUrl)}" placeholder="https://your-server.tail1234.ts.net"
@@ -993,7 +1019,7 @@ function renderSettingsPopup() {
               font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;
               ${isEditing ? '' : 'opacity:0.5;cursor:default;'}">
         </div>
-        <div style="position:relative;">
+        <div>
           <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Auth Token</label>
           <input id="settings-token" class="settings-field-input" type="password"
             value="${escapeHtml(token)}" placeholder="Paste your token"
@@ -1013,10 +1039,10 @@ function renderSettingsPopup() {
           ">Save & Reconnect</button>
         ` : ''}
       </div>
-      ${!isEditing && (chatUp !== filesUp) ? `
+      ${!isEditing && !allConnected && (chatUp || filesUp) ? `
         <div style="font-size:10px;color:var(--text-faint);margin-top:6px;padding-top:6px;border-top:1px solid var(--background-modifier-border);">
-          ${chatUp && !filesUp ? '⚠ File server not responding. Check gateway /files endpoint.' : ''}
-          ${filesUp && !chatUp ? '⚠ Chat WebSocket disconnected. Check gateway URL.' : ''}
+          ${chatUp && !filesUp ? '⚠ File server not responding.' : ''}
+          ${filesUp && !chatUp ? '⚠ Chat disconnected.' : ''}
         </div>
       ` : ''}
     </div>
