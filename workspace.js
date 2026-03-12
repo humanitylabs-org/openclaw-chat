@@ -513,7 +513,7 @@ async function openFile(filePath, fileName) {
   }
 }
 
-function closeTab(idx, e) {
+function closeEditorTab(idx, e) {
   if (e) e.stopPropagation();
   const tab = workspace.openTabs[idx];
   if (tab.dirty && !confirm(`"${tab.name}" has unsaved changes. Close anyway?`)) return;
@@ -550,7 +550,7 @@ function renderEditorTabs() {
     el.className = `editor-tab ${i === workspace.activeTabIdx ? "active" : ""}`;
     el.innerHTML = `
       <span class="editor-tab-name">${escapeHtml(tab.name)}${tab.dirty ? " •" : ""}</span>
-      <span class="editor-tab-close" onclick="closeTab(${i}, event)">×</span>
+      <span class="editor-tab-close" onclick="closeEditorTab(${i}, event)">×</span>
     `;
     el.addEventListener("click", () => selectTab(i));
     container.appendChild(el);
