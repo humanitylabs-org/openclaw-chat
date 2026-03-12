@@ -710,10 +710,11 @@ function updateTabMode() {
   const tabBar = ui.tabBar;
   const hamburgerBar = document.getElementById("hamburger-bar");
   if (!tabBar || !hamburgerBar) return;
+  const isMobile = window.innerWidth <= 1024;
   const tabCount = state.tabSessions.length + 1; // +1 for add button
   const barWidth = tabBar.parentElement?.offsetWidth || 400;
   const perTab = barWidth / tabCount;
-  if (perTab < 60) {
+  if (isMobile || perTab < 60) {
     tabBar.classList.add("oc-hamburger-mode");
     hamburgerBar.classList.add("oc-visible");
     renderHamburgerBar();
@@ -726,7 +727,13 @@ function updateTabMode() {
 function renderHamburgerBar() {
   const currentLabel = document.getElementById("hamburger-current");
   const current = state.tabSessions.find(t => t.key === state.sessionKey) || state.tabSessions[0];
-  if (currentLabel && current) currentLabel.textContent = current.label;
+  if (currentLabel && current) {
+    if (current.key === "main") {
+      currentLabel.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;opacity:0.7"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg> Home';
+    } else {
+      currentLabel.textContent = current.label;
+    }
+  }
 }
 
 function renderHamburgerDropdown() {
@@ -735,14 +742,28 @@ function renderHamburgerDropdown() {
   dd.innerHTML = "";
   const currentKey = state.sessionKey || "main";
   for (const tab of state.tabSessions) {
+    const isHome = tab.key === "main";
+    const isCurrent = tab.key === currentKey;
     const item = document.createElement("div");
-    item.className = `oc-hamburger-dropdown-item${tab.key === currentKey ? " oc-active" : ""}`;
+    item.className = `oc-hamburger-dropdown-item${isCurrent ? " oc-active" : ""}`;
 
+    // Home icon or label
     const label = document.createElement("span");
     label.className = "oc-dd-label";
-    label.textContent = tab.label;
+    if (isHome) {
+      label.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;opacity:0.7"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg> Home';
+    } else {
+      label.textContent = tab.label;
+      // Double-click to rename (non-home tabs)
+      label.title = "Double-click to rename";
+      label.addEventListener("dblclick", (e) => {
+        e.stopPropagation();
+        startHamburgerRename(label, tab, dd);
+      });
+    }
     item.appendChild(label);
 
+    // Context meter
     const meter = document.createElement("div");
     meter.className = "oc-dd-meter";
     const fill = document.createElement("div");
@@ -751,31 +772,79 @@ function renderHamburgerDropdown() {
     meter.appendChild(fill);
     item.appendChild(meter);
 
-    if (tab.key !== currentKey) {
+    // Action buttons container
+    const actions = document.createElement("span");
+    actions.className = "oc-dd-actions";
+
+    // Reset button (all tabs)
+    const resetBtn = document.createElement("span");
+    resetBtn.className = "oc-dd-action-btn";
+    resetBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
+    resetBtn.title = "Reset conversation";
+    resetBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dd.classList.remove("oc-open");
+      resetTab(tab);
+    });
+    actions.appendChild(resetBtn);
+
+    // Close button (non-home tabs only)
+    if (!isHome) {
       const closeBtn = document.createElement("span");
-      closeBtn.className = "oc-dd-close";
-      if (tab.key === "main") {
-        closeBtn.textContent = "↻";
-        closeBtn.title = "Reset";
-      } else {
-        closeBtn.textContent = "×";
-        closeBtn.title = "Close";
-      }
+      closeBtn.className = "oc-dd-action-btn oc-dd-action-close";
+      closeBtn.textContent = "×";
+      closeBtn.title = "Close tab";
       closeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         dd.classList.remove("oc-open");
-        if (tab.key === "main") resetTab(tab);
-        else closeTab(tab, currentKey);
+        closeTab(tab, currentKey);
       });
-      item.appendChild(closeBtn);
+      actions.appendChild(closeBtn);
     }
+    item.appendChild(actions);
 
+    // Click to switch tab
     item.addEventListener("click", () => {
       dd.classList.remove("oc-open");
-      if (tab.key !== currentKey) switchTab(tab);
+      if (!isCurrent) switchTab(tab);
     });
     dd.appendChild(item);
   }
+}
+
+// Inline rename inside hamburger dropdown
+function startHamburgerRename(labelEl, tab, dd) {
+  const input = document.createElement("input");
+  input.className = "oc-dd-rename-input";
+  input.value = tab.label;
+  input.maxLength = 30;
+  labelEl.textContent = "";
+  labelEl.appendChild(input);
+  input.focus();
+  input.select();
+  const finish = async (save) => {
+    const newName = input.value.trim();
+    if (save && newName && newName !== tab.label) {
+      try {
+        await state.gateway.request("sessions.patch", {
+          key: `${agentPrefix()}${tab.key}`,
+          label: newName,
+        });
+        tab.label = newName;
+      } catch { /* keep old name */ }
+    }
+    labelEl.textContent = tab.label;
+    labelEl.title = "Double-click to rename";
+    renderTabs();
+    renderHamburgerBar();
+  };
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); finish(true); }
+    if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    e.stopPropagation();
+  });
+  input.addEventListener("blur", () => finish(true));
+  input.addEventListener("click", (e) => e.stopPropagation());
 }
 
 // Init hamburger events

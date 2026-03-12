@@ -263,6 +263,8 @@
       box-sizing: border-box;
     }
     .openclaw-tab-bar.oc-hamburger-mode { display: none; }
+    /* When hamburger mode is active, hide the top-bar (hamburger-bar replaces it) */
+    .openclaw-top-bar:has(.oc-hamburger-mode) { display: none; }
     .openclaw-tab {
       display: flex;
       flex-direction: column;
@@ -413,7 +415,8 @@
       display: none;
       flex-shrink: 0;
       align-items: center;
-      padding: 6px 10px;
+      padding: 8px 12px;
+      padding-top: max(8px, env(safe-area-inset-top, 0px));
       border-bottom: 1px solid var(--background-modifier-border);
       gap: 8px;
     }
@@ -422,26 +425,31 @@
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 18px;
+      font-size: 20px;
       cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 4px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      line-height: 1;
     }
     .oc-hamburger-btn:hover { background: rgba(128,128,128,0.15); }
     .oc-hamburger-current {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--text-normal);
       flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .oc-hamburger-add {
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 18px;
+      font-size: 20px;
       cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 4px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      line-height: 1;
     }
     .oc-hamburger-add:hover { background: rgba(128,128,128,0.15); }
     .oc-hamburger-dropdown {
@@ -454,32 +462,44 @@
       border: 1px solid var(--background-modifier-border);
       border-top: none;
       z-index: 100;
-      max-height: 300px;
+      max-height: 60vh;
       overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
     }
     .oc-hamburger-dropdown.oc-open { display: block; }
     .oc-hamburger-dropdown-item {
       display: flex;
       align-items: center;
-      padding: 10px 12px;
-      gap: 8px;
+      padding: 12px 14px;
+      gap: 10px;
       cursor: pointer;
       color: var(--text-muted);
-      font-size: 13px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(128,128,128,0.06);
+      transition: background 0.12s;
     }
+    .oc-hamburger-dropdown-item:last-child { border-bottom: none; }
     .oc-hamburger-dropdown-item:hover { background: rgba(128,128,128,0.1); }
+    .oc-hamburger-dropdown-item:active { background: rgba(128,128,128,0.15); }
     .oc-hamburger-dropdown-item.oc-active {
       color: var(--text-normal);
       font-weight: 600;
       background: rgba(128,128,128,0.08);
     }
-    .oc-hamburger-dropdown-item .oc-dd-label { flex: 1; }
+    .oc-hamburger-dropdown-item .oc-dd-label {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .oc-hamburger-dropdown-item .oc-dd-meter {
       width: 40px;
       height: 3px;
       background: rgba(128,128,128,0.15);
       border-radius: 1.5px;
       overflow: hidden;
+      flex-shrink: 0;
     }
     .oc-hamburger-dropdown-item .oc-dd-meter-fill {
       height: 100%;
@@ -487,14 +507,39 @@
       background: var(--text-normal);
       opacity: 0.6;
     }
-    .oc-hamburger-dropdown-item .oc-dd-close {
-      opacity: 0.3;
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 4px;
-      font-size: 14px;
+    .oc-dd-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
     }
-    .oc-hamburger-dropdown-item .oc-dd-close:hover { opacity: 1; background: rgba(128,128,128,0.2); }
+    .oc-dd-action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      opacity: 0.35;
+      transition: opacity 0.12s, background 0.12s;
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+    .oc-dd-action-btn:hover { opacity: 0.8; background: rgba(128,128,128,0.15); }
+    .oc-dd-action-btn:active { opacity: 1; background: rgba(128,128,128,0.25); }
+    .oc-dd-action-close { font-size: 20px; font-weight: 300; }
+    .oc-dd-rename-input {
+      font-size: 14px;
+      background: rgba(128,128,128,0.15);
+      border: 1px solid var(--interactive-accent);
+      border-radius: 4px;
+      color: var(--text-normal);
+      padding: 2px 6px;
+      width: 100%;
+      outline: none;
+      font-family: inherit;
+    }
 
     /* ─── Confirm Close Modal ────────────────────────────────────── */
     .oc-confirm-overlay {
@@ -2135,7 +2180,7 @@
       color: var(--text-normal);
     }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=8">
+  <link rel="stylesheet" href="/theme.css?v=9">
 </head>
 <body>
   <div class="app">
@@ -2264,8 +2309,8 @@
       if (saved) document.documentElement.style.setProperty("--accent-color", saved);
     })();
   </script>
-  <script src="/app.js?v=13"></script>
-  <script src="/workspace.js?v=13"></script>
+  <script src="/app.js?v=14"></script>
+  <script src="/workspace.js?v=14"></script>
   <script>
     // Init workspace panels after DOM is ready
     initWorkspace();
