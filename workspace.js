@@ -15,6 +15,7 @@ const workspace = {
   panelOffset: 0,
   isMobile: window.innerWidth <= 1024,
   connected: false,
+  chatConnected: false,
   expandedDirs: new Set(),
 };
 
@@ -38,6 +39,7 @@ function deriveFileServerUrl() {
 
 // Called by app.js after successful chat connection
 function onChatConnected() {
+  workspace.chatConnected = true;
   deriveFileServerUrl();
   if (workspace.fileServerUrl && !workspace.connected) {
     connectFileServer();
@@ -170,16 +172,13 @@ function buildWorkspaceDOM() {
   settingsEl.style.position = "relative";
   settingsEl.innerHTML = `
     <div id="tree-settings-popup" class="tree-settings-popup oc-hidden"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;">
       <button class="tree-settings-cogwheel" id="tree-settings-btn" title="Settings" onclick="toggleSettingsPopup()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
         </svg>
       </button>
-      <div id="fs-status" style="display:flex;align-items:center;gap:6px;">
-        <span class="fs-dot"></span>
-      </div>
     </div>
   `;
   treePanel.appendChild(settingsEl);
@@ -952,22 +951,30 @@ function renderSettingsPopup() {
     gatewayUrl = connData.gatewayUrl || '';
     token = connData.token || '';
   } catch {}
-  const isConnected = workspace.connected;
-  const connDot = isConnected ? 'connected' : '';
-  const connColor = isConnected ? 'color:#4caf50' : '';
-  const connLabel = isConnected ? 'Connected' : 'Disconnected';
+  const filesUp = workspace.connected;
+  const chatUp = workspace.chatConnected;
+  const allConnected = filesUp && chatUp;
+  const connColor = allConnected ? '#4caf50' : (chatUp || filesUp) ? '#ffc107' : '';
+  const connLabel = allConnected ? 'Connected' : chatUp ? 'Chat only' : filesUp ? 'Files only' : 'Disconnected';
   const isEditing = workspace._settingsEditing || false;
 
   popup.innerHTML = `
-    <div class="tree-settings-popup-item" onclick="toggleTheme()">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 10px 8px;border-bottom:1px solid var(--background-modifier-border);">
+      <img src="/logo-64.png" width="28" height="28" style="border-radius:6px;flex-shrink:0;" alt="">
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--text-normal);line-height:1.2;">usemyclaw.com</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:1px;">OpenClaw Web Client</div>
+      </div>
+    </div>
+    <div class="tree-settings-popup-item" onclick="toggleTheme()" style="margin-top:4px;">
       ${themeIcon}
       <span class="settings-label">Appearance</span>
       <span class="settings-value">${themeLabel}</span>
     </div>
-    <div style="padding:6px 10px; border-top:1px solid var(--background-modifier-border); margin-top:4px;">
+    <div style="padding:8px 10px; border-top:1px solid var(--background-modifier-border); margin-top:4px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <span class="fs-dot ${connDot}" style="width:8px;height:8px;flex-shrink:0;"></span>
-        <span style="font-size:12px;${connColor};flex:1;">${connLabel}</span>
+        <span class="fs-dot ${allConnected ? 'connected' : ''}" style="width:8px;height:8px;flex-shrink:0;${!allConnected && (chatUp || filesUp) ? 'background:#ffc107;box-shadow:0 0 4px rgba(255,193,7,0.3);' : ''}"></span>
+        <span style="font-size:12px;${connColor ? 'color:' + connColor : ''};flex:1;">${connLabel}</span>
         <button id="settings-modify-btn" onclick="toggleSettingsEditing()" style="
           background:none;border:1px solid var(--background-modifier-border);
           color:var(--text-faint);padding:2px 8px;border-radius:4px;
@@ -975,30 +982,43 @@ function renderSettingsPopup() {
         ">${isEditing ? 'Cancel' : 'Modify'}</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
-        <input id="settings-gateway-url" class="settings-field-input" type="text"
-          value="${escapeHtml(gatewayUrl)}" placeholder="Gateway URL"
-          ${isEditing ? '' : 'disabled'}
-          style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
-            background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
-            color:${isEditing ? 'var(--text-normal)' : 'var(--text-faint)'};
-            font-family:var(--font-mono,monospace);outline:none;
-            ${isEditing ? '' : 'opacity:0.5;cursor:default;'}">
-        <input id="settings-token" class="settings-field-input" type="password"
-          value="${escapeHtml(token)}" placeholder="Auth Token"
-          ${isEditing ? '' : 'disabled'}
-          style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
-            background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
-            color:${isEditing ? 'var(--text-normal)' : 'var(--text-faint)'};
-            font-family:var(--font-mono,monospace);outline:none;
-            ${isEditing ? '' : 'opacity:0.5;cursor:default;'}">
+        <div style="position:relative;">
+          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Gateway URL</label>
+          <input id="settings-gateway-url" class="settings-field-input" type="text"
+            value="${escapeHtml(gatewayUrl)}" placeholder="https://your-server.tail1234.ts.net"
+            ${isEditing ? '' : 'disabled'}
+            style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:${isEditing ? 'var(--text-normal)' : 'var(--text-faint)'};
+              font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;
+              ${isEditing ? '' : 'opacity:0.5;cursor:default;'}">
+        </div>
+        <div style="position:relative;">
+          <label style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;display:block;">Auth Token</label>
+          <input id="settings-token" class="settings-field-input" type="password"
+            value="${escapeHtml(token)}" placeholder="Paste your token"
+            ${isEditing ? '' : 'disabled'}
+            style="width:100%;padding:6px 8px;font-size:11px;border-radius:4px;
+              background:rgba(128,128,128,0.06);border:1px solid var(--background-modifier-border);
+              color:${isEditing ? 'var(--text-normal)' : 'var(--text-faint)'};
+              font-family:var(--font-mono,monospace);outline:none;box-sizing:border-box;
+              ${isEditing ? '' : 'opacity:0.5;cursor:default;'}">
+        </div>
         ${isEditing ? `
           <button onclick="saveConnectionSettings()" style="
-            width:100%;padding:6px;font-size:11px;border-radius:4px;
+            width:100%;padding:7px;font-size:11px;border-radius:4px;
             background:var(--interactive-accent);color:var(--text-on-accent);
             border:none;cursor:pointer;font-weight:500;transition:opacity 0.15s;
+            margin-top:2px;
           ">Save & Reconnect</button>
         ` : ''}
       </div>
+      ${!isEditing && (chatUp !== filesUp) ? `
+        <div style="font-size:10px;color:var(--text-faint);margin-top:6px;padding-top:6px;border-top:1px solid var(--background-modifier-border);">
+          ${chatUp && !filesUp ? '⚠ File server not responding. Check gateway /files endpoint.' : ''}
+          ${filesUp && !chatUp ? '⚠ Chat WebSocket disconnected. Check gateway URL.' : ''}
+        </div>
+      ` : ''}
     </div>
   `;
 }
@@ -1023,24 +1043,22 @@ function saveConnectionSettings() {
   const newToken = tokenInput.value.trim();
   if (!newUrl || !newToken) return;
 
-  // Save to localStorage
+  // Save to localStorage (single source of truth)
   localStorage.setItem("connection", JSON.stringify({ gatewayUrl: newUrl, token: newToken }));
 
-  // Update workspace file server URL
   workspace._settingsEditing = false;
-  deriveFileServerUrl();
 
-  // Reconnect file server
+  // Reconnect file server (derives URL from same gateway)
   workspace.connected = false;
   updateFsStatus(false);
+  deriveFileServerUrl();
   if (workspace.fileServerUrl) connectFileServer();
 
-  // Trigger chat reconnection if available
-  if (typeof state !== 'undefined' && state.gateway) {
+  // Reconnect chat (uses same gateway URL)
+  if (typeof state !== 'undefined') {
     state.gatewayUrl = newUrl;
     state.token = newToken;
-    state.gateway.stop();
-    // Reconnect with new credentials
+    if (state.gateway) state.gateway.stop();
     connectToGateway().catch(err => console.error("Reconnect failed:", err));
   }
 

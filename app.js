@@ -324,9 +324,7 @@ const ui = {
   fileInput: $("file-input"),
   attachPreview: $("attach-preview"),
   sendBtn: $("send-btn"),
-  reconnectBtn: $("reconnect-btn"),
   abortBtn: $("abort-btn"),
-  connectionStatus: $("connection-status"),
   typingIndicator: $("typing-indicator"),
   modelLabel: $("model-label"),
 };
@@ -452,17 +450,19 @@ async function startChat() {
 
 function updateConnectionStatus(connected) {
   if (connected) {
-    ui.connectionStatus.classList.add("connected");
     ui.sendBtn.classList.remove("oc-hidden");
-    ui.reconnectBtn.classList.add("oc-hidden");
     ui.messageInput.disabled = false;
     ui.messageInput.placeholder = "Message...";
   } else {
-    ui.connectionStatus.classList.remove("connected");
     ui.sendBtn.classList.add("oc-hidden");
-    ui.reconnectBtn.classList.remove("oc-hidden");
     ui.messageInput.disabled = true;
-    ui.messageInput.placeholder = "Disconnected";
+    ui.messageInput.placeholder = "Disconnected — open settings to reconnect";
+  }
+  // Update settings popup if open
+  if (typeof workspace !== 'undefined') {
+    workspace.chatConnected = connected;
+    const popup = document.getElementById("tree-settings-popup");
+    if (popup && !popup.classList.contains("oc-hidden")) renderSettingsPopup();
   }
 }
 
@@ -2133,11 +2133,7 @@ ui.fileInput.addEventListener("change", () => handleFileSelect());
 // Abort button
 ui.abortBtn.addEventListener("click", () => abortMessage());
 
-// Reconnect button
-ui.reconnectBtn.addEventListener("click", () => {
-  if (state.gateway) state.gateway.stop();
-  connectToGateway().catch(err => console.error("Reconnect failed:", err));
-});
+// Reconnect is now handled via settings cogwheel
 
 // Tab bar horizontal scroll
 ui.tabBar.addEventListener("wheel", (e) => {
