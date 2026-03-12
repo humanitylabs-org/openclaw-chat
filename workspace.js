@@ -33,7 +33,14 @@ function deriveFileServerUrl() {
       .replace(/^wss:\/\//, "https://")
       .replace(/^ws:\/\//, "http://")
       .replace(/\/+$/, "");
-    workspace.fileServerUrl = httpUrl + "/files";
+    // Use HTTPS directly on port 18795 (bypasses Tailscale Serve CORS/PNA issues)
+    try {
+      const u = new URL(httpUrl);
+      u.port = "18795";
+      workspace.fileServerUrl = u.toString().replace(/\/+$/, "");
+    } catch {
+      workspace.fileServerUrl = httpUrl.replace(/:(\d+)(\/|$)/, ":18795$2").replace(/\/+$/, "");
+    }
     console.log("[files] Derived file server URL:", workspace.fileServerUrl);
   } catch {}
 }
@@ -212,49 +219,11 @@ function connectFileServer() {
       }
     })
     .catch((err) => {
-      console.error("[files] Connection failed via /files:", err.message || err);
-      // Fallback: try port 8443 (alternative Tailscale Serve config)
-      const connData = localStorage.getItem("connection");
-      if (connData) {
-        try {
-          const { gatewayUrl } = JSON.parse(connData);
-          let httpUrl = gatewayUrl.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://").replace(/\/+$/, "");
-          const u = new URL(httpUrl);
-          u.port = "8443";
-          const fallbackUrl = u.toString().replace(/\/+$/, "");
-          console.log("[files] Trying fallback:", fallbackUrl + "/health");
-          fetch(fallbackUrl + "/health")
-            .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-            .then(data => {
-              if (data.ok) {
-                console.log("[files] Connected via port 8443 fallback");
-                workspace.fileServerUrl = fallbackUrl;
-                workspace.connected = true;
-                updateFsStatus(true);
-                loadFileTree();
-                startFilePolling();
-                checkAutoOpenSettings();
-              }
-            })
-            .catch(err2 => {
-              console.error("[files] Fallback also failed:", err2.message || err2);
-              workspace.connected = false;
-              workspace._lastFileError = (err.message || String(err)) + " (fallback: " + (err2.message || String(err2)) + ")";
-              updateFsStatus(false);
-              checkAutoOpenSettings();
-            });
-        } catch { 
-          workspace.connected = false;
-          workspace._lastFileError = err.message || String(err);
-          updateFsStatus(false);
-          checkAutoOpenSettings();
-        }
-      } else {
-        workspace.connected = false;
-        workspace._lastFileError = err.message || String(err);
-        updateFsStatus(false);
-        checkAutoOpenSettings();
-      }
+      console.error("[files] Connection failed:", err.message || err);
+      workspace.connected = false;
+      workspace._lastFileError = err.message || String(err);
+      updateFsStatus(false);
+      checkAutoOpenSettings();
     });
 }
 
