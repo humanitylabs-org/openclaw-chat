@@ -181,7 +181,6 @@
       gap: 0;
       flex-shrink: 0;
       padding-top: env(safe-area-inset-top, 0px);
-      border-bottom: 1px solid var(--background-modifier-border);
     }
     .openclaw-top-bar .openclaw-tab-bar {
       flex: 1;
@@ -255,6 +254,18 @@
       border-bottom: 1px solid var(--background-modifier-border);
     }
     .openclaw-tab-bar.oc-hamburger-mode { display: none; }
+    .openclaw-tab-refresh {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 6px 5px;
+      cursor: pointer;
+      color: var(--text-faint);
+      opacity: 0.3;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .openclaw-tab-refresh:hover { opacity: 0.7; background: rgba(128,128,128,0.08); }
     .openclaw-tab {
       display: flex;
       flex-direction: column;
@@ -1981,14 +1992,6 @@
     <div id="chat-container" class="openclaw-chat-container">
       <!-- Top bar: tabs + agent switcher -->
       <div class="openclaw-top-bar">
-        <button id="refresh-btn" onclick="location.reload(true)" title="Hard refresh" style="
-          background:none;border:none;color:var(--text-faint);cursor:pointer;
-          padding:4px 5px;margin:0 2px 3px 4px;border-radius:4px;display:flex;align-items:center;
-          flex-shrink:0;transition:all 0.15s;opacity:0.3;align-self:flex-end;
-        " onmouseover="this.style.opacity='0.8';this.style.background='rgba(128,128,128,0.12)'"
-           onmouseout="this.style.opacity='0.3';this.style.background='none'">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-        </button>
         <div class="openclaw-tab-bar" id="tab-bar"></div>
         <div class="oc-hamburger-bar" id="hamburger-bar" style="position:relative;">
           <button class="oc-hamburger-btn" id="hamburger-btn">☰</button>

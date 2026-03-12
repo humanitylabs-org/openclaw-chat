@@ -719,6 +719,15 @@ async function renderTabs() {
 
 async function _renderTabsInner() {
   ui.tabBar.innerHTML = "";
+
+  // Refresh button (first item, flush with tabs)
+  const refreshBtn = document.createElement("div");
+  refreshBtn.className = "openclaw-tab-refresh";
+  refreshBtn.title = "Hard refresh";
+  refreshBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>';
+  refreshBtn.addEventListener("click", () => location.reload(true));
+  ui.tabBar.appendChild(refreshBtn);
+
   const currentKey = state.sessionKey || "main";
 
   let sessions = [];
@@ -856,6 +865,7 @@ async function switchTab(tab) {
 }
 
 async function resetTab(tab) {
+  console.log("[resetTab] called, connected:", !!state.gateway?.connected);
   if (!state.gateway?.connected) return;
   const ok = await confirmClose("Reset main tab?", "This will clear the conversation.");
   if (!ok) return;
@@ -878,23 +888,17 @@ async function resetTab(tab) {
 }
 
 async function closeTab(tab, currentKey) {
-  if (!state.gateway?.connected) return;
-  // Safety: reset stuck flag after 5s
-  if (state.tabDeleteInProgress) {
-    if (state._tabDeleteTimer && Date.now() - state._tabDeleteTimer > 5000) {
-      state.tabDeleteInProgress = false;
-    } else {
-      return;
-    }
-  }
+  console.log("[closeTab] called for", tab.key, "connected:", !!state.gateway?.connected, "inProgress:", state.tabDeleteInProgress);
+  if (!state.gateway?.connected || state.tabDeleteInProgress) return;
   const ok = await confirmClose("Close tab?", `Close "${tab.label}"? Chat history will be lost.`);
   if (!ok) return;
   state.tabDeleteInProgress = true;
-  state._tabDeleteTimer = Date.now();
   try {
     await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tab.key}`);
   } catch (err) {
     console.error("Close failed:", err);
+  } finally {
+    state.tabDeleteInProgress = false;
   }
   // Clean up stream state
   finishStream(tab.key);
@@ -906,8 +910,6 @@ async function closeTab(tab, currentKey) {
     ui.messagesContainer.innerHTML = "";
     await loadChatHistory();
   }
-  state.tabDeleteInProgress = false;
-  state._tabDeleteTimer = null;
   await renderTabs();
   await updateContextMeter();
 }
