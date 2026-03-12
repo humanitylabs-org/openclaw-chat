@@ -28,20 +28,13 @@ function deriveFileServerUrl() {
   try {
     const { gatewayUrl } = JSON.parse(connData);
     if (!gatewayUrl) return;
-    // Convert ws(s):// to http(s):// and use port 8443 for file server
+    // Convert ws(s):// to http(s):// and append /files
     let httpUrl = gatewayUrl
       .replace(/^wss:\/\//, "https://")
       .replace(/^ws:\/\//, "http://")
       .replace(/\/+$/, "");
-    // Replace the port (or add :8443) for the file server
-    try {
-      const u = new URL(httpUrl);
-      u.port = "8443";
-      workspace.fileServerUrl = u.toString().replace(/\/+$/, "");
-    } catch {
-      // Fallback: just swap/add port
-      workspace.fileServerUrl = httpUrl.replace(/:(\d+)$/, "") + ":8443";
-    }
+    workspace.fileServerUrl = httpUrl + "/files";
+    console.log("[files] Derived file server URL:", workspace.fileServerUrl);
   } catch {}
 }
 
@@ -200,10 +193,17 @@ function connectFileServer() {
   const baseUrl = workspace.fileServerUrl.replace(/\/+$/, "");
 
   // Test connection
-  fetch(`${baseUrl}/health`)
-    .then(r => r.json())
+  const healthUrl = `${baseUrl}/health`;
+  console.log("[files] Connecting to file server:", healthUrl);
+  fetch(healthUrl)
+    .then(r => {
+      console.log("[files] Response status:", r.status);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
     .then(data => {
       if (data.ok) {
+        console.log("[files] Connected successfully");
         workspace.connected = true;
         updateFsStatus(true);
         loadFileTree();
@@ -211,10 +211,50 @@ function connectFileServer() {
         checkAutoOpenSettings();
       }
     })
-    .catch(() => {
-      workspace.connected = false;
-      updateFsStatus(false);
-      checkAutoOpenSettings();
+    .catch((err) => {
+      console.error("[files] Connection failed via /files:", err.message || err);
+      // Fallback: try port 8443 (alternative Tailscale Serve config)
+      const connData = localStorage.getItem("connection");
+      if (connData) {
+        try {
+          const { gatewayUrl } = JSON.parse(connData);
+          let httpUrl = gatewayUrl.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://").replace(/\/+$/, "");
+          const u = new URL(httpUrl);
+          u.port = "8443";
+          const fallbackUrl = u.toString().replace(/\/+$/, "");
+          console.log("[files] Trying fallback:", fallbackUrl + "/health");
+          fetch(fallbackUrl + "/health")
+            .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+            .then(data => {
+              if (data.ok) {
+                console.log("[files] Connected via port 8443 fallback");
+                workspace.fileServerUrl = fallbackUrl;
+                workspace.connected = true;
+                updateFsStatus(true);
+                loadFileTree();
+                startFilePolling();
+                checkAutoOpenSettings();
+              }
+            })
+            .catch(err2 => {
+              console.error("[files] Fallback also failed:", err2.message || err2);
+              workspace.connected = false;
+              workspace._lastFileError = (err.message || String(err)) + " (fallback: " + (err2.message || String(err2)) + ")";
+              updateFsStatus(false);
+              checkAutoOpenSettings();
+            });
+        } catch { 
+          workspace.connected = false;
+          workspace._lastFileError = err.message || String(err);
+          updateFsStatus(false);
+          checkAutoOpenSettings();
+        }
+      } else {
+        workspace.connected = false;
+        workspace._lastFileError = err.message || String(err);
+        updateFsStatus(false);
+        checkAutoOpenSettings();
+      }
     });
 }
 
@@ -1049,7 +1089,7 @@ function renderSettingsPopup() {
       </div>
       ${!isEditing && !allConnected && (chatUp || filesUp) ? `
         <div style="font-size:10px;color:var(--text-faint);margin-top:6px;padding-top:6px;border-top:1px solid var(--background-modifier-border);">
-          ${chatUp && !filesUp ? '⚠ File server not responding.' : ''}
+          ${chatUp && !filesUp ? '⚠ File server not responding.' + (workspace._lastFileError ? '<br><span style="font-family:var(--font-mono,monospace);font-size:9px;opacity:0.7;">' + escapeHtml(workspace._lastFileError) + '</span>' : '') : ''}
           ${filesUp && !chatUp ? '⚠ Chat disconnected.' : ''}
         </div>
       ` : ''}
