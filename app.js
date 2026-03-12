@@ -784,6 +784,21 @@ async function _renderTabsInner() {
   const others = convSessions
     .filter(s => s.key.slice(prefix.length) !== "main")
     .sort((a, b) => (a.createdAt || a.updatedAt || 0) - (b.createdAt || b.updatedAt || 0));
+
+  // Apply saved tab order
+  const savedOrder = JSON.parse(localStorage.getItem("tabOrder") || "[]");
+  if (savedOrder.length > 0) {
+    const orderMap = new Map(savedOrder.map((k, i) => [k, i]));
+    others.sort((a, b) => {
+      const skA = a.key.slice(prefix.length);
+      const skB = b.key.slice(prefix.length);
+      const oA = orderMap.has(skA) ? orderMap.get(skA) : 9999;
+      const oB = orderMap.has(skB) ? orderMap.get(skB) : 9999;
+      if (oA !== oB) return oA - oB;
+      return (a.createdAt || a.updatedAt || 0) - (b.createdAt || b.updatedAt || 0);
+    });
+  }
+
   for (const s of others) {
     const sk = s.key.slice(prefix.length);
     const used = s.totalTokens || 0;
@@ -852,6 +867,34 @@ async function _renderTabsInner() {
     fill.style.width = tab.pct + "%";
     meter.appendChild(fill);
     tabEl.appendChild(meter);
+
+    // Drag to reorder (non-Home tabs only)
+    if (!isHome) {
+      tabEl.draggable = true;
+      tabEl.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", tab.key);
+        tabEl.classList.add("oc-dragging");
+      });
+      tabEl.addEventListener("dragend", () => {
+        tabEl.classList.remove("oc-dragging");
+        document.querySelectorAll(".oc-drag-over").forEach(el => el.classList.remove("oc-drag-over"));
+      });
+      tabEl.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        tabEl.classList.add("oc-drag-over");
+      });
+      tabEl.addEventListener("dragleave", () => {
+        tabEl.classList.remove("oc-drag-over");
+      });
+      tabEl.addEventListener("drop", (e) => {
+        e.preventDefault();
+        tabEl.classList.remove("oc-drag-over");
+        const draggedKey = e.dataTransfer.getData("text/plain");
+        if (draggedKey && draggedKey !== tab.key) {
+          reorderTabs(draggedKey, tab.key);
+        }
+      });
+    }
 
     // Click to switch
     if (!isCurrent) {
@@ -982,6 +1025,17 @@ async function createNewTab() {
   } catch (err) {
     console.error("Failed to create tab:", err);
   }
+}
+
+function reorderTabs(draggedKey, targetKey) {
+  const keys = state.tabSessions.filter(t => t.key !== "main").map(t => t.key);
+  const fromIdx = keys.indexOf(draggedKey);
+  const toIdx = keys.indexOf(targetKey);
+  if (fromIdx === -1 || toIdx === -1) return;
+  keys.splice(fromIdx, 1);
+  keys.splice(toIdx, 0, draggedKey);
+  localStorage.setItem("tabOrder", JSON.stringify(keys));
+  renderTabs();
 }
 
 // ─── Context Meter ───────────────────────────────────────────────────
