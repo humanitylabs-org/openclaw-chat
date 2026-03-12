@@ -202,7 +202,7 @@ function connectFileServer() {
   // Test connection
   const healthUrl = `${baseUrl}/health`;
   console.log("[files] Connecting to file server:", healthUrl);
-  fetch(healthUrl)
+  fetch(healthUrl, { targetAddressSpace: "local" })
     .then(r => {
       console.log("[files] Response status:", r.status);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);

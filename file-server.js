@@ -210,6 +210,9 @@ const server = http.createServer((req, res) => {
   );
   // Chrome Private Network Access: allow public sites to reach private IPs
   res.setHeader("Access-Control-Allow-Private-Network", "true");
+  // PNA device identity headers (triggers permission prompt instead of silent block)
+  res.setHeader("Private-Network-Access-Name", "OpenClaw File Server");
+  res.setHeader("Private-Network-Access-ID", "4F:43:46:53:52:56");
 
   if (req.method === "OPTIONS") {
     res.writeHead(204);
