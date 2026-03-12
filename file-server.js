@@ -195,7 +195,7 @@ function parseWSFrame(buf) {
 
 // ─── HTTP Server ────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
-  // CORS
+  // CORS (including Private Network Access for public origins -> tailnet)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader(
     "Access-Control-Allow-Methods",
@@ -206,6 +206,8 @@ const server = http.createServer((req, res) => {
     "Access-Control-Expose-Headers",
     "X-File-Mtime, Last-Modified"
   );
+  // Chrome Private Network Access: allow public sites to reach private IPs
+  res.setHeader("Access-Control-Allow-Private-Network", "true");
 
   if (req.method === "OPTIONS") {
     res.writeHead(204);

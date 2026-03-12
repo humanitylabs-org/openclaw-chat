@@ -723,6 +723,12 @@ async function _renderTabsInner() {
     if (!s.key.startsWith(prefix)) return false;
     if (s.key.includes(":cron:")) return false;
     if (s.key.includes(":subagent:")) return false;
+    // Hide channel-specific sessions (telegram, signal, discord, whatsapp, irc, slack, etc.)
+    const suffix = s.key.slice(prefix.length);
+    if (suffix.includes("telegram:") || suffix.includes("signal:") ||
+        suffix.includes("discord:") || suffix.includes("whatsapp:") ||
+        suffix.includes("irc:") || suffix.includes("slack:") ||
+        suffix.includes("googlechat:") || suffix.includes("imessage:")) return false;
     return true;
   });
 
@@ -955,7 +961,13 @@ async function updateContextMeter() {
 
     // Detect session changes and re-render tabs
     const currentSessionKeys = new Set(
-      sessions.filter(s => s.key.startsWith(prefix) && !s.key.includes(":cron:") && !s.key.includes(":subagent:")).map(s => s.key)
+      sessions.filter(s => {
+          if (!s.key.startsWith(prefix)) return false;
+          if (s.key.includes(":cron:") || s.key.includes(":subagent:")) return false;
+          const sfx = s.key.slice(prefix.length);
+          if (/(?:telegram|signal|discord|whatsapp|irc|slack|googlechat|imessage):/.test(sfx)) return false;
+          return true;
+        }).map(s => s.key)
     );
     const trackedKeys = new Set(state.tabSessions.map(t => `${prefix}${t.key}`));
     const added = [...currentSessionKeys].some(k => !trackedKeys.has(k));
