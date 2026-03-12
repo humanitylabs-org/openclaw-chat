@@ -1980,6 +1980,14 @@
     <div id="chat-container" class="openclaw-chat-container">
       <!-- Top bar: tabs + agent switcher -->
       <div class="openclaw-top-bar">
+        <button id="refresh-btn" onclick="location.reload(true)" title="Hard refresh" style="
+          background:none;border:none;color:var(--text-faint);cursor:pointer;
+          padding:6px;margin-left:4px;border-radius:5px;display:flex;align-items:center;
+          flex-shrink:0;transition:all 0.15s;opacity:0.4;
+        " onmouseover="this.style.opacity='1';this.style.background='rgba(128,128,128,0.12)'"
+           onmouseout="this.style.opacity='0.4';this.style.background='none'">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
         <div class="openclaw-tab-bar" id="tab-bar"></div>
         <div class="oc-hamburger-bar" id="hamburger-bar" style="position:relative;">
           <button class="oc-hamburger-btn" id="hamburger-btn">☰</button>
@@ -2023,7 +2031,6 @@
           <span class="openclaw-model-label" id="model-label" title="Click to change model"></span>
         </div>
         <div class="openclaw-input-row">
-          <button class="openclaw-attach-btn" id="refresh-btn" aria-label="Hard refresh" title="Hard refresh" onclick="location.reload(true)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg></button>
           <button class="openclaw-attach-btn" id="attach-btn" aria-label="Attach file" title="Attach file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
           <input type="file" id="file-input" accept="image/*,.md,.txt,.json,.csv,.pdf,.yaml,.yml,.js,.ts,.py,.html,.css" multiple class="oc-hidden">
           <textarea id="message-input" class="openclaw-input" placeholder="Message..." rows="1"></textarea>
