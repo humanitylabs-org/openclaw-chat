@@ -102,7 +102,7 @@ function buildWorkspaceDOM() {
     <div class="tree-header">
       <span class="tree-title">Files</span>
     </div>
-    <div class="tree-search oc-hidden" id="tree-search">
+    <div class="tree-search" id="tree-search">
       <input type="text" id="tree-search-input" placeholder="Search files..." oninput="filterFileTree(this.value)">
     </div>
     <div class="tree-content" id="tree-content"></div>
@@ -172,9 +172,9 @@ function buildWorkspaceDOM() {
     <div id="tree-settings-popup" class="tree-settings-popup oc-hidden"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <button class="tree-settings-cogwheel" id="tree-settings-btn" title="Settings" onclick="toggleSettingsPopup()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="8" cy="8" r="2.5"/>
-          <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4"/>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
         </svg>
       </button>
       <div id="fs-status" style="display:flex;align-items:center;gap:6px;">
@@ -292,15 +292,11 @@ function refreshFileTree() {
 }
 
 function toggleSearch() {
-  const el = document.getElementById("tree-search");
+  // Search bar is always visible now - just focus it
   const input = document.getElementById("tree-search-input");
-  el.classList.toggle("oc-hidden");
-  if (!el.classList.contains("oc-hidden")) {
+  if (input) {
     input.focus();
-    input.value = "";
-  } else {
-    input.value = "";
-    renderFileTree();
+    input.select();
   }
 }
 
@@ -553,32 +549,31 @@ function renderEditorContent() {
 
   const tab = workspace.openTabs[workspace.activeTabIdx];
 
+  // Save scroll position before re-render
+  const prevScrollTop = workspace._editorScrollTop || 0;
+
   if (workspace.editMode) {
     area.innerHTML = `
-      <div class="editor-toolbar">
-        <button class="editor-btn active" onclick="toggleEditMode()">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11.5 1.5l3 3-9 9H2.5v-3z"/></svg>
-          Edit
-        </button>
-        <button class="editor-btn" onclick="toggleEditMode()">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/></svg>
-          Reading
-        </button>
-      </div>
       <textarea class="editor-textarea" id="editor-textarea" spellcheck="false">${escapeHtml(tab.content)}</textarea>
+      <div class="editor-mode-indicator edit" id="editor-mode-indicator">Edit</div>
     `;
     const textarea = document.getElementById("editor-textarea");
+    // Restore scroll position
+    textarea.scrollTop = prevScrollTop;
     // Autosave with debounce
     let autosaveTimer = null;
     textarea.addEventListener("input", () => {
       tab.content = textarea.value;
       tab.dirty = tab.content !== tab.savedContent;
       renderEditorTabs();
-      // Debounced autosave
       if (autosaveTimer) clearTimeout(autosaveTimer);
       autosaveTimer = setTimeout(() => {
         if (tab.dirty) saveCurrentFile();
       }, 1000);
+    });
+    // Track scroll position
+    textarea.addEventListener("scroll", () => {
+      workspace._editorScrollTop = textarea.scrollTop;
     });
     // Support tab key for indentation
     textarea.addEventListener("keydown", (e) => {
@@ -596,22 +591,51 @@ function renderEditorContent() {
         }, 1000);
       }
     });
+    // Click outside the textarea (on the editor area) exits edit mode
+    // Use mousedown on the editor panel to detect clicks outside
+    const exitHandler = (e) => {
+      // If clicking on the textarea itself, do nothing
+      if (e.target === textarea || textarea.contains(e.target)) return;
+      // If clicking on editor tabs, do nothing
+      if (e.target.closest(".editor-tab-bar")) return;
+      // If clicking the indicator itself, do nothing (it's informational)
+      if (e.target.closest(".editor-mode-indicator")) return;
+      // Save and exit edit mode
+      workspace._editorScrollTop = textarea.scrollTop;
+      if (tab.dirty) {
+        if (autosaveTimer) clearTimeout(autosaveTimer);
+        saveCurrentFile();
+      }
+      document.removeEventListener("mousedown", exitHandler);
+      workspace.editMode = false;
+      renderEditorContent();
+    };
+    // Delay to avoid the same click that entered edit mode from triggering exit
+    setTimeout(() => document.addEventListener("mousedown", exitHandler), 100);
     textarea.focus();
   } else {
     const rendered = renderMarkdown(tab.content);
     area.innerHTML = `
-      <div class="editor-toolbar">
-        <button class="editor-btn" onclick="toggleEditMode()">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11.5 1.5l3 3-9 9H2.5v-3z"/></svg>
-          Edit
-        </button>
-        <button class="editor-btn active" onclick="toggleEditMode()">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/></svg>
-          Reading
-        </button>
-      </div>
-      <div class="editor-preview">${rendered}</div>
+      <div class="editor-preview" id="editor-preview-content">${rendered}</div>
+      <div class="editor-mode-indicator reading" id="editor-mode-indicator">Reading</div>
     `;
+    // Restore scroll position
+    const preview = document.getElementById("editor-preview-content");
+    if (preview) preview.scrollTop = prevScrollTop;
+    // Track scroll position on preview
+    if (preview) preview.addEventListener("scroll", () => {
+      workspace._editorScrollTop = preview.scrollTop;
+    });
+    // Double-click to enter edit mode
+    if (preview) {
+      preview.addEventListener("dblclick", (e) => {
+        // Don't trigger on links or checkboxes
+        if (e.target.tagName === "A" || e.target.tagName === "INPUT") return;
+        workspace._editorScrollTop = preview.scrollTop;
+        workspace.editMode = true;
+        renderEditorContent();
+      });
+    }
   }
 }
 
@@ -765,6 +789,8 @@ function renderMarkdown(text) {
   html = html.replace(/^\*\*\*+$/gm, "<hr>");
 
   // Checkboxes (must come before bold/italic)
+  // First, collapse blank lines between consecutive checkbox items so they group properly
+  html = html.replace(/(^- \[[ x]\]\s+.+$)\n\n(?=- \[[ x]\])/gm, '$1\n');
   html = html.replace(/^- \[x\]\s+(.+)$/gm, '<li class="task task-done"><input type="checkbox" checked disabled> $1</li>');
   html = html.replace(/^- \[ \]\s+(.+)$/gm, '<li class="task"><input type="checkbox" disabled> $1</li>');
 
@@ -917,15 +943,6 @@ function renderSettingsPopup() {
       ${themeIcon}
       <span class="settings-label">Appearance</span>
       <span class="settings-value">${themeLabel}</span>
-    </div>
-    <div class="tree-settings-popup-item" onclick="toggleSearch(); toggleSettingsPopup();">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
-      <span class="settings-label">Search files</span>
-      <span class="settings-value">⌘O</span>
-    </div>
-    <div class="tree-settings-popup-item" onclick="refreshFileTree(); toggleSettingsPopup();">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 8a6 6 0 0110.9-3.5M14 2v4h-4M14 8a6 6 0 01-10.9 3.5M2 14v-4h4"/></svg>
-      <span class="settings-label">Refresh files</span>
     </div>
     <div class="tree-settings-popup-item" style="cursor:default; pointer-events:none;">
       <span class="fs-dot${workspace.connected ? ' connected' : ''}" style="width:8px;height:8px;"></span>

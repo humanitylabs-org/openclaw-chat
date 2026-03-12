@@ -12,8 +12,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/png" href="/icon-192.png">
-  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <style>
     * {
       box-sizing: border-box;
@@ -1519,6 +1520,7 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
+      position: relative;
     }
 
     .editor-toolbar {
@@ -1594,6 +1596,7 @@
       box-sizing: border-box;
       word-wrap: break-word;
       overflow-wrap: break-word;
+      cursor: default;
     }
     @media (min-width: 1025px) {
       .editor-preview { padding: 32px 48px; max-width: 820px; }
@@ -1818,6 +1821,30 @@
       font-size: 13px;
     }
 
+    /* Floating mode indicator */
+    .editor-mode-indicator {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 6px;
+      pointer-events: none;
+      z-index: 10;
+      letter-spacing: 0.03em;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .editor-mode-indicator.reading {
+      background: rgba(74, 158, 255, 0.12);
+      color: var(--interactive-accent);
+    }
+    .editor-mode-indicator.edit {
+      background: rgba(76, 175, 80, 0.12);
+      color: #4caf50;
+    }
+
     /* ─── Light Theme ────────────────────────────────────────────── */
     body[data-theme="light"] {
       --background-primary: #ffffff;
@@ -1895,7 +1922,7 @@
       color: var(--text-normal);
     }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=4">
+  <link rel="stylesheet" href="/theme.css?v=5">
 </head>
 <body>
   <div class="app">
@@ -2003,8 +2030,8 @@
     </div>
   </div>
 
-  <script src="/app.js?v=4"></script>
-  <script src="/workspace.js?v=4"></script>
+  <script src="/app.js?v=5"></script>
+  <script src="/workspace.js?v=5"></script>
   <script>
     // Init workspace panels after DOM is ready
     initWorkspace();
