@@ -536,12 +536,12 @@ async function startChat() {
 function updateConnectionStatus(connected) {
   if (connected) {
     ui.sendBtn.classList.remove("oc-hidden");
-    ui.messageInput.disabled = false;
-    ui.messageInput.placeholder = "Message...";
+    ui.messageInput.contentEditable = "true";
+    ui.messageInput.dataset.placeholder = "Message...";
   } else {
     ui.sendBtn.classList.add("oc-hidden");
-    ui.messageInput.disabled = true;
-    ui.messageInput.placeholder = "Disconnected — open settings to connect";
+    ui.messageInput.contentEditable = "false";
+    ui.messageInput.dataset.placeholder = "Disconnected — open settings to connect";
   }
   // Update workspace connection state
   if (typeof workspace !== 'undefined') {
@@ -1514,6 +1514,20 @@ function renderModelList(box, models, provider, currentModel, modal, providerMap
   box.appendChild(list);
 }
 
+// ─── Input Helpers (contenteditable div) ─────────────────────────────
+
+function getInputValue() {
+  return ui.messageInput.innerText || "";
+}
+
+function setInputValue(text) {
+  ui.messageInput.textContent = text;
+}
+
+function clearInput() {
+  ui.messageInput.textContent = "";
+}
+
 // ─── Loading Indicator ───────────────────────────────────────────────
 
 function showLoading(text = "Loading…") {
@@ -2266,7 +2280,7 @@ async function sendMessage(text) {
 
   state.sending = true;
   ui.sendBtn.disabled = true;
-  ui.messageInput.value = "";
+  clearInput();
   autoResize();
 
   // Build attachments
@@ -2514,7 +2528,7 @@ function getSTTConfig() {
 }
 
 function updateSendButton() {
-  const hasContent = ui.messageInput.value.trim() || state.pendingAttachments.length > 0;
+  const hasContent = getInputValue().trim() || state.pendingAttachments.length > 0;
   const sttReady = isSTTConfigured();
 
   if (hasContent || voiceState.recording || voiceState.transcribing) {
@@ -2587,7 +2601,7 @@ async function handleMicClick() {
         const result = await response.json();
         const text = result.text || "";
         if (text) {
-          ui.messageInput.value = text;
+          setInputValue(text);
           autoResize();
         }
       } catch (err) {
@@ -2613,6 +2627,14 @@ function autoResize() {
   ui.messageInput.style.height = Math.min(ui.messageInput.scrollHeight, 120) + "px";
 }
 
+// Prevent contenteditable from inserting divs/spans on Enter — just insert \n
+ui.messageInput.addEventListener("beforeinput", (e) => {
+  if (e.inputType === "insertParagraph" || e.inputType === "insertLineBreak") {
+    e.preventDefault();
+    document.execCommand("insertLineBreak");
+  }
+});
+
 // ─── Input Handlers ──────────────────────────────────────────────────
 
 ui.sendBtn.addEventListener("click", () => {
@@ -2621,8 +2643,8 @@ ui.sendBtn.addEventListener("click", () => {
     handleMicClick();
     return;
   }
-  if (ui.messageInput.value.trim() || state.pendingAttachments.length > 0) {
-    sendMessage(ui.messageInput.value);
+  if (getInputValue().trim() || state.pendingAttachments.length > 0) {
+    sendMessage(getInputValue());
   }
 });
 
@@ -2630,7 +2652,7 @@ const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window
 ui.messageInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey && !isMobile) {
     e.preventDefault();
-    sendMessage(ui.messageInput.value);
+    sendMessage(getInputValue());
   }
 });
 
@@ -2639,7 +2661,7 @@ ui.messageInput.addEventListener("input", () => {
   updateSendButton();
 });
 
-// Clipboard paste: capture images
+// Clipboard paste: capture images + force plain text
 ui.messageInput.addEventListener("paste", (e) => {
   const items = e.clipboardData?.items;
   if (!items) return;
@@ -2650,6 +2672,12 @@ ui.messageInput.addEventListener("paste", (e) => {
       if (file) handlePastedFile(file);
       return;
     }
+  }
+  // Force plain text paste in contenteditable
+  const text = e.clipboardData?.getData("text/plain");
+  if (text) {
+    e.preventDefault();
+    document.execCommand("insertText", false, text);
   }
 });
 
