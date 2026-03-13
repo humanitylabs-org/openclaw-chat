@@ -2800,9 +2800,15 @@ window.ocResetCloseConfirm = () => { setCloseConfirmDisabled(false); console.log
 
 initApp();
 
-// Register service worker
+// Register service worker + force update check
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").catch((err) => {
-    console.error("Service worker registration failed:", err);
-  });
+  navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
+    .then((reg) => {
+      // Check for updates immediately and periodically
+      reg.update().catch(() => {});
+      setInterval(() => reg.update().catch(() => {}), 60000);
+    })
+    .catch((err) => {
+      console.error("Service worker registration failed:", err);
+    });
 }
