@@ -1318,6 +1318,43 @@
       flex-shrink: 0;
     }
 
+    /* Mobile: larger touch targets for file tree */
+    .panel-container.mobile .tree-search {
+      padding: 8px 14px;
+      padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+    }
+    .panel-container.mobile .tree-search input {
+      padding: 10px 14px;
+      font-size: 15px;
+      border-radius: 8px;
+    }
+    .panel-container.mobile .tree-settings {
+      padding: 14px 16px;
+    }
+    .panel-container.mobile .tree-settings div {
+      gap: 12px;
+    }
+    .panel-container.mobile .tree-settings img {
+      width: 22px !important;
+      height: 22px !important;
+    }
+    .panel-container.mobile .tree-settings span {
+      font-size: 14px !important;
+    }
+    .panel-container.mobile .tree-settings-cogwheel {
+      padding: 10px;
+      min-width: 44px;
+      min-height: 44px;
+    }
+    .panel-container.mobile .tree-settings-cogwheel svg {
+      width: 18px;
+      height: 18px;
+    }
+    .panel-container.mobile .tree-settings .fs-dot {
+      width: 9px !important;
+      height: 9px !important;
+    }
+
     /* Chat container fills panel */
     .chat-panel .openclaw-chat-container {
       height: 100%;
