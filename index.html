@@ -744,6 +744,25 @@
       padding: 40px 16px;
       align-self: center;
     }
+    .openclaw-messages.oc-loading::after { content: none; }
+
+    /* Loading indicator */
+    .openclaw-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 32px 16px;
+      align-self: center;
+      color: var(--text-faint);
+      font-size: 12px;
+      animation: msgIn 0.15s ease-out;
+    }
+    .openclaw-loading .spinner {
+      width: 14px;
+      height: 14px;
+      border-width: 2px;
+    }
 
     /* Message bubbles */
     .openclaw-msg {
@@ -929,6 +948,12 @@
     .openclaw-input-area {
       flex-shrink: 0;
       padding: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    /* Remove safe area padding when keyboard is open (keyboard replaces the home indicator) */
+    .oc-keyboard-open ~ .openclaw-chat-container .openclaw-input-area,
+    .openclaw-chat-container.oc-kb-open .openclaw-input-area {
+      padding-bottom: 0;
     }
 
     .openclaw-input-row {
@@ -1243,8 +1268,9 @@
     .openclaw-model-bar {
       display: flex;
       align-items: center;
-      padding: 0 14px 0;
+      padding: 0 14px;
       gap: 4px;
+      line-height: 1;
     }
     .openclaw-model-label {
       font-size: 10px;
@@ -1397,6 +1423,8 @@
       flex-shrink: 0;
       border-top: 1px solid rgba(255,255,255,0.04);
     }
+    /* Hide panel dots when virtual keyboard is open */
+    .panel-dots.oc-keyboard-open { display: none; }
     .panel-dots .dot {
       width: 6px;
       height: 6px;
@@ -2448,7 +2476,7 @@
     </div>
   </div>
 
-  <script src="/app.js?v=15"></script>
+  <script src="/app.js?v=18"></script>
   <script src="/workspace.js?v=15"></script>
   <script>
     // Init workspace panels after DOM is ready

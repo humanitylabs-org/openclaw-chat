@@ -606,6 +606,7 @@ async function switchAgent(agent) {
   updateAgentButton();
   state.messages = [];
   ui.messagesContainer.innerHTML = "";
+  showLoading("Loading…");
   await loadChatHistory();
   await renderTabs();
 }
@@ -1192,6 +1193,7 @@ async function switchTab(tab) {
   localStorage.setItem("sessionKey", tab.key);
   state.messages = [];
   ui.messagesContainer.innerHTML = "";
+  showLoading("Loading…");
   await loadChatHistory();
 
   // Restore stream UI if tab has active stream
@@ -1208,6 +1210,11 @@ async function resetTab(tab) {
   const msg = "This will clear the conversation.";
   const ok = await confirmClose(title, msg);
   if (!ok) return;
+  if (tab.key === state.sessionKey) {
+    state.messages = [];
+    ui.messagesContainer.innerHTML = "";
+    showLoading("Resetting…");
+  }
   try {
     await state.gateway.request("chat.send", {
       sessionKey: tab.key,
@@ -1215,13 +1222,11 @@ async function resetTab(tab) {
       deliver: false,
       idempotencyKey: "reset-" + Date.now(),
     });
-    if (tab.key === state.sessionKey) {
-      state.messages = [];
-      ui.messagesContainer.innerHTML = "";
-    }
+    if (tab.key === state.sessionKey) hideLoading();
     await updateContextMeter();
     await renderTabs();
   } catch (err) {
+    hideLoading();
     console.error("Reset failed:", err);
   }
 }
@@ -1284,6 +1289,7 @@ async function createNewTab() {
     localStorage.setItem("sessionKey", sessionKey);
     state.messages = [];
     ui.messagesContainer.innerHTML = "";
+    showLoading("Loading…");
     await renderTabs();
     await updateContextMeter();
   } catch (err) {
@@ -1508,10 +1514,28 @@ function renderModelList(box, models, provider, currentModel, modal, providerMap
   box.appendChild(list);
 }
 
+// ─── Loading Indicator ───────────────────────────────────────────────
+
+function showLoading(text = "Loading…") {
+  hideLoading();
+  ui.messagesContainer.classList.add("oc-loading");
+  const el = document.createElement("div");
+  el.className = "openclaw-loading";
+  el.id = "oc-loading-indicator";
+  el.innerHTML = `<div class="spinner"></div><span>${text}</span>`;
+  ui.messagesContainer.appendChild(el);
+}
+
+function hideLoading() {
+  ui.messagesContainer.classList.remove("oc-loading");
+  document.getElementById("oc-loading-indicator")?.remove();
+}
+
 // ─── Chat Functions ──────────────────────────────────────────────────
 
 async function loadChatHistory() {
   if (!state.gateway?.connected) return;
+  showLoading("Loading…");
   try {
     const result = await state.gateway.request("chat.history", {
       sessionKey: state.sessionKey,
@@ -1538,8 +1562,10 @@ async function loadChatHistory() {
       state.messages = state.messages.slice(1);
     }
 
+    hideLoading();
     renderMessages();
   } catch (err) {
+    hideLoading();
     console.error("Failed to load chat history:", err);
   }
 }
@@ -2600,8 +2626,9 @@ ui.sendBtn.addEventListener("click", () => {
   }
 });
 
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
 ui.messageInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
+  if (e.key === "Enter" && !e.shiftKey && !isMobile) {
     e.preventDefault();
     sendMessage(ui.messageInput.value);
   }
@@ -2718,6 +2745,28 @@ function canSwipeToPrevTab() {
 // ─── Settings: confirm-close toggle ─────────────────────────────────
 // (Can be wired to a settings UI later; for now expose via console)
 window.ocResetCloseConfirm = () => { setCloseConfirmDisabled(false); console.log("Close confirmation re-enabled"); };
+
+// ─── Virtual Keyboard Detection ──────────────────────────────────────
+
+(function initKeyboardDetection() {
+  const setKeyboard = (open) => {
+    const dots = document.getElementById("panel-dots");
+    if (dots) dots.classList.toggle("oc-keyboard-open", open);
+    ui.chatContainer?.classList.toggle("oc-kb-open", open);
+  };
+
+  // Focus/blur on the input textarea
+  ui.messageInput.addEventListener("focus", () => setKeyboard(true));
+  ui.messageInput.addEventListener("blur", () => setKeyboard(false));
+
+  // Also track visualViewport as backup
+  if (typeof visualViewport !== "undefined") {
+    visualViewport.addEventListener("resize", () => {
+      const keyboardOpen = visualViewport.height < window.innerHeight * 0.75;
+      setKeyboard(keyboardOpen);
+    });
+  }
+})();
 
 // ─── Initialize ──────────────────────────────────────────────────────
 
