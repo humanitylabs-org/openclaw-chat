@@ -1440,8 +1440,9 @@
     /* Search bar */
     .tree-search {
       padding: 0 10px;
+      padding-top: env(safe-area-inset-top, 0px);
       border-bottom: 1px solid var(--background-modifier-border);
-      height: var(--header-height);
+      min-height: var(--header-height);
       display: flex;
       align-items: center;
       box-sizing: border-box;
@@ -1787,7 +1788,8 @@
       display: flex;
       align-items: flex-end;
       overflow: hidden;
-      height: var(--header-height);
+      min-height: var(--header-height);
+      padding-top: env(safe-area-inset-top, 0px);
       box-sizing: border-box;
     }
     .editor-tabs {
