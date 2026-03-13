@@ -1469,8 +1469,10 @@ function setupSwipeGestures() {
     workspace.touchStartX = e.touches[0].clientX;
     workspace.touchStartY = e.touches[0].clientY;
     // Track if touch started inside the chat messages area (to avoid conflicting with tab swipe)
+    // Only defer to chat tab swipe if there are multiple tabs to swipe between
     const msgEl = document.getElementById("messages");
-    workspace._touchInMessages = msgEl && msgEl.contains(e.target);
+    const hasMultipleTabs = typeof state !== "undefined" && state.tabSessions && state.tabSessions.length > 1;
+    workspace._touchInMessages = msgEl && msgEl.contains(e.target) && hasMultipleTabs;
   }, { passive: true });
 
   container.addEventListener("touchmove", (e) => {
