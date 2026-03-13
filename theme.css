@@ -83,7 +83,7 @@ body {
   font-family: var(--font-sans);
   font-weight: 500;
   border-radius: 10px;
-  background: var(--accent-color, var(--interactive-accent));
+  background: var(--interactive-accent);
   color: var(--text-on-accent);
   letter-spacing: 0.02em;
   transition: opacity 0.2s, transform 0.1s;
@@ -127,7 +127,7 @@ body {
 
 .spinner {
   border-color: rgba(255, 255, 255, 0.08);
-  border-top-color: var(--accent-color, var(--text-muted));
+  border-top-color: var(--text-muted);
 }
 
 /* ── Tab Bar ───────────────────────────────────────────────── */
@@ -150,7 +150,7 @@ body {
 
 .openclaw-tab.active {
   background: var(--background-primary);
-  color: var(--accent-color, var(--text-normal));
+  color: var(--text-normal);
   border-color: var(--background-modifier-border);
   border-bottom-color: var(--background-primary);
   font-weight: 500;
@@ -158,7 +158,7 @@ body {
 
 .openclaw-tab-label {
   font-family: var(--font-sans);
-  color: var(--accent-color, inherit);
+  color: inherit;
 }
 
 .openclaw-tab-label-input {
@@ -174,7 +174,7 @@ body {
 }
 
 .openclaw-tab-meter-fill {
-  background: var(--accent-color, var(--text-normal));
+  background: var(--text-normal);
   opacity: 0.3;
   border-radius: 1px;
 }
@@ -325,7 +325,7 @@ body {
 }
 
 .oc-confirm-ok {
-  background: var(--accent-color, var(--interactive-accent));
+  background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
@@ -402,14 +402,14 @@ body {
 }
 
 .openclaw-msg-assistant a {
-  color: var(--accent-color, var(--text-muted));
+  color: var(--text-muted);
   text-decoration: underline;
   text-underline-offset: 2px;
   transition: color 0.15s;
 }
 
 .openclaw-msg-assistant a:hover {
-  color: var(--accent-color, var(--text-normal));
+  color: var(--text-normal);
   filter: brightness(1.2);
 }
 
@@ -496,12 +496,12 @@ body {
 }
 
 .openclaw-tool-link {
-  color: var(--accent-color, var(--text-faint));
+  color: var(--text-faint);
   opacity: 0.7;
 }
 
 .openclaw-tool-link:hover {
-  color: var(--accent-color, var(--text-muted));
+  color: var(--text-muted);
   opacity: 1;
   text-decoration: underline;
 }
@@ -527,7 +527,7 @@ body {
 }
 
 .openclaw-dot {
-  background: var(--accent-color, var(--text-faint));
+  background: var(--text-faint);
   opacity: 0.6;
 }
 
@@ -570,7 +570,7 @@ body {
 }
 
 .openclaw-brain-btn:hover {
-  color: var(--accent-color, var(--text-muted));
+  color: var(--text-muted);
   background: rgba(255, 255, 255, 0.06);
 }
 
@@ -584,7 +584,7 @@ body {
 
 /* Send button: uses accent color */
 .openclaw-send-btn {
-  background: var(--accent-color, var(--interactive-accent));
+  background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-radius: 50%;
   transition: opacity 0.15s, transform 0.1s;
@@ -829,17 +829,17 @@ body {
 
 .tree-item.active {
   background: rgba(242, 242, 242, 0.06);
-  color: var(--accent-color, var(--text-normal));
+  color: var(--text-normal);
 }
 
 .tree-dir .tree-name {
   font-weight: 400;
-  color: var(--accent-color, rgba(242, 242, 242, 0.6));
+  color: rgba(242, 242, 242, 0.6);
   opacity: 0.7;
 }
 
 .tree-dir:hover .tree-name {
-  color: var(--accent-color, rgba(242, 242, 242, 0.9));
+  color: rgba(242, 242, 242, 0.9);
   opacity: 1;
 }
 
@@ -944,7 +944,7 @@ body {
 
 .editor-tab.active {
   background: rgba(255, 255, 255, 0.04);
-  color: var(--accent-color, var(--text-normal));
+  color: var(--text-normal);
   font-weight: 400;
 }
 
@@ -1131,19 +1131,19 @@ body {
 
 /* Links */
 .editor-preview a {
-  color: var(--accent-color, var(--text-muted));
+  color: var(--text-muted);
   text-decoration: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   transition: color 0.15s, border-color 0.15s;
 }
 
 .editor-preview a:hover {
-  color: var(--accent-color, var(--text-normal));
+  color: var(--text-normal);
   border-bottom-color: rgba(255, 255, 255, 0.3);
 }
 
 .editor-preview .internal-link {
-  color: var(--accent-color, var(--text-muted));
+  color: var(--text-muted);
   border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
 }
 

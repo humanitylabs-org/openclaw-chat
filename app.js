@@ -421,7 +421,7 @@ function showPairingBanner() {
       font-size: 0.88em; line-height: 1.5;
     ">
       <div style="margin-bottom: 0.75rem;">
-        <strong style="color: var(--accent-color); font-size: 1.05em;">🔐 Device pairing required</strong>
+        <strong style="color: var(--interactive-accent); font-size: 1.05em;">🔐 Device pairing required</strong>
       </div>
       <p style="margin: 0 0 0.5rem; color: #ccc;">
         This device (<code style="background:#28282d;padding:0.15em 0.4em;border-radius:4px;font-size:0.85em;">${deviceShort}</code>) needs to be approved by your gateway.

@@ -1245,21 +1245,6 @@ function renderSettingsPopup() {
 
     <div class="settings-divider"></div>
 
-    <!-- Accent color -->
-    <div style="padding:6px 12px 8px;">
-      <span style="font-size:11px;color:var(--text-muted);">Accent color</span>
-      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;" id="accent-presets">
-        ${['#F2F2F2','#8ba3c4','#9b8ec4','#7bab8e','#c4a76e','#c47e7e','#b87ea8'].map(c =>
-          `<button class="accent-swatch${(localStorage.getItem('accentColor')||'#F2F2F2')===c?' active':''}" data-color="${c}" style="
-            width:22px;height:22px;border-radius:50%;border:2px solid ${(localStorage.getItem('accentColor')||'#F2F2F2')===c?'var(--text-normal)':'transparent'};
-            background:${c};cursor:pointer;padding:0;transition:border-color 0.15s;
-          " onclick="setAccentColor('${c}')"></button>`
-        ).join('')}
-      </div>
-    </div>
-
-    <div class="settings-divider"></div>
-
     <!-- Voice input (collapsible) -->
     <div>
       <button onclick="toggleVoiceSettings()" style="
@@ -1312,12 +1297,6 @@ function renderSettingsPopup() {
       ">🔄 Reconnect / Setup wizard</button>
     </div>
   `;
-}
-
-function setAccentColor(color) {
-  localStorage.setItem("accentColor", color);
-  document.documentElement.style.setProperty("--accent-color", color);
-  renderSettingsPopup();
 }
 
 function toggleVoiceSettings() {

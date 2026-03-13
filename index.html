@@ -31,7 +31,6 @@
       --text-muted: #888;
       --text-faint: #555;
       --text-on-accent: #fff;
-      --accent-color: #F2F2F2;
       --interactive-accent: #F2F2F2;
       --interactive-accent-hover: #FFFFFF;
       --header-height: 36px;
@@ -1721,7 +1720,7 @@
       transition: background 0.2s;
     }
     .settings-toggle input:checked + .slider {
-      background: var(--accent-color, var(--interactive-accent));
+      background: var(--interactive-accent);
     }
     .settings-toggle .knob {
       position: absolute;
@@ -1762,7 +1761,7 @@
       box-shadow: 0 8px 40px rgba(0,0,0,0.4);
     }
     .onboard-step-num {
-      background: var(--accent-color, var(--interactive-accent));
+      background: var(--interactive-accent);
       color: var(--text-on-accent);
       width: 18px;
       height: 18px;
@@ -2164,7 +2163,7 @@
     .editor-preview .callout-body { font-size: 14px; line-height: 1.6; }
     .editor-preview .callout-note, .editor-preview .callout-info {
       background: rgba(74,158,255,0.06);
-      border-color: var(--accent-color);
+      border-color: var(--interactive-accent);
     }
     .editor-preview .callout-tip, .editor-preview .callout-success {
       background: rgba(76,175,80,0.06);
@@ -2449,13 +2448,6 @@
     </div>
   </div>
 
-  <script>
-    // Apply saved accent color before render to prevent flash
-    (function() {
-      var saved = localStorage.getItem("accentColor");
-      if (saved) document.documentElement.style.setProperty("--accent-color", saved);
-    })();
-  </script>
   <script src="/app.js?v=15"></script>
   <script src="/workspace.js?v=15"></script>
   <script>
