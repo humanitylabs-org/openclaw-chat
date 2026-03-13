@@ -1518,9 +1518,14 @@ function switchPanel(idx) {
 }
 
 function updateDots() {
+  const dotsContainer = document.getElementById("panel-dots");
   document.querySelectorAll(".panel-dots .dot").forEach((dot, i) => {
     dot.classList.toggle("active", i === workspace.currentPanel);
   });
+  // Hide dots when chat panel is active on mobile (avoids dead space above keyboard)
+  if (dotsContainer && workspace.isMobile) {
+    dotsContainer.classList.toggle("oc-chat-active", workspace.currentPanel === 2);
+  }
 }
 
 function updateLayout() {

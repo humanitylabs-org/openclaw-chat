@@ -536,12 +536,12 @@ async function startChat() {
 function updateConnectionStatus(connected) {
   if (connected) {
     ui.sendBtn.classList.remove("oc-hidden");
-    ui.messageInput.contentEditable = "true";
-    ui.messageInput.dataset.placeholder = "Message...";
+    ui.messageInput.disabled = false;
+    ui.messageInput.placeholder = "Message...";
   } else {
     ui.sendBtn.classList.add("oc-hidden");
-    ui.messageInput.contentEditable = "false";
-    ui.messageInput.dataset.placeholder = "Disconnected — open settings to connect";
+    ui.messageInput.disabled = true;
+    ui.messageInput.placeholder = "Disconnected — open settings to connect";
   }
   // Update workspace connection state
   if (typeof workspace !== 'undefined') {
@@ -1514,20 +1514,6 @@ function renderModelList(box, models, provider, currentModel, modal, providerMap
   box.appendChild(list);
 }
 
-// ─── Input Helpers (contenteditable div) ─────────────────────────────
-
-function getInputValue() {
-  return ui.messageInput.innerText || "";
-}
-
-function setInputValue(text) {
-  ui.messageInput.textContent = text;
-}
-
-function clearInput() {
-  ui.messageInput.textContent = "";
-}
-
 // ─── Loading Indicator ───────────────────────────────────────────────
 
 function showLoading(text = "Loading…") {
@@ -2280,7 +2266,7 @@ async function sendMessage(text) {
 
   state.sending = true;
   ui.sendBtn.disabled = true;
-  clearInput();
+  ui.messageInput.value = "";
   autoResize();
 
   // Build attachments
@@ -2528,7 +2514,7 @@ function getSTTConfig() {
 }
 
 function updateSendButton() {
-  const hasContent = getInputValue().trim() || state.pendingAttachments.length > 0;
+  const hasContent = ui.messageInput.value.trim() || state.pendingAttachments.length > 0;
   const sttReady = isSTTConfigured();
 
   if (hasContent || voiceState.recording || voiceState.transcribing) {
@@ -2601,7 +2587,7 @@ async function handleMicClick() {
         const result = await response.json();
         const text = result.text || "";
         if (text) {
-          setInputValue(text);
+          ui.messageInput.value = text;
           autoResize();
         }
       } catch (err) {
@@ -2627,13 +2613,6 @@ function autoResize() {
   ui.messageInput.style.height = Math.min(ui.messageInput.scrollHeight, 120) + "px";
 }
 
-// Prevent contenteditable from inserting divs/spans on Enter — just insert \n
-ui.messageInput.addEventListener("beforeinput", (e) => {
-  if (e.inputType === "insertParagraph" || e.inputType === "insertLineBreak") {
-    e.preventDefault();
-    document.execCommand("insertLineBreak");
-  }
-});
 
 // ─── Input Handlers ──────────────────────────────────────────────────
 
@@ -2643,8 +2622,8 @@ ui.sendBtn.addEventListener("click", () => {
     handleMicClick();
     return;
   }
-  if (getInputValue().trim() || state.pendingAttachments.length > 0) {
-    sendMessage(getInputValue());
+  if (ui.messageInput.value.trim() || state.pendingAttachments.length > 0) {
+    sendMessage(ui.messageInput.value);
   }
 });
 
@@ -2652,7 +2631,7 @@ const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window
 ui.messageInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey && !isMobile) {
     e.preventDefault();
-    sendMessage(getInputValue());
+    sendMessage(ui.messageInput.value);
   }
 });
 
@@ -2673,12 +2652,7 @@ ui.messageInput.addEventListener("paste", (e) => {
       return;
     }
   }
-  // Force plain text paste in contenteditable
-  const text = e.clipboardData?.getData("text/plain");
-  if (text) {
-    e.preventDefault();
-    document.execCommand("insertText", false, text);
-  }
+
 });
 
 // Model label -> model picker
