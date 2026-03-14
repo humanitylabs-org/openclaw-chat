@@ -1395,7 +1395,16 @@ function renderOnboarding() {
           Connect
         </button>
       </div>
-      <div style="font-size:10px;color:var(--text-faint);margin-top:14px;text-align:center;">
+      <details style="margin-top:16px;">
+        <summary style="font-size:12px;color:var(--text-faint);cursor:pointer;text-align:center;list-style:none;">Don't have these yet? →</summary>
+        <div style="margin-top:10px;padding:14px 16px;background:rgba(128,128,128,0.06);border-radius:8px;font-size:12px;line-height:1.6;color:var(--text-muted);text-align:left;">
+          <p style="margin:0 0 8px;font-weight:600;color:var(--text-normal);">Ask your bot to set it up</p>
+          <p style="margin:0 0 8px;">Send this to your bot on Telegram:</p>
+          <p style="margin:0 0 12px;padding:10px 12px;background:rgba(128,128,128,0.06);border-radius:6px;font-size:11px;color:var(--text-faint);line-height:1.5;font-style:italic;">"Set up remote access so I can use usemyclaw.com. Install Tailscale, configure the gateway for Tailscale Serve, set up the file server, and send me my gateway URL and auth token."</p>
+          <p style="margin:0;font-size:11px;">Your bot will walk you through it. <a href="https://botsetupguide.com/upgrade" target="_blank" style="color:var(--interactive-accent);">Full setup guide →</a></p>
+        </div>
+      </details>
+      <div style="font-size:10px;color:var(--text-faint);margin-top:10px;text-align:center;">
         🔒 Stored locally. Never sent to our servers.
       </div>
     </div>
