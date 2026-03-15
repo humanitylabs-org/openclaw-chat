@@ -2,7 +2,7 @@
   "name": "OpenClaw Chat",
   "short_name": "OpenClaw",
   "description": "Chat with your OpenClaw AI assistant",
-  "start_url": "/",
+  "start_url": "/chat",
   "display": "standalone",
   "background_color": "#0B0B0D",
   "theme_color": "#0B0B0D",
