@@ -31,8 +31,8 @@
       --text-muted: #888;
       --text-faint: #555;
       --text-on-accent: #fff;
-      --interactive-accent: #4a9eff;
-      --interactive-accent-hover: #3a8ae6;
+      --interactive-accent: #F2F2F2;
+      --interactive-accent-hover: #FFFFFF;
       --header-height: 36px;
     }
 
@@ -181,10 +181,19 @@
       align-items: flex-end;
       gap: 0;
       flex-shrink: 0;
-      height: var(--header-height);
+      min-height: var(--header-height);
       padding-top: env(safe-area-inset-top, 0px);
       border-bottom: 1px solid var(--background-modifier-border);
-      box-sizing: border-box;
+      box-sizing: content-box;
+    }
+    /* When hamburger bar is visible, hide the desktop tab bar and let hamburger handle layout */
+    .openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) {
+      padding-top: 0;
+      min-height: 0;
+      border-bottom: none;
+    }
+    .openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) > .openclaw-tab-bar#tab-bar {
+      display: none;
     }
     .openclaw-top-bar .openclaw-tab-bar {
       flex: 1;
@@ -410,39 +419,129 @@
     /* ─── Mobile Hamburger Tab Switcher ──────────────────────────── */
     .oc-hamburger-bar {
       display: none;
-      flex-shrink: 0;
-      align-items: center;
-      padding: 6px 10px;
+      flex: 1;
+      min-width: 0;
+      align-items: stretch;
+      padding: 0;
+      padding-top: env(safe-area-inset-top, 0px);
       border-bottom: 1px solid var(--background-modifier-border);
-      gap: 8px;
+      gap: 0;
+      min-height: var(--header-height);
+      box-sizing: content-box;
+      position: relative;
     }
     .oc-hamburger-bar.oc-visible { display: flex; }
     .oc-hamburger-btn {
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 18px;
       cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 4px;
+      padding: 0 12px;
+      border-radius: 0;
+      line-height: 1;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid var(--background-modifier-border);
+      min-width: 44px;
+      min-height: 44px;
     }
-    .oc-hamburger-btn:hover { background: rgba(128,128,128,0.15); }
-    .oc-hamburger-current {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-normal);
+    .oc-hamburger-btn:hover { background: rgba(128,128,128,0.1); }
+    .oc-hamburger-btn:active { background: rgba(128,128,128,0.18); }
+
+    /* ─── Tab Switcher (single-tab view with arrows) ─────────── */
+    .oc-tab-switcher {
       flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 2px;
     }
-    .oc-hamburger-add {
+    .oc-tab-switcher-arrow {
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 18px;
       cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 4px;
+      padding: 8px 8px;
+      border-radius: 6px;
+      line-height: 1;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.5;
+      transition: opacity 0.15s, background 0.15s;
+      min-width: 36px;
+      min-height: 36px;
     }
-    .oc-hamburger-add:hover { background: rgba(128,128,128,0.15); }
+    .oc-tab-switcher-arrow:hover { background: rgba(128,128,128,0.12); opacity: 0.9; }
+    .oc-tab-switcher-arrow:active { background: rgba(128,128,128,0.2); opacity: 1; }
+    .oc-tab-switcher-arrow.oc-hidden { visibility: hidden; pointer-events: none; }
+    .oc-tab-switcher-current {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 5px 4px 4px 4px;
+    }
+    .oc-tab-switcher-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .oc-tab-switcher-label {
+      flex: 1;
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-normal);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .oc-tab-switcher-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .oc-tab-switcher-action {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 6px;
+      line-height: 1;
+      font-size: 14px;
+      opacity: 0.5;
+      transition: opacity 0.15s, background 0.15s;
+      min-width: 32px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .oc-tab-switcher-action:hover { opacity: 0.9; background: rgba(128,128,128,0.12); }
+    .oc-tab-switcher-action:active { opacity: 1; background: rgba(128,128,128,0.2); }
+    .oc-tab-switcher-meter {
+      width: 100%;
+      height: 3px;
+      background: rgba(128,128,128,0.15);
+      border-radius: 1.5px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .oc-tab-switcher-meter-fill {
+      height: 100%;
+      border-radius: 1.5px;
+      background: var(--text-normal);
+      opacity: 0.6;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
     .oc-hamburger-dropdown {
       display: none;
       position: absolute;
@@ -453,32 +552,44 @@
       border: 1px solid var(--background-modifier-border);
       border-top: none;
       z-index: 100;
-      max-height: 300px;
+      max-height: 60vh;
       overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
     }
     .oc-hamburger-dropdown.oc-open { display: block; }
     .oc-hamburger-dropdown-item {
       display: flex;
       align-items: center;
-      padding: 10px 12px;
-      gap: 8px;
+      padding: 12px 14px;
+      gap: 10px;
       cursor: pointer;
       color: var(--text-muted);
-      font-size: 13px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(128,128,128,0.06);
+      transition: background 0.12s;
     }
+    .oc-hamburger-dropdown-item:last-child { border-bottom: none; }
     .oc-hamburger-dropdown-item:hover { background: rgba(128,128,128,0.1); }
+    .oc-hamburger-dropdown-item:active { background: rgba(128,128,128,0.15); }
     .oc-hamburger-dropdown-item.oc-active {
       color: var(--text-normal);
       font-weight: 600;
       background: rgba(128,128,128,0.08);
     }
-    .oc-hamburger-dropdown-item .oc-dd-label { flex: 1; }
+    .oc-hamburger-dropdown-item .oc-dd-label {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .oc-hamburger-dropdown-item .oc-dd-meter {
       width: 40px;
       height: 3px;
       background: rgba(128,128,128,0.15);
       border-radius: 1.5px;
       overflow: hidden;
+      flex-shrink: 0;
     }
     .oc-hamburger-dropdown-item .oc-dd-meter-fill {
       height: 100%;
@@ -486,14 +597,39 @@
       background: var(--text-normal);
       opacity: 0.6;
     }
-    .oc-hamburger-dropdown-item .oc-dd-close {
-      opacity: 0.3;
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 4px;
-      font-size: 14px;
+    .oc-dd-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
     }
-    .oc-hamburger-dropdown-item .oc-dd-close:hover { opacity: 1; background: rgba(128,128,128,0.2); }
+    .oc-dd-action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      opacity: 0.35;
+      transition: opacity 0.12s, background 0.12s;
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+    .oc-dd-action-btn:hover { opacity: 0.8; background: rgba(128,128,128,0.15); }
+    .oc-dd-action-btn:active { opacity: 1; background: rgba(128,128,128,0.25); }
+    .oc-dd-action-close { font-size: 20px; font-weight: 300; }
+    .oc-dd-rename-input {
+      font-size: 14px;
+      background: rgba(128,128,128,0.15);
+      border: 1px solid var(--interactive-accent);
+      border-radius: 4px;
+      color: var(--text-normal);
+      padding: 2px 6px;
+      width: 100%;
+      outline: none;
+      font-family: inherit;
+    }
 
     /* ─── Confirm Close Modal ────────────────────────────────────── */
     .oc-confirm-overlay {
@@ -607,6 +743,25 @@
       font-size: 13px;
       padding: 40px 16px;
       align-self: center;
+    }
+    .openclaw-messages.oc-loading::after { content: none; }
+
+    /* Loading indicator */
+    .openclaw-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 32px 16px;
+      align-self: center;
+      color: var(--text-faint);
+      font-size: 12px;
+      animation: msgIn 0.15s ease-out;
+    }
+    .openclaw-loading .spinner {
+      width: 14px;
+      height: 14px;
+      border-width: 2px;
     }
 
     /* Message bubbles */
@@ -793,6 +948,12 @@
     .openclaw-input-area {
       flex-shrink: 0;
       padding: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    /* Remove safe area padding when keyboard is open (keyboard replaces the home indicator) */
+    .oc-keyboard-open ~ .openclaw-chat-container .openclaw-input-area,
+    .openclaw-chat-container.oc-kb-open .openclaw-input-area {
+      padding-bottom: 0;
     }
 
     .openclaw-input-row {
@@ -1107,8 +1268,9 @@
     .openclaw-model-bar {
       display: flex;
       align-items: center;
-      padding: 0 14px 0;
+      padding: 0 14px;
       gap: 4px;
+      line-height: 1;
     }
     .openclaw-model-label {
       font-size: 10px;
@@ -1181,6 +1343,43 @@
       flex-shrink: 0;
     }
 
+    /* Mobile: larger touch targets for file tree */
+    .panel-container.mobile .tree-search {
+      padding: 8px 14px;
+      padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+    }
+    .panel-container.mobile .tree-search input {
+      padding: 10px 14px;
+      font-size: 15px;
+      border-radius: 8px;
+    }
+    .panel-container.mobile .tree-settings {
+      padding: 14px 16px;
+    }
+    .panel-container.mobile .tree-settings div {
+      gap: 12px;
+    }
+    .panel-container.mobile .tree-settings img {
+      width: 22px !important;
+      height: 22px !important;
+    }
+    .panel-container.mobile .tree-settings span {
+      font-size: 14px !important;
+    }
+    .panel-container.mobile .tree-settings-cogwheel {
+      padding: 10px;
+      min-width: 44px;
+      min-height: 44px;
+    }
+    .panel-container.mobile .tree-settings-cogwheel svg {
+      width: 18px;
+      height: 18px;
+    }
+    .panel-container.mobile .tree-settings .fs-dot {
+      width: 9px !important;
+      height: 9px !important;
+    }
+
     /* Chat container fills panel */
     .chat-panel .openclaw-chat-container {
       height: 100%;
@@ -1224,6 +1423,10 @@
       flex-shrink: 0;
       border-top: 1px solid rgba(255,255,255,0.04);
     }
+    /* Hide panel dots when virtual keyboard is open */
+    .panel-dots.oc-keyboard-open { display: none; }
+    /* Hide panel dots entirely when chat panel is active on mobile */
+    .panel-dots.oc-chat-active { display: none; }
     .panel-dots .dot {
       width: 6px;
       height: 6px;
@@ -1303,8 +1506,9 @@
     /* Search bar */
     .tree-search {
       padding: 0 10px;
+      padding-top: env(safe-area-inset-top, 0px);
       border-bottom: 1px solid var(--background-modifier-border);
-      height: var(--header-height);
+      min-height: var(--header-height);
       display: flex;
       align-items: center;
       box-sizing: border-box;
@@ -1481,6 +1685,19 @@
       max-height: calc(100vh - 80px);
       overflow-y: auto;
     }
+    @media (max-width: 1024px) {
+      .tree-settings-popup {
+        width: calc(100vw - 32px);
+        max-width: 340px;
+        max-height: calc(100vh - 120px);
+        left: 50% !important;
+        top: 50% !important;
+        bottom: auto !important;
+        transform: translate(-50%, -50%);
+        border-radius: 14px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      }
+    }
     .tree-settings-popup::-webkit-scrollbar { width: 3px; }
     .tree-settings-popup::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
     .settings-section-header {
@@ -1637,7 +1854,8 @@
       display: flex;
       align-items: flex-end;
       overflow: hidden;
-      height: var(--header-height);
+      min-height: var(--header-height);
+      padding-top: env(safe-area-inset-top, 0px);
       box-sizing: border-box;
     }
     .editor-tabs {
@@ -1975,7 +2193,7 @@
     .editor-preview .callout-body { font-size: 14px; line-height: 1.6; }
     .editor-preview .callout-note, .editor-preview .callout-info {
       background: rgba(74,158,255,0.06);
-      border-color: #4a9eff;
+      border-color: var(--interactive-accent);
     }
     .editor-preview .callout-tip, .editor-preview .callout-success {
       background: rgba(76,175,80,0.06);
@@ -2121,7 +2339,7 @@
       color: var(--text-normal);
     }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=7">
+  <link rel="stylesheet" href="/theme.css?v=11">
 </head>
 <body>
   <div class="app">
@@ -2190,9 +2408,26 @@
       <div class="openclaw-top-bar">
         <div class="openclaw-tab-bar" id="tab-bar"></div>
         <div class="oc-hamburger-bar" id="hamburger-bar" style="position:relative;">
-          <button class="oc-hamburger-btn" id="hamburger-btn">☰</button>
-          <span class="oc-hamburger-current" id="hamburger-current">Main</span>
-          <button class="oc-hamburger-add" id="hamburger-add">+</button>
+          <button class="oc-hamburger-btn" id="hamburger-btn">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="oc-tab-switcher" id="tab-switcher">
+            <button class="oc-tab-switcher-arrow oc-arrow-left" id="tab-arrow-left">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div class="oc-tab-switcher-current" id="tab-switcher-current">
+              <div class="oc-tab-switcher-row">
+                <span class="oc-tab-switcher-label" id="tab-switcher-label">Home</span>
+                <span class="oc-tab-switcher-actions" id="tab-switcher-actions"></span>
+              </div>
+              <div class="oc-tab-switcher-meter">
+                <div class="oc-tab-switcher-meter-fill" id="tab-switcher-meter-fill"></div>
+              </div>
+            </div>
+            <button class="oc-tab-switcher-arrow oc-arrow-right" id="tab-arrow-right">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
           <div class="oc-hamburger-dropdown" id="hamburger-dropdown"></div>
         </div>
         <div class="oc-pull-indicator" id="pull-indicator">↻ Release to refresh</div>
@@ -2233,7 +2468,7 @@
         <div class="openclaw-input-row">
           <button class="openclaw-attach-btn" id="attach-btn" aria-label="Attach file" title="Attach file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
           <input type="file" id="file-input" accept="image/*,.md,.txt,.json,.csv,.pdf,.yaml,.yml,.js,.ts,.py,.html,.css" multiple class="oc-hidden">
-          <textarea id="message-input" class="openclaw-input" placeholder="Message..." rows="1"></textarea>
+          <textarea id="message-input" class="openclaw-input" placeholder="Message..." rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences"></textarea>
           <button class="openclaw-abort-btn oc-hidden" id="abort-btn" aria-label="Stop">■</button>
           <div class="openclaw-send-wrapper">
             <button class="openclaw-send-btn oc-opacity-low" id="send-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94l18.04-8.25a.75.75 0 000-1.39L3.478 2.405z"/></svg></button>
@@ -2243,8 +2478,8 @@
     </div>
   </div>
 
-  <script src="/app.js?v=12"></script>
-  <script src="/workspace.js?v=12"></script>
+  <script src="/app.js?v=21"></script>
+  <script src="/workspace.js?v=17"></script>
   <script>
     // Init workspace panels after DOM is ready
     initWorkspace();
