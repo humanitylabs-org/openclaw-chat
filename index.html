@@ -1283,58 +1283,92 @@
     <div class="dashboard" id="dashboard">
       <div class="dashboard-scroll">
 
-        <!-- 1. Agent Hero -->
-        <div class="dash-section dash-agent-hero">
-          <div class="dash-agent-header">
-            <span class="dash-agent-emoji" id="dash-agent-emoji">🤖</span>
-            <span class="dash-agent-name" id="dash-agent-name">Agent</span>
+        <!-- Status Beacon -->
+        <div class="hud-beacon">
+          <div class="hud-beacon-ring" id="hud-beacon-ring">
+            <span class="hud-beacon-letter" id="hud-beacon-letter">O</span>
           </div>
-          <div class="dash-agent-files">
-            <button class="dash-file-btn" data-file="SOUL.md" onclick="viewAgentFile('SOUL.md', 'Personality')">
-              <span class="dash-file-icon">✨</span>
-              <span>Personality</span>
+          <div class="hud-beacon-info">
+            <div class="hud-agent-name" id="hud-agent-name">Oscar</div>
+            <div class="hud-status-line" id="hud-status-line">OFFLINE</div>
+          </div>
+        </div>
+
+        <!-- Alerts (only visible when there are alerts) -->
+        <div class="hud-alerts" id="hud-alerts"></div>
+
+        <!-- Agent Files -->
+        <div class="hud-section">
+          <div class="hud-section-label">AGENT FILES</div>
+          <div class="hud-file-list">
+            <button class="hud-file-item" onclick="viewAgentFile('SOUL.md', 'Personality')">
+              <span class="hud-file-name">Personality</span>
+              <span class="hud-file-arrow">&rsaquo;</span>
             </button>
-            <button class="dash-file-btn" data-file="USER.md" onclick="viewAgentFile('USER.md', 'About You')">
-              <span class="dash-file-icon">👤</span>
-              <span>About You</span>
+            <button class="hud-file-item" onclick="viewAgentFile('USER.md', 'About You')">
+              <span class="hud-file-name">About You</span>
+              <span class="hud-file-arrow">&rsaquo;</span>
             </button>
-            <button class="dash-file-btn" data-file="MEMORY.md" onclick="viewAgentFile('MEMORY.md', 'Memory')">
-              <span class="dash-file-icon">🧠</span>
-              <span>Memory</span>
+            <button class="hud-file-item" onclick="viewAgentFile('MEMORY.md', 'Memory')">
+              <span class="hud-file-name">Memory</span>
+              <span class="hud-file-arrow">&rsaquo;</span>
             </button>
-            <button class="dash-file-btn" data-file="TOOLS.md" onclick="viewAgentFile('TOOLS.md', 'Tools')">
-              <span class="dash-file-icon">🔧</span>
-              <span>Tools</span>
+            <button class="hud-file-item" onclick="viewAgentFile('TOOLS.md', 'Tools')">
+              <span class="hud-file-name">Tools</span>
+              <span class="hud-file-arrow">&rsaquo;</span>
             </button>
           </div>
         </div>
 
-        <!-- 2. Settings (client-side only) -->
-        <div class="dash-section">
-          <div class="dash-section-label">Settings</div>
-
-          <div class="dash-setting-row">
-            <div class="dash-setting-info">
-              <span class="dash-setting-name">Dark Mode</span>
+        <!-- System Readout -->
+        <div class="hud-section">
+          <div class="hud-section-label">SYSTEM</div>
+          <div class="hud-readout">
+            <div class="hud-readout-row">
+              <span class="hud-readout-key">MODEL</span>
+              <span class="hud-readout-val" id="hud-model">---</span>
             </div>
-            <label class="dash-toggle">
+            <div class="hud-readout-row">
+              <span class="hud-readout-key">VERSION</span>
+              <span class="hud-readout-val" id="hud-version">---</span>
+            </div>
+            <div class="hud-readout-row">
+              <span class="hud-readout-key">UPTIME</span>
+              <span class="hud-readout-val" id="hud-uptime">---</span>
+            </div>
+            <div class="hud-readout-row">
+              <span class="hud-readout-key">CHANNELS</span>
+              <span class="hud-readout-val" id="hud-channels">---</span>
+            </div>
+            <div class="hud-readout-row">
+              <span class="hud-readout-key">GATEWAY</span>
+              <span class="hud-readout-val" id="hud-gateway">---</span>
+            </div>
+            <div class="hud-readout-row">
+              <span class="hud-readout-key">DEVICE</span>
+              <span class="hud-readout-val" id="hud-device">---</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="hud-section">
+          <div class="hud-section-label">SETTINGS</div>
+          <div class="hud-setting-row">
+            <span class="hud-setting-name">Dark Mode</span>
+            <label class="hud-toggle">
               <input type="checkbox" id="dash-darkmode" checked>
-              <span class="dash-toggle-slider"></span>
+              <span class="hud-toggle-track"></span>
             </label>
           </div>
-
-          <div class="dash-setting-row">
-            <div class="dash-setting-info">
-              <span class="dash-setting-name">Voice Input</span>
-              <span class="dash-setting-desc">Speech-to-text via OpenAI</span>
-            </div>
-            <label class="dash-toggle">
+          <div class="hud-setting-row">
+            <span class="hud-setting-name">Voice Input</span>
+            <label class="hud-toggle">
               <input type="checkbox" id="dash-voice-toggle">
-              <span class="dash-toggle-slider"></span>
+              <span class="hud-toggle-track"></span>
             </label>
           </div>
-
-          <div class="dash-setting-row dash-voice-key-row" id="dash-voice-key-row" style="display:none;">
+          <div class="hud-voice-key" id="dash-voice-key-row" style="display:none;">
             <div class="dash-field" style="margin:0;width:100%;">
               <label>OpenAI API Key</label>
               <input type="password" id="dash-openai-key" placeholder="sk-...">
@@ -1342,75 +1376,25 @@
           </div>
         </div>
 
-        <!-- 3. Your Server (read-only overview) -->
-        <div class="dash-section">
-          <div class="dash-section-label">Your Server</div>
-
-          <div class="dash-server-grid">
-            <div class="dash-server-item">
-              <span class="dash-server-label">Model</span>
-              <span class="dash-server-value" id="dash-server-model">—</span>
-            </div>
-            <div class="dash-server-item">
-              <span class="dash-server-label">Version</span>
-              <span class="dash-server-value" id="dash-server-version">—</span>
-            </div>
-            <div class="dash-server-item">
-              <span class="dash-server-label">Uptime</span>
-              <span class="dash-server-value" id="dash-server-uptime">—</span>
-            </div>
-            <div class="dash-server-item">
-              <span class="dash-server-label">Channels</span>
-              <span class="dash-server-value" id="dash-server-channels">—</span>
-            </div>
-          </div>
-
-          <div class="dash-server-skills" id="dash-server-skills"></div>
-        </div>
-
-        <!-- 4. Connection (collapsible) -->
-        <div class="dash-section">
-          <div class="dash-connection-header" id="dash-connection-toggle">
-            <div class="dash-status-inline">
-              <span class="dash-dot" id="dash-dot"></span>
-              <span class="dash-connection-label" id="dash-connection-label">Connected</span>
-            </div>
-            <svg class="dash-chevron" id="dash-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="dash-connection-details" id="dash-connection-details" style="display:none;">
-            <div class="dash-info-row" id="dash-info-gateway"></div>
-            <div class="dash-info-row" id="dash-info-device"></div>
-            <button class="dash-disconnect-btn" id="dash-disconnect-btn">Disconnect</button>
+        <!-- Actions -->
+        <div class="hud-section">
+          <div class="hud-actions">
+            <button class="hud-action" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">DIAGNOSTICS</button>
+            <span class="hud-action-sep"></span>
+            <button class="hud-action" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">RESTART</button>
+            <span class="hud-action-sep"></span>
+            <button class="hud-action" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">CHECK UPDATES</button>
           </div>
         </div>
 
-        <!-- 5. Maintenance (collapsible) -->
-        <div class="dash-section">
-          <div class="dash-collapsible-header" id="dash-maintenance-toggle">
-            <span class="dash-section-label" style="margin:0;">Maintenance</span>
-            <svg class="dash-chevron" id="dash-maintenance-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="dash-maintenance-content" id="dash-maintenance-content" style="display:none;">
-            <div class="dash-actions">
-              <button class="dash-action-btn" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
-                <span class="dash-action-icon">🔄</span> Restart
-              </button>
-              <button class="dash-action-btn" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
-                <span class="dash-action-icon">⬆️</span> Update
-              </button>
-              <button class="dash-action-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
-                <span class="dash-action-icon">🩺</span> Doctor
-              </button>
-              <button class="dash-action-btn" onclick="sendControlAction('Run openclaw doctor --fix and then restart the gateway. Tell me what was fixed.')">
-                <span class="dash-action-icon">🔧</span> Fix Issues
-              </button>
-            </div>
-          </div>
+        <!-- Disconnect (subtle) -->
+        <div class="hud-footer">
+          <button class="hud-disconnect" id="dash-disconnect-btn">Disconnect</button>
         </div>
 
-        <!-- 6. Connect form (only when no credentials) -->
+        <!-- Connect form (only when no credentials) -->
         <div class="dash-connect-form" id="dash-connect-form" style="display:none;">
-          <div class="dash-section-label">Connect</div>
+          <div class="hud-section-label">CONNECT</div>
           <div class="dash-field">
             <label>Gateway URL</label>
             <input type="text" id="dash-gateway-url" placeholder="https://your-server.tail1234.ts.net">
@@ -1419,8 +1403,8 @@
             <label>Auth Token</label>
             <input type="password" id="dash-token" placeholder="Paste your token">
           </div>
-          <button class="dash-action-btn dash-connect-btn" id="dash-connect-btn">Connect</button>
-          <p class="dash-hint">🔒 Stored locally only.</p>
+          <button class="hud-connect-btn" id="dash-connect-btn">CONNECT</button>
+          <p class="hud-connect-hint">Stored locally on this device only.</p>
         </div>
 
       </div>

@@ -2562,42 +2562,53 @@ window.ocResetCloseConfirm = () => { setCloseConfirmDisabled(false); console.log
 function updateDashboard() {
   const connected = state.gateway?.connected;
 
-  // Connection status
-  const dot = document.getElementById('dash-dot');
-  const connLabel = document.getElementById('dash-connection-label');
-  if (dot) dot.className = 'dash-dot' + (connected ? ' connected' : '');
-  if (connLabel) connLabel.textContent = connected ? 'Connected' : 'Disconnected';
+  // Beacon ring state
+  const ring = document.getElementById('hud-beacon-ring');
+  if (ring) {
+    ring.className = 'hud-beacon-ring' + (connected ? ' online' : '');
+  }
 
-  // Agent info
-  const agentName = document.getElementById('dash-agent-name');
-  const agentEmoji = document.getElementById('dash-agent-emoji');
-  if (agentName) agentName.textContent = state.activeAgent?.name || 'Agent';
-  if (agentEmoji) agentEmoji.textContent = state.activeAgent?.emoji || '🤖';
+  // Beacon letter (first letter of agent name)
+  const letter = document.getElementById('hud-beacon-letter');
+  const name = state.activeAgent?.name || 'Agent';
+  if (letter) letter.textContent = name.charAt(0).toUpperCase();
 
-  // Connection info
-  const gwInfo = document.getElementById('dash-info-gateway');
-  const devInfo = document.getElementById('dash-info-device');
-  if (gwInfo) {
+  // Agent name
+  const nameEl = document.getElementById('hud-agent-name');
+  if (nameEl) nameEl.textContent = name;
+
+  // Status line
+  const statusLine = document.getElementById('hud-status-line');
+  if (statusLine) {
+    if (connected) {
+      const model = state.currentModel ? state.currentModel.split('/').pop() : '';
+      statusLine.textContent = 'ONLINE' + (model ? ' \u00b7 ' + model : '');
+    } else {
+      statusLine.textContent = 'OFFLINE';
+    }
+  }
+
+  // System readout - gateway/device (available without health call)
+  const gwEl = document.getElementById('hud-gateway');
+  if (gwEl) {
     const url = state.gatewayUrl || '';
-    const short = url.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
-    gwInfo.innerHTML = '<span class="dash-info-label">Gateway</span><span class="dash-info-value">' + (short || 'Not set') + '</span>';
+    gwEl.textContent = url.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '') || '---';
   }
-  if (devInfo) {
-    devInfo.innerHTML = '<span class="dash-info-label">Device</span><span class="dash-info-value">' + (state.deviceIdentity?.deviceId?.slice(0, 12) || '—') + '</span>';
-  }
+  const devEl = document.getElementById('hud-device');
+  if (devEl) devEl.textContent = state.deviceIdentity?.deviceId?.slice(0, 12) || '---';
 
   // Show connect form or dashboard content
   const connectForm = document.getElementById('dash-connect-form');
-  const sections = document.querySelectorAll('#dashboard .dash-section');
+  const hudSections = document.querySelectorAll('#dashboard .hud-beacon, #dashboard .hud-alerts, #dashboard .hud-section, #dashboard .hud-footer');
   if (!state.gatewayUrl || !state.token) {
     if (connectForm) connectForm.style.display = '';
-    sections.forEach(s => s.style.display = 'none');
+    hudSections.forEach(s => s.style.display = 'none');
   } else {
     if (connectForm) connectForm.style.display = 'none';
-    sections.forEach(s => s.style.display = '');
+    hudSections.forEach(s => s.style.display = '');
   }
 
-  // Load settings from localStorage
+  // Load settings
   loadDashSettings();
 
   // Fetch server info if connected
@@ -2608,28 +2619,30 @@ async function fetchServerInfo() {
   if (!state.gateway?.connected) return;
   try {
     const health = await state.gateway.request('health', {});
+    const alerts = [];
 
     // Model
-    const modelEl = document.getElementById('dash-server-model');
+    const modelEl = document.getElementById('hud-model');
     if (modelEl) {
       const model = state.currentModel || '';
-      modelEl.textContent = model ? model.split('/').pop() : '—';
+      modelEl.textContent = model ? model.split('/').pop() : '---';
     }
 
-    // Version — from system-presence endpoint
-    const versionEl = document.getElementById('dash-server-version');
+    // Version from system-presence
+    let currentVersion = null;
+    const versionEl = document.getElementById('hud-version');
     try {
       const presence = await state.gateway.request('system-presence', {});
       const hosts = Array.isArray(presence) ? presence : (presence?.hosts || []);
-      if (versionEl && hosts.length > 0 && hosts[0].version) {
-        versionEl.textContent = hosts[0].version;
+      if (hosts.length > 0 && hosts[0].version) {
+        currentVersion = hosts[0].version;
+        if (versionEl) versionEl.textContent = currentVersion;
       }
     } catch (e) { /* version not available */ }
 
-    // Uptime — not in health API, show session age instead
-    const uptimeEl = document.getElementById('dash-server-uptime');
+    // Uptime from sessions
+    const uptimeEl = document.getElementById('hud-uptime');
     if (uptimeEl && health?.sessions) {
-      // Find oldest session as proxy for gateway uptime
       const ages = health.sessions.map(s => s.age || 0).filter(a => a > 0);
       if (ages.length > 0) {
         const maxAge = Math.max(...ages);
@@ -2641,14 +2654,44 @@ async function fetchServerInfo() {
       }
     }
 
-    // Channels — health.channels is an object keyed by channel id
-    const channelsEl = document.getElementById('dash-server-channels');
+    // Channels
+    const channelsEl = document.getElementById('hud-channels');
     if (channelsEl && health?.channels) {
-      const channelLabels = health.channelLabels || {};
+      const labels = health.channelLabels || {};
       const configured = Object.entries(health.channels)
         .filter(([, v]) => v.configured)
-        .map(([k]) => channelLabels[k] || k);
+        .map(([k]) => labels[k] || k);
       channelsEl.textContent = configured.length > 0 ? configured.join(', ') : 'None';
+    }
+
+    // Check for update (compare versions)
+    if (currentVersion) {
+      try {
+        const resp = await fetch('https://registry.npmjs.org/openclaw/latest', { signal: AbortSignal.timeout(5000) });
+        if (resp.ok) {
+          const pkg = await resp.json();
+          const latest = pkg.version;
+          if (latest && latest !== currentVersion) {
+            alerts.push({
+              type: 'warn',
+              text: 'Update available: v' + latest,
+              action: 'UPDATE',
+              cmd: 'Check if there\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.'
+            });
+          }
+        }
+      } catch (e) { /* can't check, skip */ }
+    }
+
+    // Render alerts
+    const alertsEl = document.getElementById('hud-alerts');
+    if (alertsEl) {
+      alertsEl.innerHTML = alerts.map(a =>
+        '<div class="hud-alert hud-alert-' + a.type + '" onclick="sendControlAction(\'' + a.cmd.replace(/'/g, "\\'") + '\')">' +
+        '<span class="hud-alert-text">' + a.text + '</span>' +
+        '<span class="hud-alert-action">' + a.action + '</span>' +
+        '</div>'
+      ).join('');
     }
 
   } catch (err) {
@@ -2757,28 +2800,6 @@ function closeDashboard() {
     state.token = '';
     document.getElementById('landing').style.display = '';
     document.querySelector('.app').style.display = 'none';
-  });
-
-  // Connection toggle (expand/collapse)
-  document.getElementById('dash-connection-toggle')?.addEventListener('click', () => {
-    const details = document.getElementById('dash-connection-details');
-    const chevron = document.getElementById('dash-chevron');
-    if (details) {
-      const open = details.style.display !== 'none';
-      details.style.display = open ? 'none' : '';
-      if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
-    }
-  });
-
-  // Maintenance toggle (expand/collapse)
-  document.getElementById('dash-maintenance-toggle')?.addEventListener('click', () => {
-    const content = document.getElementById('dash-maintenance-content');
-    const chevron = document.getElementById('dash-maintenance-chevron');
-    if (content) {
-      const open = content.style.display !== 'none';
-      content.style.display = open ? 'none' : '';
-      if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
-    }
   });
 
   // Settings change listeners
