@@ -2703,66 +2703,72 @@ async function fetchServerInfo() {
 
 // ─── Agent File List + Viewer ─────────────────────────────────────
 
+const FILE_META = {
+  'SOUL.md':      { label: 'Personality',   desc: 'Who your bot is and how it behaves', icon: '◉' },
+  'USER.md':      { label: 'About You',     desc: 'What your bot knows about you',      icon: '◎' },
+  'MEMORY.md':    { label: 'Memory',        desc: 'Long-term memories and context',     icon: '▣' },
+  'TOOLS.md':     { label: 'Tools & Access', desc: 'Accounts, keys, and tool notes',    icon: '⬡' },
+  'AGENTS.md':    { label: 'Behavior Rules', desc: 'How your bot operates day-to-day',  icon: '▤' },
+  'IDENTITY.md':  { label: 'Identity',      desc: 'Name, emoji, and avatar',            icon: '◈' },
+  'HEARTBEAT.md': { label: 'Check-ins',     desc: 'What to check on periodically',      icon: '◇' },
+};
+
+function friendlyFile(name) {
+  const meta = FILE_META[name];
+  if (meta) return meta;
+  const clean = name.replace(/\.md$/i, '').replace(/[-_]/g, ' ');
+  return { label: clean.charAt(0).toUpperCase() + clean.slice(1), desc: '', icon: '◦' };
+}
+
 async function loadAgentFiles() {
   const container = document.getElementById('hud-file-list');
   if (!container || !state.gateway?.connected) return;
 
+  let files = [];
   try {
     const agentId = state.activeAgent?.id || 'main';
     const result = await state.gateway.request('agents.files.list', { agentId });
-    const files = result?.files || [];
-
-    if (files.length === 0) {
-      container.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">No files found</div>';
-      return;
-    }
-
-    container.innerHTML = '';
-    for (const file of files) {
-      const btn = document.createElement('button');
-      btn.className = 'hud-file-item';
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'hud-file-name';
-      nameSpan.textContent = file.label || file.name;
-      const arrow = document.createElement('span');
-      arrow.className = 'hud-file-arrow';
-      arrow.innerHTML = '&rsaquo;';
-      btn.appendChild(nameSpan);
-      btn.appendChild(arrow);
-      btn.addEventListener('click', () => viewAgentFile(file.name, file.label || file.name));
-      container.appendChild(btn);
-    }
+    files = result?.files || [];
   } catch (err) {
     console.warn('Failed to load agent files:', err);
-    container.innerHTML = '';
-    const defaults = [
-      { name: 'SOUL.md', label: 'Personality' },
-      { name: 'USER.md', label: 'About You' },
-      { name: 'MEMORY.md', label: 'Memory' },
-      { name: 'TOOLS.md', label: 'Tools' },
-    ];
-    for (const f of defaults) {
-      const btn = document.createElement('button');
-      btn.className = 'hud-file-item';
-      btn.innerHTML = `<span class="hud-file-name">${f.label}</span><span class="hud-file-arrow">&rsaquo;</span>`;
-      btn.addEventListener('click', () => viewAgentFile(f.name, f.label));
-      container.appendChild(btn);
-    }
+    files = [{ name: 'SOUL.md' }, { name: 'USER.md' }, { name: 'MEMORY.md' }, { name: 'TOOLS.md' }];
+  }
+
+  if (files.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">No files found</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  for (const file of files) {
+    const meta = friendlyFile(file.name);
+    const btn = document.createElement('button');
+    btn.className = 'hud-file-item';
+    btn.innerHTML = `
+      <span class="hud-file-icon">${meta.icon}</span>
+      <span class="hud-file-info">
+        <span class="hud-file-name">${meta.label}</span>
+        ${meta.desc ? `<span class="hud-file-desc">${meta.desc}</span>` : ''}
+      </span>
+      <span class="hud-file-arrow">&rsaquo;</span>
+    `;
+    btn.addEventListener('click', () => viewAgentFile(file.name, meta.label));
+    container.appendChild(btn);
   }
 }
 
 async function viewAgentFile(filename, label) {
   const overlay = document.getElementById('file-viewer-overlay');
-  const title = document.getElementById('file-viewer-title');
+  const titleEl = document.getElementById('file-viewer-title');
   const body = document.getElementById('file-viewer-body');
-  if (!overlay || !title || !body) return;
+  if (!overlay || !titleEl || !body) return;
 
-  title.textContent = label || filename;
+  titleEl.textContent = label || friendlyFile(filename).label;
   body.innerHTML = '<div class="oc-file-viewer-loading"><div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Loading...</div>';
   overlay.classList.add('oc-open');
 
   if (!state.gateway?.connected) {
-    body.innerHTML = '<p style="color:var(--text-faint);text-align:center;padding:30px;">Not connected to gateway.</p>';
+    body.innerHTML = '<p style="color:var(--text-faint);text-align:center;padding:30px;">Not connected.</p>';
     return;
   }
 
@@ -2770,14 +2776,44 @@ async function viewAgentFile(filename, label) {
     const agentId = state.activeAgent?.id || 'main';
     const result = await state.gateway.request('agents.files.get', { agentId, name: filename });
     const content = result?.file?.content ?? '';
+
+    body.innerHTML = '';
+
     if (content) {
-      body.innerHTML = formatMarkdown(content);
+      const contentDiv = document.createElement('div');
+      contentDiv.innerHTML = formatMarkdown(content);
+      body.appendChild(contentDiv);
     } else {
-      body.innerHTML = '<p style="color:var(--text-faint);text-align:center;padding:30px;">File is empty.</p>';
+      const emptyDiv = document.createElement('p');
+      emptyDiv.style.cssText = 'color:var(--text-faint);text-align:center;padding:20px;';
+      emptyDiv.textContent = 'This file is empty.';
+      body.appendChild(emptyDiv);
     }
+
+    // Edit CTA at the bottom
+    const editCta = document.createElement('div');
+    editCta.className = 'oc-file-edit-cta';
+    editCta.innerHTML = `
+      <button class="oc-file-edit-btn" id="file-edit-btn">Edit in chat</button>
+      <span class="oc-file-edit-hint">Your bot will help you make changes</span>
+    `;
+    body.appendChild(editCta);
+
+    editCta.querySelector('#file-edit-btn').addEventListener('click', () => {
+      overlay.classList.remove('oc-open');
+      closeDashboard();
+      const friendlyName = label || friendlyFile(filename).label;
+      const input = document.getElementById('message-input');
+      if (input) {
+        input.value = `I want to update my ${friendlyName} (${filename}). `;
+        input.focus();
+        input.dispatchEvent(new Event('input'));
+      }
+    });
+
   } catch (err) {
     console.error('agents.files.get failed:', err);
-    body.innerHTML = `<p style="color:var(--text-faint);text-align:center;padding:30px;">Failed to load file: ${err.message || 'unknown error'}</p>`;
+    body.innerHTML = `<p style="color:var(--text-faint);text-align:center;padding:30px;">Failed to load: ${err.message || 'unknown error'}</p>`;
   }
 }
 
