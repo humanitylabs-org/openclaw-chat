@@ -2599,6 +2599,60 @@ function updateDashboard() {
 
   // Load settings from localStorage
   loadDashSettings();
+
+  // Fetch server info if connected
+  if (connected) fetchServerInfo();
+}
+
+async function fetchServerInfo() {
+  if (!state.gateway?.connected) return;
+  try {
+    const health = await state.gateway.request('health', {});
+
+    // Model
+    const modelEl = document.getElementById('dash-server-model');
+    if (modelEl) {
+      const model = state.currentModel || '';
+      modelEl.textContent = model ? model.split('/').pop() : '—';
+    }
+
+    // Version
+    const versionEl = document.getElementById('dash-server-version');
+    if (versionEl && health?.version) {
+      versionEl.textContent = health.version;
+    }
+
+    // Uptime
+    const uptimeEl = document.getElementById('dash-server-uptime');
+    if (uptimeEl && health?.uptime != null) {
+      const secs = Math.floor(health.uptime / 1000);
+      if (secs < 60) uptimeEl.textContent = secs + 's';
+      else if (secs < 3600) uptimeEl.textContent = Math.floor(secs / 60) + 'm';
+      else if (secs < 86400) uptimeEl.textContent = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
+      else uptimeEl.textContent = Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
+    }
+
+    // Channels
+    const channelsEl = document.getElementById('dash-server-channels');
+    if (channelsEl && health?.channels) {
+      const loaded = health.channels.filter(c => c.status === 'loaded' || c.status === 'running' || c.status === 'connected');
+      channelsEl.textContent = loaded.length > 0 ? loaded.map(c => c.name || c.id).join(', ') : 'None';
+    } else if (channelsEl && health?.plugins) {
+      // Try plugins array for channel info
+      const channels = health.plugins.filter(p => p.status === 'loaded' && (p.type === 'channel' || p.kind === 'channel'));
+      channelsEl.textContent = channels.length > 0 ? channels.map(c => c.name || c.id).join(', ') : '—';
+    }
+
+    // Skills (if available in health response)
+    const skillsEl = document.getElementById('dash-server-skills');
+    if (skillsEl && health?.skills && health.skills.length > 0) {
+      skillsEl.innerHTML = '<div class="dash-section-label" style="margin-top:10px;">Skills</div>' +
+        health.skills.map(s => '<span class="dash-skill-tag">' + (s.name || s.id) + '</span>').join('');
+    }
+
+  } catch (err) {
+    console.warn('Failed to fetch server info:', err);
+  }
 }
 
 // ─── Agent File Viewer ────────────────────────────────────────────
@@ -2623,9 +2677,6 @@ function loadDashSettings() {
     if (keyRow) keyRow.style.display = settings.voiceInput ? '' : 'none';
   }
 
-  const ttsToggle = document.getElementById('dash-tts-toggle');
-  if (ttsToggle) ttsToggle.checked = !!settings.ttsOutput;
-
   const keyInput = document.getElementById('dash-openai-key');
   if (keyInput) keyInput.value = settings.openaiKey || '';
 }
@@ -2634,7 +2685,6 @@ function saveDashSettings() {
   const settings = {
     darkMode: document.getElementById('dash-darkmode')?.checked !== false,
     voiceInput: document.getElementById('dash-voice-toggle')?.checked || false,
-    ttsOutput: document.getElementById('dash-tts-toggle')?.checked || false,
     openaiKey: document.getElementById('dash-openai-key')?.value || '',
   };
   localStorage.setItem('dashSettings', JSON.stringify(settings));
@@ -2738,7 +2788,6 @@ function closeDashboard() {
     if (keyRow) keyRow.style.display = checked ? '' : 'none';
     saveDashSettings();
   });
-  document.getElementById('dash-tts-toggle')?.addEventListener('change', saveDashSettings);
   document.getElementById('dash-openai-key')?.addEventListener('change', saveDashSettings);
 
   // Apply saved settings on load
