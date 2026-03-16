@@ -2637,59 +2637,31 @@ async function fetchServerInfo() {
 
     // Model
     const modelEl = document.getElementById('hud-model');
-    if (modelEl) {
+    const modelRow = document.getElementById('hud-row-model');
+    if (modelEl && modelRow) {
       const model = state.currentModel || '';
-      modelEl.textContent = model ? model.split('/').pop() : '';
-      modelEl.closest('.hud-readout-row').style.display = model ? '' : 'none';
+      if (model) {
+        modelEl.textContent = model.split('/').pop();
+        modelRow.style.display = '';
+      } else {
+        modelRow.style.display = 'none';
+      }
     }
 
     // Version from system-presence
     let currentVersion = null;
     const versionEl = document.getElementById('hud-version');
+    const versionRow = document.getElementById('hud-row-version');
     try {
       const presence = await state.gateway.request('system-presence', {});
       const hosts = Array.isArray(presence) ? presence : (presence?.hosts || []);
       if (hosts.length > 0 && hosts[0].version) {
         currentVersion = hosts[0].version;
-        if (versionEl) {
-          versionEl.textContent = currentVersion;
-          versionEl.closest('.hud-readout-row').style.display = '';
-        }
+        if (versionEl) versionEl.textContent = currentVersion;
+        if (versionRow) versionRow.style.display = '';
       }
     } catch (e) { /* version not available */ }
-    if (!currentVersion && versionEl) versionEl.closest('.hud-readout-row').style.display = 'none';
-
-    // Uptime from sessions
-    const uptimeEl = document.getElementById('hud-uptime');
-    let hasUptime = false;
-    if (uptimeEl && health?.sessions) {
-      const ages = health.sessions.map(s => s.age || 0).filter(a => a > 0);
-      if (ages.length > 0) {
-        hasUptime = true;
-        const maxAge = Math.max(...ages);
-        const secs = Math.floor(maxAge / 1000);
-        if (secs < 60) uptimeEl.textContent = secs + 's';
-        else if (secs < 3600) uptimeEl.textContent = Math.floor(secs / 60) + 'm';
-        else if (secs < 86400) uptimeEl.textContent = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
-        else uptimeEl.textContent = Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
-      }
-    }
-    if (uptimeEl) uptimeEl.closest('.hud-readout-row').style.display = hasUptime ? '' : 'none';
-
-    // Channels
-    const channelsEl = document.getElementById('hud-channels');
-    let hasChannels = false;
-    if (channelsEl && health?.channels) {
-      const labels = health.channelLabels || {};
-      const configured = Object.entries(health.channels)
-        .filter(([, v]) => v.configured)
-        .map(([k]) => labels[k] || k);
-      if (configured.length > 0) {
-        hasChannels = true;
-        channelsEl.textContent = configured.join(', ');
-      }
-    }
-    if (channelsEl) channelsEl.closest('.hud-readout-row').style.display = hasChannels ? '' : 'none';
+    if (!currentVersion && versionRow) versionRow.style.display = 'none';
 
     // Check for update (compare versions)
     if (currentVersion) {
@@ -2740,45 +2712,28 @@ async function viewAgentFile(filename, label) {
 
   let content = null;
 
-  // Try the gateway API first
+  // Try the gateway API
   if (state.gateway?.connected) {
     try {
       const result = await state.gateway.request('agents.files.get', { path: filename });
       if (result?.content) content = result.content;
       else if (typeof result === 'string') content = result;
     } catch (err) {
-      console.warn('agents.files.get failed, falling back to chat:', err);
-    }
-  }
-
-  if (content === null && state.gateway?.connected) {
-    // Fallback: ask via chat and capture the response
-    try {
-      const result = await state.gateway.request('chat.send', {
-        sessionKey: state.sessionKey,
-        message: `Read the file ${filename} and reply with ONLY its raw contents. No commentary, no formatting, no markdown code blocks wrapping it.`,
-        deliver: false,
-        idempotencyKey: 'fileview-' + Date.now(),
-      });
-      // Wait for response
-      await new Promise(r => setTimeout(r, 3000));
-      const history = await state.gateway.request('chat.history', { sessionKey: state.sessionKey, limit: 5 });
-      const msgs = history?.messages || [];
-      for (let i = msgs.length - 1; i >= 0; i--) {
-        if (msgs[i].role === 'assistant') {
-          const { text } = extractContent(msgs[i].content);
-          if (text && text.length > 20) { content = text; break; }
-        }
-      }
-    } catch (err) {
-      console.error('Chat fallback failed:', err);
+      console.warn('agents.files.get not available:', err.message);
     }
   }
 
   if (content) {
     body.innerHTML = formatMarkdown(content);
   } else {
-    body.innerHTML = '<p style="color:var(--text-faint);text-align:center;padding:20px;">Could not load file.</p>';
+    body.innerHTML = `
+      <div style="text-align:center;padding:30px 20px;color:var(--text-faint);">
+        <p style="margin-bottom:12px;">File viewer API not available on this gateway version.</p>
+        <button onclick="document.getElementById('file-viewer-overlay').classList.remove('oc-open'); closeDashboard(); sendControlAction('Show me the current contents of ${filename}. Display it as-is without summarizing.')"
+          style="background:var(--interactive-accent);color:var(--text-on-accent);border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;">
+          Ask agent to show ${filename}
+        </button>
+      </div>`;
   }
 }
 

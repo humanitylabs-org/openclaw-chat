@@ -276,84 +276,60 @@
       margin-right: 0;
     }
 
-    /* Home tab: big standout circle with house icon */
+    /* Home tab: house icon, same height as other tabs, with meter */
     .openclaw-tab-home {
       flex: 0 0 auto !important;
       max-width: none !important;
       min-width: auto !important;
-      width: 52px;
-      padding: 0;
-      opacity: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent !important;
-      border: none !important;
-      margin-bottom: 0 !important;
+      width: 44px;
+      padding: 6px 0 0 0;
+      opacity: 0.7;
       position: relative;
     }
+    .openclaw-tab-home.active { opacity: 1; }
+    .openclaw-tab-home:hover { opacity: 0.9; }
     .openclaw-tab-home .openclaw-tab-row {
       justify-content: center;
       gap: 0;
-      position: relative;
     }
     .openclaw-tab-home .openclaw-tab-label.openclaw-tab-home-label {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      border: 2px solid var(--text-faint);
-      background: rgba(255, 255, 255, 0.03);
       display: flex;
       align-items: center;
       justify-content: center;
       flex: none;
-      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-      margin-bottom: -3px;
     }
     .openclaw-tab-home .openclaw-tab-home-label svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       fill: var(--text-muted);
       transition: fill 0.2s;
     }
-    .openclaw-tab-home:hover .openclaw-tab-home-label {
-      border-color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.05);
-    }
-    .openclaw-tab-home.active .openclaw-tab-home-label {
-      border-color: var(--interactive-accent);
-      background: rgba(242, 242, 242, 0.08);
-      box-shadow: 0 0 12px rgba(242, 242, 242, 0.08);
-    }
     .openclaw-tab-home.active .openclaw-tab-home-label svg {
-      fill: var(--interactive-accent);
+      fill: var(--text-normal);
     }
-    /* Reset button overlaid on home tab */
     .openclaw-tab-home .openclaw-tab-close {
       display: none;
     }
+    /* Reset button inline in home tab row */
     .openclaw-tab-home .openclaw-home-reset {
-      position: absolute;
-      top: -2px;
-      right: -4px;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--background-secondary);
-      border: 1px solid var(--background-modifier-border);
+      width: 0;
+      overflow: hidden;
+      opacity: 0;
+      cursor: pointer;
+      padding: 2px 0;
+      border-radius: 4px;
+      transition: all 0.15s;
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.15s, background 0.15s;
-      z-index: 2;
     }
-    .openclaw-tab-home:hover .openclaw-home-reset { opacity: 0.6; }
-    .openclaw-tab-home .openclaw-home-reset:hover { opacity: 1; background: rgba(128,128,128,0.25); }
-    .openclaw-tab-home .openclaw-tab-meter {
-      display: none;
+    .openclaw-tab-home:hover .openclaw-home-reset {
+      width: auto;
+      padding: 2px 4px;
+      opacity: 0.4;
     }
+    .openclaw-tab-home .openclaw-home-reset:hover { opacity: 1 !important; background: rgba(128,128,128,0.25); }
 
     /* Drag reorder */
     .openclaw-tab.oc-dragging {
@@ -1252,7 +1228,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=12">
+  <link rel="stylesheet" href="/theme.css?v=13">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1362,27 +1338,32 @@
           </div>
         </div>
 
-        <!-- System Readout -->
+        <!-- System (readout + maintenance) -->
         <div class="hud-section">
           <div class="hud-section-label">SYSTEM</div>
-          <div class="hud-readout">
-            <div class="hud-readout-row">
+          <div class="hud-readout" id="hud-readout">
+            <div class="hud-readout-row" id="hud-row-model" style="display:none">
               <span class="hud-readout-key">MODEL</span>
-              <span class="hud-readout-val" id="hud-model">---</span>
+              <span class="hud-readout-val" id="hud-model"></span>
             </div>
-            <div class="hud-readout-row">
+            <div class="hud-readout-row" id="hud-row-version" style="display:none">
               <span class="hud-readout-key">VERSION</span>
-              <span class="hud-readout-val" id="hud-version">---</span>
+              <span class="hud-readout-val" id="hud-version"></span>
             </div>
-            <div class="hud-readout-row">
-              <span class="hud-readout-key">UPTIME</span>
-              <span class="hud-readout-val" id="hud-uptime">---</span>
-            </div>
-            <div class="hud-readout-row">
-              <span class="hud-readout-key">CHANNELS</span>
-              <span class="hud-readout-val" id="hud-channels">---</span>
-            </div>
-
+          </div>
+          <div class="hud-maintenance-list" id="hud-maintenance" style="margin-top:8px">
+            <button class="hud-maintenance-item" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
+              <span class="hud-maintenance-name">Run Diagnostics</span>
+              <span class="hud-maintenance-desc">Check your server for issues</span>
+            </button>
+            <button class="hud-maintenance-item" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
+              <span class="hud-maintenance-name">Restart</span>
+              <span class="hud-maintenance-desc">Restart your OpenClaw server</span>
+            </button>
+            <button class="hud-maintenance-item" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
+              <span class="hud-maintenance-name">Check Updates</span>
+              <span class="hud-maintenance-desc">See if a newer version is available</span>
+            </button>
           </div>
         </div>
 
@@ -1408,25 +1389,6 @@
               <label>OpenAI API Key</label>
               <input type="password" id="dash-openai-key" placeholder="sk-...">
             </div>
-          </div>
-        </div>
-
-        <!-- Maintenance -->
-        <div class="hud-section">
-          <div class="hud-section-label">MAINTENANCE</div>
-          <div class="hud-maintenance-list">
-            <button class="hud-maintenance-item" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
-              <span class="hud-maintenance-name">Run Diagnostics</span>
-              <span class="hud-maintenance-desc">Check your server for issues</span>
-            </button>
-            <button class="hud-maintenance-item" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
-              <span class="hud-maintenance-name">Restart</span>
-              <span class="hud-maintenance-desc">Restart your OpenClaw server</span>
-            </button>
-            <button class="hud-maintenance-item" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
-              <span class="hud-maintenance-name">Check Updates</span>
-              <span class="hud-maintenance-desc">See if a newer version is available</span>
-            </button>
           </div>
         </div>
 
@@ -1539,7 +1501,7 @@
 
   </div>
 
-  <script src="/app.js?v=24"></script>
+  <script src="/app.js?v=25"></script>
   <script>
     // Landing page logic
     (function() {
