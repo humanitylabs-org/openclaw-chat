@@ -972,8 +972,7 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
 
     if (isHome) {
-      const initial = (state.activeAgent?.name || 'A').charAt(0).toUpperCase();
-      label.textContent = initial;
+      label.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
       label.classList.add('openclaw-tab-home-label');
     } else {
       label.textContent = tab.label;
@@ -989,10 +988,12 @@ async function _renderTabsInner() {
     actionBtn.className = "openclaw-tab-close";
 
     if (isHome) {
-      actionBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
-      actionBtn.title = "Reset conversation";
-      actionBtn.addEventListener("click", (e) => { e.stopPropagation(); resetTab(tab); });
-      row.appendChild(actionBtn);
+      const homeReset = document.createElement("span");
+      homeReset.className = "openclaw-home-reset";
+      homeReset.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
+      homeReset.title = "Reset conversation";
+      homeReset.addEventListener("click", (e) => { e.stopPropagation(); resetTab(tab); });
+      row.appendChild(homeReset);
     } else {
       const resetBtn = document.createElement("span");
       resetBtn.className = "openclaw-tab-close openclaw-tab-reset";
@@ -2588,10 +2589,10 @@ function updateDashboard() {
     ring.className = 'hud-beacon-ring' + (connected ? ' online' : '');
   }
 
-  // Beacon letter (first letter of agent name)
-  const letter = document.getElementById('hud-beacon-letter');
+  // Beacon emoji
+  const emojiEl = document.getElementById('hud-beacon-emoji');
   const name = state.activeAgent?.name || 'Agent';
-  if (letter) letter.textContent = name.charAt(0).toUpperCase();
+  if (emojiEl) emojiEl.textContent = state.activeAgent?.emoji || '🤖';
 
   // Agent name
   const nameEl = document.getElementById('hud-agent-name');
@@ -2608,14 +2609,7 @@ function updateDashboard() {
     }
   }
 
-  // System readout - gateway/device (available without health call)
-  const gwEl = document.getElementById('hud-gateway');
-  if (gwEl) {
-    const url = state.gatewayUrl || '';
-    gwEl.textContent = url.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '') || '---';
-  }
-  const devEl = document.getElementById('hud-device');
-  if (devEl) devEl.textContent = state.deviceIdentity?.deviceId?.slice(0, 12) || '---';
+
 
   // Show connect form or dashboard content
   const connectForm = document.getElementById('dash-connect-form');
@@ -2645,7 +2639,8 @@ async function fetchServerInfo() {
     const modelEl = document.getElementById('hud-model');
     if (modelEl) {
       const model = state.currentModel || '';
-      modelEl.textContent = model ? model.split('/').pop() : '---';
+      modelEl.textContent = model ? model.split('/').pop() : '';
+      modelEl.closest('.hud-readout-row').style.display = model ? '' : 'none';
     }
 
     // Version from system-presence
@@ -2656,15 +2651,21 @@ async function fetchServerInfo() {
       const hosts = Array.isArray(presence) ? presence : (presence?.hosts || []);
       if (hosts.length > 0 && hosts[0].version) {
         currentVersion = hosts[0].version;
-        if (versionEl) versionEl.textContent = currentVersion;
+        if (versionEl) {
+          versionEl.textContent = currentVersion;
+          versionEl.closest('.hud-readout-row').style.display = '';
+        }
       }
     } catch (e) { /* version not available */ }
+    if (!currentVersion && versionEl) versionEl.closest('.hud-readout-row').style.display = 'none';
 
     // Uptime from sessions
     const uptimeEl = document.getElementById('hud-uptime');
+    let hasUptime = false;
     if (uptimeEl && health?.sessions) {
       const ages = health.sessions.map(s => s.age || 0).filter(a => a > 0);
       if (ages.length > 0) {
+        hasUptime = true;
         const maxAge = Math.max(...ages);
         const secs = Math.floor(maxAge / 1000);
         if (secs < 60) uptimeEl.textContent = secs + 's';
@@ -2673,16 +2674,22 @@ async function fetchServerInfo() {
         else uptimeEl.textContent = Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
       }
     }
+    if (uptimeEl) uptimeEl.closest('.hud-readout-row').style.display = hasUptime ? '' : 'none';
 
     // Channels
     const channelsEl = document.getElementById('hud-channels');
+    let hasChannels = false;
     if (channelsEl && health?.channels) {
       const labels = health.channelLabels || {};
       const configured = Object.entries(health.channels)
         .filter(([, v]) => v.configured)
         .map(([k]) => labels[k] || k);
-      channelsEl.textContent = configured.length > 0 ? configured.join(', ') : 'None';
+      if (configured.length > 0) {
+        hasChannels = true;
+        channelsEl.textContent = configured.join(', ');
+      }
     }
+    if (channelsEl) channelsEl.closest('.hud-readout-row').style.display = hasChannels ? '' : 'none';
 
     // Check for update (compare versions)
     if (currentVersion) {
@@ -2721,10 +2728,69 @@ async function fetchServerInfo() {
 
 // ─── Agent File Viewer ────────────────────────────────────────────
 
-function viewAgentFile(filename, label) {
-  closeDashboard();
-  sendControlAction('Show me the current contents of ' + filename + '. Display it as-is without summarizing.');
+async function viewAgentFile(filename, label) {
+  const overlay = document.getElementById('file-viewer-overlay');
+  const title = document.getElementById('file-viewer-title');
+  const body = document.getElementById('file-viewer-body');
+  if (!overlay || !title || !body) return;
+
+  title.textContent = label || filename;
+  body.innerHTML = '<div class="oc-file-viewer-loading"><div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Loading...</div>';
+  overlay.classList.add('oc-open');
+
+  let content = null;
+
+  // Try the gateway API first
+  if (state.gateway?.connected) {
+    try {
+      const result = await state.gateway.request('agents.files.get', { path: filename });
+      if (result?.content) content = result.content;
+      else if (typeof result === 'string') content = result;
+    } catch (err) {
+      console.warn('agents.files.get failed, falling back to chat:', err);
+    }
+  }
+
+  if (content === null && state.gateway?.connected) {
+    // Fallback: ask via chat and capture the response
+    try {
+      const result = await state.gateway.request('chat.send', {
+        sessionKey: state.sessionKey,
+        message: `Read the file ${filename} and reply with ONLY its raw contents. No commentary, no formatting, no markdown code blocks wrapping it.`,
+        deliver: false,
+        idempotencyKey: 'fileview-' + Date.now(),
+      });
+      // Wait for response
+      await new Promise(r => setTimeout(r, 3000));
+      const history = await state.gateway.request('chat.history', { sessionKey: state.sessionKey, limit: 5 });
+      const msgs = history?.messages || [];
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === 'assistant') {
+          const { text } = extractContent(msgs[i].content);
+          if (text && text.length > 20) { content = text; break; }
+        }
+      }
+    } catch (err) {
+      console.error('Chat fallback failed:', err);
+    }
+  }
+
+  if (content) {
+    body.innerHTML = formatMarkdown(content);
+  } else {
+    body.innerHTML = '<p style="color:var(--text-faint);text-align:center;padding:20px;">Could not load file.</p>';
+  }
 }
+
+// File viewer close handlers
+(function initFileViewer() {
+  document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('file-viewer-overlay');
+    const closeBtn = document.getElementById('file-viewer-close');
+    if (closeBtn) closeBtn.addEventListener('click', () => overlay?.classList.remove('oc-open'));
+    if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('oc-open'); });
+  });
+})();
 
 // ─── Settings ─────────────────────────────────────────────────────
 
@@ -2788,8 +2854,15 @@ function closeDashboard() {
 
 // Dashboard event listeners (runs immediately)
 (function initDashboard() {
-  // Mobile menu button
+  // Mobile menu button (desktop)
   document.getElementById('dash-menu-btn')?.addEventListener('click', () => {
+    const dash = document.getElementById('dashboard');
+    if (dash?.classList.contains('open')) closeDashboard();
+    else openDashboard();
+  });
+
+  // Mobile hamburger bar dashboard button
+  document.getElementById('hamburger-dash-btn')?.addEventListener('click', () => {
     const dash = document.getElementById('dashboard');
     if (dash?.classList.contains('open')) closeDashboard();
     else openDashboard();
