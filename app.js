@@ -2710,48 +2710,54 @@ async function viewAgentFile(filename, label) {
   body.innerHTML = '<div class="oc-file-viewer-loading"><div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Loading...</div>';
   overlay.classList.add('oc-open');
 
+  if (!state.gateway?.connected) {
+    body.innerHTML = '<p style="color:var(--text-faint);text-align:center;padding:30px;">Not connected to gateway.</p>';
+    return;
+  }
+
+  // Use a hidden session to read the file (doesn't pollute main chat)
+  const viewerKey = 'file-viewer';
   let content = null;
 
-  if (state.gateway?.connected) {
-    // Try direct API first
+  try {
+    // Get message count before sending so we know when a new response arrives
+    let msgCountBefore = 0;
     try {
-      const result = await state.gateway.request('agents.files.get', { path: filename });
-      if (result?.content) content = result.content;
-      else if (typeof result === 'string') content = result;
-    } catch (err) {
-      // API not available — use a hidden session to read the file
+      const histBefore = await state.gateway.request('chat.history', { sessionKey: viewerKey, limit: 50 });
+      msgCountBefore = (histBefore?.messages || []).length;
+    } catch { /* session may not exist yet, that's fine */ }
+
+    await state.gateway.request('chat.send', {
+      sessionKey: viewerKey,
+      message: `Read the file ${filename} and reply with ONLY its raw contents. No commentary, no wrapping in code blocks, no extra text.`,
+      deliver: false,
+      idempotencyKey: 'fv-' + Date.now(),
+    });
+
+    // Poll for a NEW assistant response (up to 30s)
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 500));
       try {
-        const viewerKey = '__file-viewer';
-        await state.gateway.request('chat.send', {
-          sessionKey: viewerKey,
-          message: `Read the file ${filename} and reply with ONLY its raw contents. No commentary, no wrapping in code blocks, no extra text.`,
-          deliver: false,
-          idempotencyKey: 'fv-' + Date.now(),
-        });
-        // Poll for response (up to 15s)
-        for (let i = 0; i < 30; i++) {
-          await new Promise(r => setTimeout(r, 500));
-          try {
-            const history = await state.gateway.request('chat.history', { sessionKey: viewerKey, limit: 4 });
-            const msgs = history?.messages || [];
-            // Find the last assistant message that isn't empty
-            for (let j = msgs.length - 1; j >= 0; j--) {
-              if (msgs[j].role === 'assistant') {
-                const { text } = extractContent(msgs[j].content);
-                const cleaned = text?.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '').trim();
-                if (cleaned && cleaned.length > 10 && cleaned !== 'NO_REPLY') {
-                  content = cleaned;
-                  break;
-                }
+        const history = await state.gateway.request('chat.history', { sessionKey: viewerKey, limit: 50 });
+        const msgs = history?.messages || [];
+        // Only look at messages after our send
+        if (msgs.length > msgCountBefore) {
+          for (let j = msgs.length - 1; j >= 0; j--) {
+            if (msgs[j].role === 'assistant') {
+              const { text } = extractContent(msgs[j].content);
+              const cleaned = text?.replace(/^```[\w]*\n?/, '').replace(/\n?```\s*$/, '').trim();
+              if (cleaned && cleaned.length > 10 && cleaned !== 'NO_REPLY') {
+                content = cleaned;
+                break;
               }
             }
-            if (content) break;
-          } catch { /* keep polling */ }
+          }
         }
-      } catch (chatErr) {
-        console.error('File viewer chat fallback failed:', chatErr);
-      }
+        if (content) break;
+      } catch { /* keep polling */ }
     }
+  } catch (err) {
+    console.error('File viewer failed:', err);
   }
 
   if (content) {
