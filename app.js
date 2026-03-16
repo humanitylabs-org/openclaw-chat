@@ -2774,8 +2774,8 @@ window.ocResetCloseConfirm = () => { setCloseConfirmDisabled(false); console.log
 
 initApp();
 
-// Register service worker + force update check
-if ("serviceWorker" in navigator) {
+// Register service worker only if user has connected before (avoid caching for landing-only visitors)
+if ("serviceWorker" in navigator && localStorage.getItem("connection")) {
   navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
     .then((reg) => {
       // Check for updates immediately and periodically

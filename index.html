@@ -7,7 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0B0B0D">
-  <title>OpenClaw Chat</title>
+  <title>Use My Claw — A Better Interface for OpenClaw</title>
+  <meta name="description" content="Chat with your AI agent, browse files, and configure your assistant — all in one place. Designed for humans, not developers.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -2342,7 +2343,64 @@
   <link rel="stylesheet" href="/theme.css?v=11">
 </head>
 <body>
-  <div class="app">
+  <!-- Landing Page (shown when no saved credentials) -->
+  <div id="landing" class="landing">
+    <div class="landing-inner">
+      <nav class="landing-nav">
+        <div class="landing-nav-brand">
+          <img src="/logo-64.png" width="28" height="28" alt="Use My Claw" style="border-radius:6px;">
+          <span>Use My Claw</span>
+        </div>
+        <a href="https://github.com/humanitylabs-org/openclaw-chat" target="_blank" rel="noopener" class="landing-nav-link">GitHub</a>
+      </nav>
+
+      <main class="landing-hero">
+        <div class="landing-badge">For OpenClaw users</div>
+        <h1>Your AI assistant<br>deserves a real interface.</h1>
+        <p class="landing-subtitle">
+          Chat, browse files, and configure your agent — all in one place.
+          No terminal required.
+        </p>
+        <div class="landing-cta-row">
+          <button class="landing-cta-primary" id="landing-connect-btn">Connect Your Agent</button>
+          <a href="https://botsetupguide.com" target="_blank" rel="noopener" class="landing-cta-secondary">New to OpenClaw? Start here →</a>
+        </div>
+      </main>
+
+      <section class="landing-features">
+        <div class="landing-feature">
+          <div class="landing-feature-icon">💬</div>
+          <h3>Chat</h3>
+          <p>Full conversation interface with streaming, tabs, voice, attachments, and model switching.</p>
+        </div>
+        <div class="landing-feature">
+          <div class="landing-feature-icon">📁</div>
+          <h3>Files</h3>
+          <p>Browse and edit your agent's workspace. Markdown preview, search, full file tree.</p>
+        </div>
+        <div class="landing-feature">
+          <div class="landing-feature-icon">⚙️</div>
+          <h3>Configure</h3>
+          <p>Edit your agent's personality, memory, and tools — no YAML, no config files.</p>
+        </div>
+      </section>
+
+      <section class="landing-pitch">
+        <p>
+          OpenClaw is powerful. Its web UI is built for developers.<br>
+          <strong>This is the version built for everyone else.</strong>
+        </p>
+      </section>
+
+      <footer class="landing-footer">
+        <span>Built by <a href="https://humanitylabs.ai" target="_blank" rel="noopener">Humanity Labs</a></span>
+        <span class="landing-footer-sep">·</span>
+        <span>Powered by <a href="https://github.com/nicepkg/openclaw" target="_blank" rel="noopener">OpenClaw</a></span>
+      </footer>
+    </div>
+  </div>
+
+  <div class="app" style="display:none;">
     <!-- Onboarding -->
     <div id="onboarding" class="onboarding">
       <div id="step1" class="onboarding-step">
@@ -2478,11 +2536,33 @@
     </div>
   </div>
 
-  <script src="/app.js?v=21"></script>
-  <script src="/workspace.js?v=17"></script>
+  <script src="/app.js?v=22"></script>
+  <script src="/workspace.js?v=18"></script>
   <script>
-    // Init workspace panels after DOM is ready
-    initWorkspace();
+    // Landing page logic
+    (function() {
+      const landing = document.getElementById('landing');
+      const app = document.querySelector('.app');
+      const hasCredentials = !!localStorage.getItem('connection');
+
+      function showApp() {
+        landing.style.display = 'none';
+        app.style.display = '';
+        initWorkspace();
+      }
+
+      if (hasCredentials) {
+        // Returning user — skip landing, go straight to app
+        showApp();
+      } else {
+        // New user — show landing page
+        landing.style.display = '';
+        app.style.display = 'none';
+        document.getElementById('landing-connect-btn').addEventListener('click', function() {
+          showApp();
+        });
+      }
+    })();
   </script>
   <div class="oc-confirm-overlay" id="confirm-overlay">
     <div class="oc-confirm-box">

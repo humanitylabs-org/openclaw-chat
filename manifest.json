@@ -1,8 +1,8 @@
 {
-  "name": "OpenClaw Chat",
-  "short_name": "OpenClaw",
-  "description": "Chat with your OpenClaw AI assistant",
-  "start_url": "/chat",
+  "name": "Use My Claw",
+  "short_name": "My Claw",
+  "description": "A better interface for OpenClaw — chat, files, and agent config in one place.",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0B0B0D",
   "theme_color": "#0B0B0D",
