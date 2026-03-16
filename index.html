@@ -1228,7 +1228,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=14">
+  <link rel="stylesheet" href="/theme.css?v=15">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1301,83 +1301,137 @@
     <div class="dashboard" id="dashboard">
       <div class="dashboard-scroll">
 
-        <!-- Status Beacon -->
+        <!-- Status Beacon (always visible) -->
         <div class="hud-beacon">
           <div class="hud-beacon-ring" id="hud-beacon-ring">
             <span class="hud-beacon-emoji" id="hud-beacon-emoji">🤖</span>
           </div>
           <div class="hud-beacon-info">
-            <div class="hud-agent-name" id="hud-agent-name">Oscar</div>
+            <div class="hud-agent-name" id="hud-agent-name">Agent</div>
             <div class="hud-status-line" id="hud-status-line">OFFLINE</div>
           </div>
         </div>
 
-        <!-- Alerts (only visible when there are alerts) -->
+        <!-- Alerts (always visible when present) -->
         <div class="hud-alerts" id="hud-alerts"></div>
 
-        <!-- Agent Files (dynamically populated) -->
-        <div class="hud-section">
-          <div class="hud-section-label">AGENT FILES</div>
-          <div class="hud-file-list" id="hud-file-list">
-            <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
-          </div>
-        </div>
-
-        <!-- System (readout + maintenance) -->
-        <div class="hud-section">
-          <div class="hud-section-label">SYSTEM</div>
-          <div class="hud-readout" id="hud-readout">
-            <div class="hud-readout-row" id="hud-row-model" style="display:none">
-              <span class="hud-readout-key">MODEL</span>
-              <span class="hud-readout-val" id="hud-model"></span>
-            </div>
-            <div class="hud-readout-row" id="hud-row-version" style="display:none">
-              <span class="hud-readout-key">VERSION</span>
-              <span class="hud-readout-val" id="hud-version"></span>
-            </div>
-          </div>
-          <div class="hud-maintenance-list" id="hud-maintenance" style="margin-top:8px">
-            <button class="hud-maintenance-item" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
-              <span class="hud-maintenance-name">Run Diagnostics</span>
-              <span class="hud-maintenance-desc">Check your server for issues</span>
-            </button>
-            <button class="hud-maintenance-item" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
-              <span class="hud-maintenance-name">Restart</span>
-              <span class="hud-maintenance-desc">Restart your OpenClaw server</span>
-            </button>
-            <button class="hud-maintenance-item" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
-              <span class="hud-maintenance-name">Check Updates</span>
-              <span class="hud-maintenance-desc">See if a newer version is available</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Settings -->
-        <div class="hud-section">
-          <div class="hud-section-label">SETTINGS</div>
-          <div class="hud-setting-row">
-            <span class="hud-setting-name">Dark Mode</span>
-            <label class="hud-toggle">
-              <input type="checkbox" id="dash-darkmode" checked>
-              <span class="hud-toggle-track"></span>
-            </label>
-          </div>
-          <div class="hud-setting-row">
-            <span class="hud-setting-name">Voice Input</span>
-            <label class="hud-toggle">
-              <input type="checkbox" id="dash-voice-toggle">
-              <span class="hud-toggle-track"></span>
-            </label>
-          </div>
-          <div class="hud-voice-key" id="dash-voice-key-row" style="display:none;">
-            <div class="dash-field" style="margin:0;width:100%;">
-              <label>OpenAI API Key</label>
-              <input type="password" id="dash-openai-key" placeholder="sk-...">
+        <!-- Bot Files (collapsible) -->
+        <div class="hud-section hud-collapsible" data-section="bot-files">
+          <button class="hud-section-toggle" onclick="toggleSection('bot-files')">
+            <span class="hud-section-label">Bot Files</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div class="hud-file-list" id="hud-file-list">
+              <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
             </div>
           </div>
         </div>
 
-        <!-- Disconnect (subtle) -->
+        <!-- Skills (collapsible, dynamically populated) -->
+        <div class="hud-section hud-collapsible" data-section="skills">
+          <button class="hud-section-toggle" onclick="toggleSection('skills')">
+            <span class="hud-section-label">Skills</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div id="hud-skills-list">
+              <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Channels (collapsible, dynamically populated) -->
+        <div class="hud-section hud-collapsible" data-section="channels">
+          <button class="hud-section-toggle" onclick="toggleSection('channels')">
+            <span class="hud-section-label">Channels</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div id="hud-channels-list">
+              <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scheduled Jobs (collapsible, dynamically populated) -->
+        <div class="hud-section hud-collapsible" data-section="cron">
+          <button class="hud-section-toggle" onclick="toggleSection('cron')">
+            <span class="hud-section-label">Scheduled Jobs</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div id="hud-cron-list">
+              <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- System (collapsible) -->
+        <div class="hud-section hud-collapsible" data-section="system">
+          <button class="hud-section-toggle" onclick="toggleSection('system')">
+            <span class="hud-section-label">System</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div class="hud-readout" id="hud-readout">
+              <div class="hud-readout-row" id="hud-row-model" style="display:none">
+                <span class="hud-readout-key">MODEL</span>
+                <span class="hud-readout-val" id="hud-model"></span>
+              </div>
+              <div class="hud-readout-row" id="hud-row-version" style="display:none">
+                <span class="hud-readout-key">VERSION</span>
+                <span class="hud-readout-val" id="hud-version"></span>
+              </div>
+            </div>
+            <div class="hud-maintenance-list" style="margin-top:8px">
+              <button class="hud-maintenance-item" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
+                <span class="hud-maintenance-name">Run Diagnostics</span>
+                <span class="hud-maintenance-desc">Check your server for issues</span>
+              </button>
+              <button class="hud-maintenance-item" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
+                <span class="hud-maintenance-name">Restart Server</span>
+                <span class="hud-maintenance-desc">Restart your OpenClaw server</span>
+              </button>
+              <button class="hud-maintenance-item" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
+                <span class="hud-maintenance-name">Check for Updates</span>
+                <span class="hud-maintenance-desc">See if a newer version is available</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings (collapsible) -->
+        <div class="hud-section hud-collapsible" data-section="settings">
+          <button class="hud-section-toggle" onclick="toggleSection('settings')">
+            <span class="hud-section-label">Settings</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div class="hud-setting-row">
+              <span class="hud-setting-name">Dark Mode</span>
+              <label class="hud-toggle">
+                <input type="checkbox" id="dash-darkmode" checked>
+                <span class="hud-toggle-track"></span>
+              </label>
+            </div>
+            <div class="hud-setting-row">
+              <span class="hud-setting-name">Voice Input</span>
+              <label class="hud-toggle">
+                <input type="checkbox" id="dash-voice-toggle">
+                <span class="hud-toggle-track"></span>
+              </label>
+            </div>
+            <div class="hud-voice-key" id="dash-voice-key-row" style="display:none;">
+              <div class="dash-field" style="margin:0;width:100%;">
+                <label>OpenAI API Key</label>
+                <input type="password" id="dash-openai-key" placeholder="sk-...">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Disconnect -->
         <div class="hud-footer">
           <button class="hud-disconnect" id="dash-disconnect-btn">Disconnect</button>
         </div>
@@ -1486,7 +1540,7 @@
 
   </div>
 
-  <script src="/app.js?v=29"></script>
+  <script src="/app.js?v=30"></script>
   <script>
     // Landing page logic
     (function() {

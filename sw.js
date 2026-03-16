@@ -1,6 +1,6 @@
 // Service Worker for OpenClaw Chat PWA
 // ── BUMP THIS ON EVERY DEPLOY to bust PWA cache ──
-const CACHE_VERSION = "v20";
+const CACHE_VERSION = "v21";
 const CACHE_NAME = `openclaw-chat-${CACHE_VERSION}`;
 
 const urlsToCache = [

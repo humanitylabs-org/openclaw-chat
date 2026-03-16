@@ -2635,8 +2635,11 @@ async function fetchServerInfo() {
     const health = await state.gateway.request('health', {});
     const alerts = [];
 
-    // Load agent files
+    // Load dynamic sections
     loadAgentFiles();
+    loadSkills();
+    loadChannels();
+    loadCronJobs();
 
     // Model
     const modelEl = document.getElementById('hud-model');
@@ -2704,20 +2707,43 @@ async function fetchServerInfo() {
 // ─── Agent File List + Viewer ─────────────────────────────────────
 
 const FILE_META = {
-  'SOUL.md':      { label: 'Personality',   desc: 'Who your bot is and how it behaves', icon: '◉' },
-  'USER.md':      { label: 'About You',     desc: 'What your bot knows about you',      icon: '◎' },
-  'MEMORY.md':    { label: 'Memory',        desc: 'Long-term memories and context',     icon: '▣' },
-  'TOOLS.md':     { label: 'Tools & Access', desc: 'Accounts, keys, and tool notes',    icon: '⬡' },
-  'AGENTS.md':    { label: 'Behavior Rules', desc: 'How your bot operates day-to-day',  icon: '▤' },
-  'IDENTITY.md':  { label: 'Identity',      desc: 'Name, emoji, and avatar',            icon: '◈' },
-  'HEARTBEAT.md': { label: 'Check-ins',     desc: 'What to check on periodically',      icon: '◇' },
+  'SOUL.md':      { label: 'Personality' },
+  'USER.md':      { label: 'About You' },
+  'MEMORY.md':    { label: 'Memory' },
+  'TOOLS.md':     { label: 'Tools & Access' },
+  'AGENTS.md':    { label: 'Behavior Rules' },
+  'IDENTITY.md':  { label: 'Identity' },
+  'HEARTBEAT.md': { label: 'Check-ins' },
+  'BOOTSTRAP.md': { label: 'Setup Script' },
 };
 
 function friendlyFile(name) {
   const meta = FILE_META[name];
   if (meta) return meta;
   const clean = name.replace(/\.md$/i, '').replace(/[-_]/g, ' ');
-  return { label: clean.charAt(0).toUpperCase() + clean.slice(1), desc: '', icon: '◦' };
+  return { label: clean.charAt(0).toUpperCase() + clean.slice(1) };
+}
+
+// ─── Collapsible Sections ─────────────────────────────────────────
+
+function toggleSection(sectionId) {
+  const el = document.querySelector(`.hud-collapsible[data-section="${sectionId}"]`);
+  if (!el) return;
+  const isOpen = el.classList.toggle('hud-open');
+  // Remember state
+  const openSections = JSON.parse(localStorage.getItem('openSections') || '{}');
+  openSections[sectionId] = isOpen;
+  localStorage.setItem('openSections', JSON.stringify(openSections));
+}
+
+function restoreCollapsibleState() {
+  const openSections = JSON.parse(localStorage.getItem('openSections') || '{"bot-files":true}');
+  for (const [id, isOpen] of Object.entries(openSections)) {
+    if (isOpen) {
+      const el = document.querySelector(`.hud-collapsible[data-section="${id}"]`);
+      if (el) el.classList.add('hud-open');
+    }
+  }
 }
 
 async function loadAgentFiles() {
@@ -2744,14 +2770,7 @@ async function loadAgentFiles() {
     const meta = friendlyFile(file.name);
     const btn = document.createElement('button');
     btn.className = 'hud-file-item';
-    btn.innerHTML = `
-      <span class="hud-file-icon">${meta.icon}</span>
-      <span class="hud-file-info">
-        <span class="hud-file-name">${meta.label}</span>
-        ${meta.desc ? `<span class="hud-file-desc">${meta.desc}</span>` : ''}
-      </span>
-      <span class="hud-file-arrow">&rsaquo;</span>
-    `;
+    btn.innerHTML = `<span class="hud-file-name">${meta.label}</span><span class="hud-file-arrow">&rsaquo;</span>`;
     btn.addEventListener('click', () => viewAgentFile(file.name, meta.label));
     container.appendChild(btn);
   }
@@ -2824,8 +2843,127 @@ async function viewAgentFile(filename, label) {
     const closeBtn = document.getElementById('file-viewer-close');
     if (closeBtn) closeBtn.addEventListener('click', () => overlay?.classList.remove('oc-open'));
     if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('oc-open'); });
+    restoreCollapsibleState();
   });
 })();
+
+// ─── Skills List ──────────────────────────────────────────────────
+
+async function loadSkills() {
+  const container = document.getElementById('hud-skills-list');
+  if (!container || !state.gateway?.connected) return;
+
+  try {
+    const result = await state.gateway.request('skills.status', {});
+    const skills = result?.skills || [];
+
+    if (skills.length === 0) {
+      container.innerHTML = '<div class="hud-empty-hint">No skills installed</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    const list = document.createElement('div');
+    list.className = 'hud-status-list';
+    for (const skill of skills) {
+      const item = document.createElement('div');
+      item.className = 'hud-status-item';
+      const name = skill.name || skill.id || 'Unknown';
+      const enabled = skill.enabled !== false;
+      item.innerHTML = `
+        <span class="hud-status-item-name">${name}</span>
+        <span class="hud-status-dot ${enabled ? 'on' : 'off'}"></span>
+      `;
+      list.appendChild(item);
+    }
+    container.appendChild(list);
+  } catch (err) {
+    console.warn('skills.status failed:', err);
+    container.innerHTML = '<div class="hud-empty-hint">Could not load skills</div>';
+  }
+}
+
+// ─── Channels List ────────────────────────────────────────────────
+
+async function loadChannels() {
+  const container = document.getElementById('hud-channels-list');
+  if (!container || !state.gateway?.connected) return;
+
+  try {
+    const result = await state.gateway.request('channels.status', {});
+    const channels = result?.channels || result || {};
+
+    const entries = Object.entries(channels).filter(([, v]) => v && typeof v === 'object');
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="hud-empty-hint">No channels configured</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    const list = document.createElement('div');
+    list.className = 'hud-status-list';
+    for (const [key, ch] of entries) {
+      const item = document.createElement('div');
+      item.className = 'hud-status-item';
+      const name = ch.label || ch.name || key;
+      const connected = ch.connected || ch.status === 'connected' || ch.status === 'ok';
+      const configured = ch.configured !== false;
+      item.innerHTML = `
+        <span class="hud-status-item-name">${name}</span>
+        <span class="hud-status-dot ${connected ? 'on' : configured ? 'warn' : 'off'}"></span>
+      `;
+      list.appendChild(item);
+    }
+    container.appendChild(list);
+  } catch (err) {
+    console.warn('channels.status failed:', err);
+    container.innerHTML = '<div class="hud-empty-hint">Could not load channels</div>';
+  }
+}
+
+// ─── Cron Jobs List ───────────────────────────────────────────────
+
+async function loadCronJobs() {
+  const container = document.getElementById('hud-cron-list');
+  if (!container || !state.gateway?.connected) return;
+
+  try {
+    const result = await state.gateway.request('cron.list', {});
+    const jobs = result?.jobs || result || [];
+
+    if (!Array.isArray(jobs) || jobs.length === 0) {
+      container.innerHTML = '<div class="hud-empty-hint">No scheduled jobs</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    const list = document.createElement('div');
+    list.className = 'hud-status-list';
+    for (const job of jobs) {
+      const item = document.createElement('div');
+      item.className = 'hud-status-item';
+      const name = job.name || job.id || 'Unnamed';
+      const enabled = job.enabled !== false;
+      const schedule = job.schedule?.kind === 'every'
+        ? `every ${Math.round((job.schedule.everyMs || 0) / 60000)}m`
+        : job.schedule?.kind === 'cron'
+          ? job.schedule.expr
+          : job.schedule?.kind === 'at'
+            ? 'one-time'
+            : '';
+      item.innerHTML = `
+        <span class="hud-status-item-name">${name}</span>
+        ${schedule ? `<span class="hud-status-badge">${schedule}</span>` : ''}
+        <span class="hud-status-dot ${enabled ? 'on' : 'off'}"></span>
+      `;
+      list.appendChild(item);
+    }
+    container.appendChild(list);
+  } catch (err) {
+    console.warn('cron.list failed:', err);
+    container.innerHTML = '<div class="hud-empty-hint">Could not load jobs</div>';
+  }
+}
 
 // ─── Settings ─────────────────────────────────────────────────────
 
