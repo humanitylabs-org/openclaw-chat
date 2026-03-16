@@ -1315,26 +1315,11 @@
         <!-- Alerts (only visible when there are alerts) -->
         <div class="hud-alerts" id="hud-alerts"></div>
 
-        <!-- Agent Files -->
+        <!-- Agent Files (dynamically populated) -->
         <div class="hud-section">
           <div class="hud-section-label">AGENT FILES</div>
-          <div class="hud-file-list">
-            <button class="hud-file-item" onclick="viewAgentFile('SOUL.md', 'Personality')">
-              <span class="hud-file-name">Personality</span>
-              <span class="hud-file-arrow">&rsaquo;</span>
-            </button>
-            <button class="hud-file-item" onclick="viewAgentFile('USER.md', 'About You')">
-              <span class="hud-file-name">About You</span>
-              <span class="hud-file-arrow">&rsaquo;</span>
-            </button>
-            <button class="hud-file-item" onclick="viewAgentFile('MEMORY.md', 'Memory')">
-              <span class="hud-file-name">Memory</span>
-              <span class="hud-file-arrow">&rsaquo;</span>
-            </button>
-            <button class="hud-file-item" onclick="viewAgentFile('TOOLS.md', 'Tools')">
-              <span class="hud-file-name">Tools</span>
-              <span class="hud-file-arrow">&rsaquo;</span>
-            </button>
+          <div class="hud-file-list" id="hud-file-list">
+            <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
           </div>
         </div>
 
@@ -1501,7 +1486,7 @@
 
   </div>
 
-  <script src="/app.js?v=27"></script>
+  <script src="/app.js?v=28"></script>
   <script>
     // Landing page logic
     (function() {

@@ -2635,6 +2635,9 @@ async function fetchServerInfo() {
     const health = await state.gateway.request('health', {});
     const alerts = [];
 
+    // Load agent files
+    loadAgentFiles();
+
     // Model
     const modelEl = document.getElementById('hud-model');
     const modelRow = document.getElementById('hud-row-model');
@@ -2698,7 +2701,55 @@ async function fetchServerInfo() {
   }
 }
 
-// ─── Agent File Viewer ────────────────────────────────────────────
+// ─── Agent File List + Viewer ─────────────────────────────────────
+
+async function loadAgentFiles() {
+  const container = document.getElementById('hud-file-list');
+  if (!container || !state.gateway?.connected) return;
+
+  try {
+    const agentId = state.activeAgent?.id || 'main';
+    const result = await state.gateway.request('agents.files.list', { agentId });
+    const files = result?.files || [];
+
+    if (files.length === 0) {
+      container.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">No files found</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    for (const file of files) {
+      const btn = document.createElement('button');
+      btn.className = 'hud-file-item';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'hud-file-name';
+      nameSpan.textContent = file.label || file.name;
+      const arrow = document.createElement('span');
+      arrow.className = 'hud-file-arrow';
+      arrow.innerHTML = '&rsaquo;';
+      btn.appendChild(nameSpan);
+      btn.appendChild(arrow);
+      btn.addEventListener('click', () => viewAgentFile(file.name, file.label || file.name));
+      container.appendChild(btn);
+    }
+  } catch (err) {
+    console.warn('Failed to load agent files:', err);
+    container.innerHTML = '';
+    const defaults = [
+      { name: 'SOUL.md', label: 'Personality' },
+      { name: 'USER.md', label: 'About You' },
+      { name: 'MEMORY.md', label: 'Memory' },
+      { name: 'TOOLS.md', label: 'Tools' },
+    ];
+    for (const f of defaults) {
+      const btn = document.createElement('button');
+      btn.className = 'hud-file-item';
+      btn.innerHTML = `<span class="hud-file-name">${f.label}</span><span class="hud-file-arrow">&rsaquo;</span>`;
+      btn.addEventListener('click', () => viewAgentFile(f.name, f.label));
+      container.appendChild(btn);
+    }
+  }
+}
 
 async function viewAgentFile(filename, label) {
   const overlay = document.getElementById('file-viewer-overlay');
@@ -2715,55 +2766,18 @@ async function viewAgentFile(filename, label) {
     return;
   }
 
-  // Use a hidden session to read the file (doesn't pollute main chat)
-  const viewerKey = 'file-viewer';
-  let content = null;
-
   try {
-    // Get message count before sending so we know when a new response arrives
-    let msgCountBefore = 0;
-    try {
-      const histBefore = await state.gateway.request('chat.history', { sessionKey: viewerKey, limit: 50 });
-      msgCountBefore = (histBefore?.messages || []).length;
-    } catch { /* session may not exist yet, that's fine */ }
-
-    await state.gateway.request('chat.send', {
-      sessionKey: viewerKey,
-      message: `Read the file ${filename} and reply with ONLY its raw contents. No commentary, no wrapping in code blocks, no extra text.`,
-      deliver: false,
-      idempotencyKey: 'fv-' + Date.now(),
-    });
-
-    // Poll for a NEW assistant response (up to 30s)
-    for (let i = 0; i < 60; i++) {
-      await new Promise(r => setTimeout(r, 500));
-      try {
-        const history = await state.gateway.request('chat.history', { sessionKey: viewerKey, limit: 50 });
-        const msgs = history?.messages || [];
-        // Only look at messages after our send
-        if (msgs.length > msgCountBefore) {
-          for (let j = msgs.length - 1; j >= 0; j--) {
-            if (msgs[j].role === 'assistant') {
-              const { text } = extractContent(msgs[j].content);
-              const cleaned = text?.replace(/^```[\w]*\n?/, '').replace(/\n?```\s*$/, '').trim();
-              if (cleaned && cleaned.length > 10 && cleaned !== 'NO_REPLY') {
-                content = cleaned;
-                break;
-              }
-            }
-          }
-        }
-        if (content) break;
-      } catch { /* keep polling */ }
+    const agentId = state.activeAgent?.id || 'main';
+    const result = await state.gateway.request('agents.files.get', { agentId, name: filename });
+    const content = result?.file?.content ?? '';
+    if (content) {
+      body.innerHTML = formatMarkdown(content);
+    } else {
+      body.innerHTML = '<p style="color:var(--text-faint);text-align:center;padding:30px;">File is empty.</p>';
     }
   } catch (err) {
-    console.error('File viewer failed:', err);
-  }
-
-  if (content) {
-    body.innerHTML = formatMarkdown(content);
-  } else {
-    body.innerHTML = '<p style="color:var(--text-faint);text-align:center;padding:30px;">Could not load file. Try again later.</p>';
+    console.error('agents.files.get failed:', err);
+    body.innerHTML = `<p style="color:var(--text-faint);text-align:center;padding:30px;">Failed to load file: ${err.message || 'unknown error'}</p>`;
   }
 }
 
