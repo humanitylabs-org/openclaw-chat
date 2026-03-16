@@ -494,15 +494,24 @@ function switchSection(section) {
   const chatContainer = document.getElementById('chat-container');
 
   if (section === 'chat') {
+    // Chat only — full width
     mainContent.style.display = 'none';
     chatContainer.style.display = 'flex';
     chatContainer.classList.add('active');
+    chatContainer.style.flex = '';
+    chatContainer.style.maxWidth = '';
+    chatContainer.style.width = '';
   } else {
     if (isMobile) {
+      // Mobile: show section, hide chat
       chatContainer.style.display = 'none';
+      chatContainer.classList.remove('active');
     } else {
+      // Desktop: show section + chat side by side
       chatContainer.style.display = 'flex';
       chatContainer.classList.add('active');
+      chatContainer.style.flex = '0 0 420px';
+      chatContainer.style.maxWidth = '420px';
     }
     mainContent.style.display = 'flex';
     const sectionEl = document.getElementById('section-' + section);
