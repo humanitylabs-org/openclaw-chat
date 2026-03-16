@@ -1,5 +1,5 @@
 // OpenClaw Chat PWA
-// Streamlined chat interface with sidebar navigation
+// Command Center + Chat interface
 
 // ─── Utilities ───────────────────────────────────────────────────────
 
@@ -343,7 +343,7 @@ async function initApp() {
   } else {
     updateConnectionStatus(false);
   }
-  updateControlPanel();
+  updateDashboard();
 }
 
 function showStatus(message, type) {
@@ -467,165 +467,10 @@ function updateConnectionStatus(connected) {
     ui.messageInput.disabled = true;
     ui.messageInput.placeholder = "Disconnected — reconnect in settings";
   }
-  updateControlPanel();
+  updateDashboard();
 }
 
-// ─── Section Navigation ─────────────────────────────────────────────
 
-let currentSection = 'chat';
-
-function switchSection(section) {
-  currentSection = section;
-  const isMobile = window.innerWidth <= 768;
-
-  // Update sidebar buttons (desktop)
-  document.querySelectorAll('.sidebar-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.section === section);
-  });
-
-  // Update mobile tabs
-  document.querySelectorAll('.mobile-tab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.section === section);
-  });
-
-  // Show/hide sections
-  document.querySelectorAll('.section-view').forEach(el => el.style.display = 'none');
-  const mainContent = document.getElementById('main-content');
-  const chatContainer = document.getElementById('chat-container');
-
-  if (section === 'chat') {
-    // Chat only — full width
-    mainContent.style.display = 'none';
-    chatContainer.style.display = 'flex';
-    chatContainer.classList.add('active');
-    chatContainer.style.flex = '';
-    chatContainer.style.maxWidth = '';
-    chatContainer.style.width = '';
-  } else {
-    if (isMobile) {
-      // Mobile: show section, hide chat
-      chatContainer.style.display = 'none';
-      chatContainer.classList.remove('active');
-    } else {
-      // Desktop: show section + chat side by side
-      chatContainer.style.display = 'flex';
-      chatContainer.classList.add('active');
-      chatContainer.style.flex = '0 0 420px';
-      chatContainer.style.maxWidth = '420px';
-    }
-    mainContent.style.display = 'flex';
-    const sectionEl = document.getElementById('section-' + section);
-    if (sectionEl) sectionEl.style.display = 'flex';
-  }
-
-  // Update control panel connection state
-  if (section === 'controls') updateControlPanel();
-}
-
-function updateControlPanel() {
-  const connected = state.gateway?.connected;
-  const connectForm = document.getElementById('control-connect');
-  const controlsGrid = document.getElementById('controls-grid');
-
-  if (!state.gatewayUrl || !state.token) {
-    if (connectForm) connectForm.style.display = '';
-    if (controlsGrid) controlsGrid.style.display = 'none';
-  } else {
-    if (connectForm) connectForm.style.display = 'none';
-    if (controlsGrid) controlsGrid.style.display = '';
-  }
-
-  // Update status card
-  const dot = document.getElementById('control-dot');
-  const statusText = document.getElementById('control-status-text');
-  if (dot) dot.className = 'control-dot' + (connected ? ' connected' : '');
-  if (statusText) statusText.textContent = connected ? 'Connected' : 'Disconnected';
-
-  // Update connection info
-  const gwInfo = document.getElementById('control-info-gateway');
-  const devInfo = document.getElementById('control-info-device');
-  if (gwInfo) gwInfo.innerHTML = '<span class="control-info-label">Gateway</span><span class="control-info-value">' + (state.gatewayUrl || 'Not set') + '</span>';
-  if (devInfo) devInfo.innerHTML = '<span class="control-info-label">Device</span><span class="control-info-value">' + (state.deviceIdentity?.deviceId?.slice(0, 12) || 'Unknown') + '...</span>';
-
-  // Sidebar status dot
-  const sidebarDot = document.getElementById('sidebar-status');
-  if (sidebarDot) {
-    sidebarDot.className = 'sidebar-status' + (connected ? ' connected' : '');
-    sidebarDot.title = connected ? 'Connected' : 'Disconnected';
-  }
-}
-
-function sendControlAction(message) {
-  // Switch to chat view on mobile
-  if (window.innerWidth <= 768) switchSection('chat');
-
-  // Send the message as if user typed it
-  const input = document.getElementById('message-input');
-  if (input) {
-    input.value = message;
-    // Trigger send
-    document.getElementById('send-btn')?.click();
-  }
-}
-
-// Setup navigation event listeners (runs immediately since script is at bottom of body)
-function initNavigation() {
-  // Sidebar buttons
-  document.querySelectorAll('.sidebar-btn').forEach(btn => {
-    btn.addEventListener('click', () => switchSection(btn.dataset.section));
-  });
-
-  // Mobile tab bar
-  document.querySelectorAll('.mobile-tab').forEach(btn => {
-    btn.addEventListener('click', () => switchSection(btn.dataset.section));
-  });
-
-  // Control panel connect button
-  document.getElementById('ctrl-connect-btn')?.addEventListener('click', () => {
-    const url = document.getElementById('ctrl-gateway-url')?.value.trim();
-    const token = document.getElementById('ctrl-token')?.value.trim();
-    if (!url || !token) return;
-    state.gatewayUrl = url;
-    state.token = token;
-    localStorage.setItem('connection', JSON.stringify({ gatewayUrl: url, token: token }));
-    connectToGateway().catch(err => console.error('Connect failed:', err));
-    updateControlPanel();
-  });
-
-  // Disconnect button
-  document.getElementById('ctrl-disconnect-btn')?.addEventListener('click', () => {
-    if (state.gateway) state.gateway.stop();
-    localStorage.removeItem('connection');
-    localStorage.removeItem('deviceIdentity');
-    localStorage.removeItem('deviceApproved');
-    state.gatewayUrl = '';
-    state.token = '';
-    // Return to landing page
-    document.getElementById('landing').style.display = '';
-    document.querySelector('.app').style.display = 'none';
-  });
-
-  // Layout responsive
-  updateLayout();
-  window.addEventListener('resize', updateLayout);
-}
-
-function updateLayout() {
-  const isMobile = window.innerWidth <= 768;
-  const sidebar = document.getElementById('sidebar');
-  const mobileBar = document.getElementById('mobile-tab-bar');
-  const appEl = document.querySelector('.app');
-
-  if (sidebar) sidebar.style.display = isMobile ? 'none' : 'flex';
-  if (mobileBar) mobileBar.style.display = isMobile ? 'flex' : 'none';
-  if (appEl) appEl.style.flexDirection = isMobile ? 'column' : 'row';
-
-  // Re-apply current section layout
-  switchSection(currentSection);
-}
-
-// Initialize navigation immediately
-initNavigation();
 
 // ─── Agent Management ────────────────────────────────────────────────
 
@@ -651,6 +496,7 @@ async function loadAgents() {
     }
 
     updateAgentButton();
+    updateDashboard();
   } catch (err) {
     console.warn("Failed to load agents:", err);
   }
@@ -1402,6 +1248,7 @@ function updateModelLabel() {
     return;
   }
   ui.modelLabel.textContent = shortModelName(state.currentModel) + " ▾";
+  updateDashboard();
 }
 
 async function openModelPicker() {
@@ -2709,6 +2556,130 @@ ui.tabBar.addEventListener("wheel", (e) => {
 })();
 
 window.ocResetCloseConfirm = () => { setCloseConfirmDisabled(false); console.log("Close confirmation re-enabled"); };
+
+// ─── Dashboard ──────────────────────────────────────────────────────
+
+function updateDashboard() {
+  const connected = state.gateway?.connected;
+
+  // Status dot + text
+  const dot = document.getElementById('dash-dot');
+  const statusText = document.getElementById('dash-status-text');
+  if (dot) dot.className = 'dash-dot' + (connected ? ' connected' : '');
+  if (statusText) statusText.textContent = connected ? 'Connected' : 'Disconnected';
+
+  // Meta info (version, model)
+  const meta = document.getElementById('dash-meta');
+  if (meta) {
+    const parts = [];
+    if (state.currentModel) parts.push(state.currentModel.split('/').pop());
+    meta.textContent = parts.join(' · ');
+  }
+
+  // Agent info
+  const agentName = document.getElementById('dash-agent-name');
+  const agentEmoji = document.querySelector('.dash-agent-emoji');
+  if (agentName) agentName.textContent = state.activeAgent?.name || 'Agent';
+  if (agentEmoji) agentEmoji.textContent = state.activeAgent?.emoji || '🤖';
+
+  // Connection info
+  const gwInfo = document.getElementById('dash-info-gateway');
+  const devInfo = document.getElementById('dash-info-device');
+  if (gwInfo) {
+    const url = state.gatewayUrl || '';
+    const short = url.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
+    gwInfo.innerHTML = '<span class="dash-info-label">Gateway</span><span class="dash-info-value">' + (short || 'Not set') + '</span>';
+  }
+  if (devInfo) {
+    devInfo.innerHTML = '<span class="dash-info-label">Device</span><span class="dash-info-value">' + (state.deviceIdentity?.deviceId?.slice(0, 12) || '—') + '</span>';
+  }
+
+  // Show connect form or dashboard content
+  const connectForm = document.getElementById('dash-connect-form');
+  const sections = document.querySelectorAll('#dashboard .dash-section');
+  if (!state.gatewayUrl || !state.token) {
+    if (connectForm) connectForm.style.display = '';
+    sections.forEach(s => s.style.display = 'none');
+  } else {
+    if (connectForm) connectForm.style.display = 'none';
+    sections.forEach(s => s.style.display = '');
+  }
+}
+
+function sendControlAction(message) {
+  // Close dashboard on mobile
+  closeDashboard();
+
+  // Send the message as if user typed it
+  const input = document.getElementById('message-input');
+  if (input) {
+    input.value = message;
+    input.dispatchEvent(new Event('input'));
+    document.getElementById('send-btn')?.click();
+  }
+}
+
+function openDashboard() {
+  document.getElementById('dashboard')?.classList.add('open');
+  document.getElementById('dashboard-overlay')?.classList.add('open');
+}
+
+function closeDashboard() {
+  document.getElementById('dashboard')?.classList.remove('open');
+  document.getElementById('dashboard-overlay')?.classList.remove('open');
+}
+
+// Dashboard event listeners (runs immediately)
+(function initDashboard() {
+  // Mobile menu button
+  document.getElementById('dash-menu-btn')?.addEventListener('click', () => {
+    const dash = document.getElementById('dashboard');
+    if (dash?.classList.contains('open')) closeDashboard();
+    else openDashboard();
+  });
+
+  // Overlay click to close
+  document.getElementById('dashboard-overlay')?.addEventListener('click', closeDashboard);
+
+  // Connect button
+  document.getElementById('dash-connect-btn')?.addEventListener('click', () => {
+    const url = document.getElementById('dash-gateway-url')?.value.trim();
+    const token = document.getElementById('dash-token')?.value.trim();
+    if (!url || !token) return;
+    state.gatewayUrl = url;
+    state.token = token;
+    localStorage.setItem('connection', JSON.stringify({ gatewayUrl: url, token: token }));
+    connectToGateway().catch(err => console.error('Connect failed:', err));
+    updateDashboard();
+  });
+
+  // Disconnect button
+  document.getElementById('dash-disconnect-btn')?.addEventListener('click', () => {
+    if (state.gateway) state.gateway.stop();
+    localStorage.removeItem('connection');
+    localStorage.removeItem('deviceIdentity');
+    localStorage.removeItem('deviceApproved');
+    state.gatewayUrl = '';
+    state.token = '';
+    document.getElementById('landing').style.display = '';
+    document.querySelector('.app').style.display = 'none';
+  });
+
+  // Responsive: show/hide menu button
+  function updateDashLayout() {
+    const isMobile = window.innerWidth <= 768;
+    const menuBtn = document.getElementById('dash-menu-btn');
+    const dashboard = document.getElementById('dashboard');
+    if (menuBtn) menuBtn.style.display = isMobile ? '' : 'none';
+    // On desktop, always show dashboard; on mobile, it's controlled by open/close
+    if (!isMobile) {
+      dashboard?.classList.remove('open');
+      document.getElementById('dashboard-overlay')?.classList.remove('open');
+    }
+  }
+  window.addEventListener('resize', updateDashLayout);
+  updateDashLayout();
+})();
 
 // ─── Initialize ──────────────────────────────────────────────────────
 

@@ -1272,138 +1272,83 @@
   </div>
 
   <div class="app" style="display:none;">
-    <!-- Sidebar (desktop) -->
-    <nav class="sidebar" id="sidebar">
-      <div class="sidebar-top">
-        <button class="sidebar-btn active" data-section="chat" title="Chat">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          <span>Chat</span>
-        </button>
-        <button class="sidebar-btn" data-section="profile" title="Agent Profile">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span>Profile</span>
-        </button>
-        <button class="sidebar-btn" data-section="controls" title="Control Panel">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span>Controls</span>
-        </button>
-      </div>
-      <div class="sidebar-bottom">
-        <div class="sidebar-status" id="sidebar-status" title="Disconnected"></div>
-      </div>
-    </nav>
+    <!-- Dashboard panel -->
+    <div class="dashboard" id="dashboard">
+      <div class="dashboard-scroll">
 
-    <!-- Main content area -->
-    <div class="main-content" id="main-content">
-      <!-- Profile section (placeholder) -->
-      <div class="section-view" id="section-profile" style="display:none;">
-        <div class="section-scroll">
-          <div class="section-header">
-            <h2>Agent Profile</h2>
-            <p>View and edit your bot's personality, memory, and preferences.</p>
+        <!-- Status -->
+        <div class="dash-section">
+          <div class="dash-status-row">
+            <span class="dash-dot" id="dash-dot"></span>
+            <span class="dash-status-text" id="dash-status-text">Connecting...</span>
           </div>
-          <div class="coming-soon-card">
-            <div class="coming-soon-icon">👤</div>
-            <h3>Coming Soon</h3>
-            <p>Personality cards, memory viewer, and visual settings editor are on the way.</p>
+          <div class="dash-meta" id="dash-meta"></div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="dash-section">
+          <div class="dash-section-label">Actions</div>
+          <div class="dash-actions">
+            <button class="dash-action-btn" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
+              <span class="dash-action-icon">🔄</span> Restart
+            </button>
+            <button class="dash-action-btn" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
+              <span class="dash-action-icon">⬆️</span> Update
+            </button>
+            <button class="dash-action-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
+              <span class="dash-action-icon">🩺</span> Doctor
+            </button>
+            <button class="dash-action-btn" onclick="sendControlAction('Run openclaw doctor --fix and then restart the gateway. Tell me what was fixed.')">
+              <span class="dash-action-icon">🔧</span> Fix Issues
+            </button>
           </div>
         </div>
-      </div>
 
-      <!-- Control Panel section -->
-      <div class="section-view" id="section-controls" style="display:none;">
-        <div class="section-scroll">
-          <div class="section-header">
-            <h2>Control Panel</h2>
-            <p>Manage your OpenClaw gateway and check on your setup.</p>
-          </div>
-
-          <!-- Connection form (shown when not connected) -->
-          <div class="control-connect" id="control-connect" style="display:none;">
-            <div class="control-card">
-              <h3>🔗 Connect to your OpenClaw</h3>
-              <p>Enter your gateway details to get started.</p>
-              <div class="control-field">
-                <label>Gateway URL</label>
-                <input type="text" id="ctrl-gateway-url" placeholder="https://your-server.tail1234.ts.net">
-              </div>
-              <div class="control-field">
-                <label>Auth Token</label>
-                <input type="password" id="ctrl-token" placeholder="Paste your token">
-              </div>
-              <button class="control-action-btn" id="ctrl-connect-btn">Connect</button>
-              <p class="control-hint">🔒 Stored locally. Never sent to our servers.</p>
-            </div>
-          </div>
-
-          <!-- Controls grid (shown when connected) -->
-          <div class="controls-grid" id="controls-grid">
-            <div class="control-card control-status-card" id="control-status-card">
-              <div class="control-card-header">
-                <span class="control-card-icon">📡</span>
-                <h3>Gateway Status</h3>
-              </div>
-              <div class="control-status-row">
-                <span class="control-dot" id="control-dot"></span>
-                <span id="control-status-text">Checking...</span>
-              </div>
-              <div class="control-meta" id="control-meta"></div>
-            </div>
-
-            <div class="control-card">
-              <div class="control-card-header">
-                <span class="control-card-icon">🔄</span>
-                <h3>Restart Gateway</h3>
-              </div>
-              <p>Restart your OpenClaw gateway. Takes a few seconds.</p>
-              <button class="control-action-btn" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\'s back up.')">Restart</button>
-            </div>
-
-            <div class="control-card">
-              <div class="control-card-header">
-                <span class="control-card-icon">⬆️</span>
-                <h3>Update OpenClaw</h3>
-              </div>
-              <p>Check for and install the latest version.</p>
-              <button class="control-action-btn" onclick="sendControlAction('Check if there\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">Check for Updates</button>
-            </div>
-
-            <div class="control-card">
-              <div class="control-card-header">
-                <span class="control-card-icon">🩺</span>
-                <h3>Run Doctor</h3>
-              </div>
-              <p>Check for common issues with your setup.</p>
-              <button class="control-action-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">Run Doctor</button>
-            </div>
-
-            <div class="control-card">
-              <div class="control-card-header">
-                <span class="control-card-icon">🔧</span>
-                <h3>Fix Issues</h3>
-              </div>
-              <p>Automatically fix common problems.</p>
-              <button class="control-action-btn" onclick="sendControlAction('Run openclaw doctor --fix and then restart the gateway. Tell me what was fixed.')">Fix Issues</button>
-            </div>
-
-            <div class="control-card">
-              <div class="control-card-header">
-                <span class="control-card-icon">🔑</span>
-                <h3>Connection Info</h3>
-              </div>
-              <div class="control-info-row" id="control-info-gateway"></div>
-              <div class="control-info-row" id="control-info-device"></div>
-              <button class="control-action-btn control-disconnect-btn" id="ctrl-disconnect-btn">Disconnect</button>
-            </div>
+        <!-- Agent -->
+        <div class="dash-section">
+          <div class="dash-section-label">Agent</div>
+          <div class="dash-agent" id="dash-agent">
+            <span class="dash-agent-emoji">🤖</span>
+            <span class="dash-agent-name" id="dash-agent-name">Agent</span>
           </div>
         </div>
+
+        <!-- Connection -->
+        <div class="dash-section dash-section-bottom">
+          <div class="dash-section-label">Connection</div>
+          <div class="dash-info-row" id="dash-info-gateway"></div>
+          <div class="dash-info-row" id="dash-info-device"></div>
+          <button class="dash-disconnect-btn" id="dash-disconnect-btn">Disconnect</button>
+        </div>
+
+        <!-- Connection form (shown when no credentials) -->
+        <div class="dash-connect-form" id="dash-connect-form" style="display:none;">
+          <div class="dash-section-label">Connect</div>
+          <div class="dash-field">
+            <label>Gateway URL</label>
+            <input type="text" id="dash-gateway-url" placeholder="https://your-server.tail1234.ts.net">
+          </div>
+          <div class="dash-field">
+            <label>Auth Token</label>
+            <input type="password" id="dash-token" placeholder="Paste your token">
+          </div>
+          <button class="dash-action-btn dash-connect-btn" id="dash-connect-btn">Connect</button>
+          <p class="dash-hint">🔒 Stored locally only.</p>
+        </div>
+
       </div>
     </div>
 
+    <!-- Dashboard overlay for mobile (click to close) -->
+    <div class="dashboard-overlay" id="dashboard-overlay"></div>
+
     <!-- Chat container -->
-    <div id="chat-container" class="openclaw-chat-container">
+    <div id="chat-container" class="openclaw-chat-container" style="flex:1;min-width:0;">
       <!-- Top bar: tabs + agent switcher -->
       <div class="openclaw-top-bar">
+        <button class="dash-menu-btn" id="dash-menu-btn" title="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <div class="openclaw-tab-bar" id="tab-bar"></div>
         <div class="oc-hamburger-bar" id="hamburger-bar" style="position:relative;">
           <button class="oc-hamburger-btn" id="hamburger-btn">
@@ -1475,21 +1420,7 @@
       </div>
     </div>
 
-    <!-- Mobile bottom tab bar -->
-    <div class="mobile-tab-bar" id="mobile-tab-bar">
-      <button class="mobile-tab active" data-section="chat">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        <span>Chat</span>
-      </button>
-      <button class="mobile-tab" data-section="profile">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <span>Profile</span>
-      </button>
-      <button class="mobile-tab" data-section="controls">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-        <span>Controls</span>
-      </button>
-    </div>
+
   </div>
 
   <script src="/app.js?v=23"></script>
