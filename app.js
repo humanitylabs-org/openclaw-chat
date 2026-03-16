@@ -559,8 +559,8 @@ function sendControlAction(message) {
   }
 }
 
-// Setup navigation event listeners
-document.addEventListener('DOMContentLoaded', () => {
+// Setup navigation event listeners (runs immediately since script is at bottom of body)
+function initNavigation() {
   // Sidebar buttons
   document.querySelectorAll('.sidebar-btn').forEach(btn => {
     btn.addEventListener('click', () => switchSection(btn.dataset.section));
@@ -597,18 +597,26 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Layout responsive
-  function updateLayout() {
-    const isMobile = window.innerWidth <= 768;
-    const sidebar = document.getElementById('sidebar');
-    const mobileBar = document.getElementById('mobile-tab-bar');
-    if (sidebar) sidebar.style.display = isMobile ? 'none' : '';
-    if (mobileBar) mobileBar.style.display = isMobile ? '' : 'none';
-    switchSection(currentSection);
-  }
-
-  window.addEventListener('resize', updateLayout);
   updateLayout();
-});
+  window.addEventListener('resize', updateLayout);
+}
+
+function updateLayout() {
+  const isMobile = window.innerWidth <= 768;
+  const sidebar = document.getElementById('sidebar');
+  const mobileBar = document.getElementById('mobile-tab-bar');
+  const appEl = document.querySelector('.app');
+
+  if (sidebar) sidebar.style.display = isMobile ? 'none' : 'flex';
+  if (mobileBar) mobileBar.style.display = isMobile ? 'flex' : 'none';
+  if (appEl) appEl.style.flexDirection = isMobile ? 'column' : 'row';
+
+  // Re-apply current section layout
+  switchSection(currentSection);
+}
+
+// Initialize navigation immediately
+initNavigation();
 
 // ─── Agent Management ────────────────────────────────────────────────
 

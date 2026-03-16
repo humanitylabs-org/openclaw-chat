@@ -551,7 +551,7 @@
    ══════════════════════════════════════════════════════════════ */
 
 .mobile-tab-bar {
-  display: none;
+  display: none; /* JS sets to flex on mobile */
   height: 52px;
   background: rgba(22, 22, 22, 0.9);
   backdrop-filter: blur(12px);
@@ -601,12 +601,7 @@
   font-family: var(--font-sans);
 }
 
-/* Adjust chat container when mobile tab bar is visible */
-@media (max-width: 768px) {
-  .openclaw-chat-container {
-    padding-bottom: 52px;
-  }
-}
+/* No extra padding needed - mobile tab bar is a flex sibling, not overlapping */
 
 /* ── Light theme overrides for new components ─────────────── */
 
