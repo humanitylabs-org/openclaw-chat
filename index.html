@@ -58,112 +58,6 @@
     .oc-hidden { display: none !important; }
     .oc-opacity-low { opacity: 0.3; }
 
-    /* ─── Onboarding ─────────────────────────────────────────────── */
-    .onboarding {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      padding: 2rem;
-      text-align: center;
-    }
-
-    .onboarding-step {
-      background: var(--background-secondary);
-      border: 1px solid var(--background-modifier-border);
-      border-radius: 12px;
-      padding: 2rem;
-      max-width: 500px;
-      width: 100%;
-    }
-
-    .onboarding-step h2 {
-      font-size: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .input-group {
-      margin-bottom: 1.5rem;
-      text-align: left;
-    }
-
-    .input-group label {
-      display: block;
-      font-size: 0.875rem;
-      color: var(--text-muted);
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-    }
-
-    .input-group input {
-      width: 100%;
-      padding: 0.75rem;
-      background: var(--background-primary);
-      border: 1px solid var(--background-modifier-border);
-      border-radius: 6px;
-      color: var(--text-normal);
-      font-size: 1rem;
-    }
-
-    .input-group input:focus {
-      outline: none;
-      border-color: var(--interactive-accent);
-    }
-
-    .input-group small {
-      display: block;
-      margin-top: 0.5rem;
-      font-size: 0.75rem;
-      color: var(--text-faint);
-    }
-
-    .btn {
-      background: var(--interactive-accent);
-      color: white;
-      border: none;
-      padding: 0.75rem 2rem;
-      border-radius: 6px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .btn:hover { background: var(--interactive-accent-hover); }
-
-    .btn:disabled {
-      background: var(--background-modifier-border);
-      color: var(--text-muted);
-      cursor: not-allowed;
-    }
-
-    .status-message {
-      margin-top: 1rem;
-      padding: 0.75rem;
-      border-radius: 6px;
-      font-size: 0.875rem;
-    }
-
-    .status-message.error { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
-    .status-message.success { background: rgba(76, 175, 80, 0.1); color: #4caf50; }
-    .status-message.info { background: rgba(124, 58, 237, 0.1); color: var(--interactive-accent); }
-
-    .spinner {
-      border: 2px solid var(--background-modifier-border);
-      border-top: 2px solid var(--interactive-accent);
-      border-radius: 50%;
-      width: 16px;
-      height: 16px;
-      animation: spin 1s linear infinite;
-      display: inline-block;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
     /* ─── Chat Container ─────────────────────────────────────────── */
     .openclaw-chat-container {
       display: none;
@@ -1289,978 +1183,7 @@
 
     /* Mobile adjustments */
     @media (max-width: 768px) {
-      .onboarding { padding: 1rem; }
-      .onboarding-step { padding: 1.5rem; }
       .openclaw-msg { max-width: 90%; }
-    }
-
-    /* ─── Three-Panel Layout ─────────────────────────────────────── */
-    .panel-container {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    .panel-container.desktop {
-      flex-direction: row;
-    }
-
-    .panel-container.mobile {
-      flex-direction: row;
-      width: 300vw;
-      will-change: transform;
-    }
-
-    .panel {
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    /* Desktop panel sizes */
-    .panel-container.desktop .tree-panel {
-      width: 250px;
-      min-width: 250px;
-      flex-shrink: 0;
-    }
-
-    .panel-container.desktop .editor-panel {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .panel-container.desktop .chat-panel {
-      width: 420px;
-      min-width: 420px;
-      flex-shrink: 0;
-    }
-
-    /* Mobile panel sizes */
-    .panel-container.mobile .panel {
-      width: 100vw;
-      min-width: 100vw;
-      flex-shrink: 0;
-    }
-
-    /* Mobile: larger touch targets for file tree */
-    .panel-container.mobile .tree-search {
-      padding: 8px 14px;
-      padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
-    }
-    .panel-container.mobile .tree-search input {
-      padding: 10px 14px;
-      font-size: 15px;
-      border-radius: 8px;
-    }
-    .panel-container.mobile .tree-settings {
-      padding: 14px 16px;
-    }
-    .panel-container.mobile .tree-settings div {
-      gap: 12px;
-    }
-    .panel-container.mobile .tree-settings img {
-      width: 22px !important;
-      height: 22px !important;
-    }
-    .panel-container.mobile .tree-settings span {
-      font-size: 14px !important;
-    }
-    .panel-container.mobile .tree-settings-cogwheel {
-      padding: 10px;
-      min-width: 44px;
-      min-height: 44px;
-    }
-    .panel-container.mobile .tree-settings-cogwheel svg {
-      width: 18px;
-      height: 18px;
-    }
-    .panel-container.mobile .tree-settings .fs-dot {
-      width: 9px !important;
-      height: 9px !important;
-    }
-
-    /* Chat container fills panel */
-    .chat-panel .openclaw-chat-container {
-      height: 100%;
-    }
-
-    /* Panel resizer */
-    .panel-resizer {
-      width: 7px;
-      cursor: col-resize;
-      background: transparent;
-      flex-shrink: 0;
-      position: relative;
-      z-index: 10;
-    }
-    .panel-resizer::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 3px;
-      width: 1px;
-      background: var(--background-modifier-border);
-      transition: background 0.15s;
-    }
-    .panel-resizer:hover::after,
-    .panel-resizer:active::after {
-      background: var(--interactive-accent);
-    }
-
-    /* Panel dots (mobile) */
-    .panel-dots {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 0;
-      padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
-      background: rgba(22, 22, 22, 0.9);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      flex-shrink: 0;
-      border-top: 1px solid rgba(255,255,255,0.04);
-    }
-    /* Hide panel dots when virtual keyboard is open */
-    .panel-dots.oc-keyboard-open { display: none; }
-    /* Hide panel dots entirely when chat panel is active on mobile */
-    .panel-dots.oc-chat-active { display: none; }
-    .panel-dots .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-    .panel-dots .dot.active {
-      background: var(--interactive-accent);
-      transform: scale(1.4);
-      box-shadow: 0 0 8px rgba(74, 158, 255, 0.35);
-    }
-
-    /* ─── File Tree ──────────────────────────────────────────────── */
-    .tree-panel {
-      background: rgba(22, 22, 22, 0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-    }
-
-    .tree-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      flex-shrink: 0;
-    }
-    .tree-title {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-faint);
-    }
-    .tree-header-actions {
-      display: flex;
-      gap: 2px;
-      align-items: center;
-    }
-    .tree-icon-btn {
-      background: none;
-      border: none;
-      color: var(--text-faint);
-      cursor: pointer;
-      padding: 5px;
-      border-radius: 6px;
-      transition: all 0.2s;
-      opacity: 0.5;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .tree-icon-btn:hover {
-      color: var(--text-normal);
-      background: rgba(255,255,255,0.06);
-      opacity: 1;
-    }
-    .tree-refresh-btn {
-      background: none;
-      border: none;
-      color: var(--text-faint);
-      cursor: pointer;
-      font-size: 13px;
-      padding: 4px 6px;
-      border-radius: 6px;
-      transition: all 0.2s;
-      opacity: 0.5;
-    }
-    .tree-refresh-btn:hover {
-      color: var(--text-normal);
-      background: rgba(255,255,255,0.06);
-      opacity: 1;
-    }
-
-    /* Search bar */
-    .tree-search {
-      padding: 0 10px;
-      padding-top: env(safe-area-inset-top, 0px);
-      border-bottom: 1px solid var(--background-modifier-border);
-      min-height: var(--header-height);
-      display: flex;
-      align-items: center;
-      box-sizing: border-box;
-      flex-shrink: 0;
-    }
-    .tree-search input {
-      width: 100%;
-      padding: 5px 10px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 6px;
-      color: var(--text-normal);
-      font-size: 12px;
-      outline: none;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .tree-search input:focus {
-      border-color: rgba(74,158,255,0.35);
-      background: rgba(255,255,255,0.06);
-    }
-    .tree-search input::placeholder { color: var(--text-faint); }
-    .search-match {
-      color: var(--interactive-accent);
-      font-weight: 600;
-    }
-
-    .tree-content {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 8px 0;
-    }
-    .tree-content::-webkit-scrollbar { width: 3px; }
-    .tree-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
-    .tree-content::-webkit-scrollbar-track { background: transparent; }
-
-    .tree-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 14px;
-      cursor: pointer;
-      font-size: 13px;
-      color: rgba(255,255,255,0.55);
-      transition: all 0.15s;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin: 0 6px;
-      border-radius: 6px;
-    }
-    .tree-item:hover {
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.85);
-    }
-    .tree-item.active {
-      background: rgba(74, 158, 255, 0.12);
-      color: var(--interactive-accent);
-    }
-    .tree-arrow {
-      font-size: 9px;
-      width: 12px;
-      text-align: center;
-      flex-shrink: 0;
-      color: rgba(255,255,255,0.25);
-      transition: transform 0.15s, color 0.15s;
-    }
-    .tree-arrow.open { color: rgba(255,255,255,0.4); }
-    .tree-item:hover .tree-arrow { color: rgba(255,255,255,0.5); }
-
-    .tree-icon {
-      flex-shrink: 0;
-      width: 16px;
-      height: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .tree-icon svg {
-      width: 14px;
-      height: 14px;
-    }
-    .tree-name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: 400;
-      letter-spacing: 0.01em;
-    }
-
-    /* Folder items get slightly different treatment */
-    .tree-dir .tree-name {
-      font-weight: 500;
-      color: rgba(255,255,255,0.65);
-    }
-    .tree-dir:hover .tree-name { color: rgba(255,255,255,0.9); }
-
-    .tree-settings {
-      border-top: 1px solid rgba(255,255,255,0.04);
-      padding: 10px 14px;
-      flex-shrink: 0;
-      background: rgba(0,0,0,0.15);
-    }
-    .tree-settings-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      cursor: pointer;
-      font-size: 11px;
-      color: var(--text-faint);
-      transition: color 0.15s;
-    }
-    .tree-settings-row:hover { color: var(--text-muted); }
-    .fs-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      flex-shrink: 0;
-      transition: background 0.3s, box-shadow 0.3s;
-    }
-    .fs-dot.connected {
-      background: #4caf50;
-      box-shadow: 0 0 6px rgba(76,175,80,0.4);
-    }
-    .tree-settings-input {
-      display: flex;
-      gap: 6px;
-      margin-top: 8px;
-    }
-    .tree-settings-input input {
-      flex: 1;
-      min-width: 0;
-      padding: 6px 10px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 6px;
-      color: var(--text-normal);
-      font-size: 11px;
-      transition: border-color 0.2s;
-    }
-    .tree-settings-input input:focus {
-      outline: none;
-      border-color: rgba(74, 158, 255, 0.4);
-      background: rgba(255,255,255,0.06);
-    }
-    .tree-settings-input button {
-      background: rgba(74, 158, 255, 0.15);
-      color: var(--interactive-accent);
-      border: 1px solid rgba(74, 158, 255, 0.2);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: all 0.15s;
-    }
-    .tree-settings-input button:hover {
-      background: rgba(74, 158, 255, 0.25);
-      border-color: rgba(74, 158, 255, 0.35);
-    }
-
-    /* Settings popup */
-    .tree-settings-popup {
-      position: fixed;
-      width: 280px;
-      background: var(--background-secondary);
-      border: 1px solid var(--background-modifier-border);
-      border-radius: 10px;
-      box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
-      padding: 0;
-      z-index: 9000;
-      font-size: 12px;
-      max-height: calc(100vh - 80px);
-      overflow-y: auto;
-    }
-    @media (max-width: 1024px) {
-      .tree-settings-popup {
-        width: calc(100vw - 32px);
-        max-width: 340px;
-        max-height: calc(100vh - 120px);
-        left: 50% !important;
-        top: 50% !important;
-        bottom: auto !important;
-        transform: translate(-50%, -50%);
-        border-radius: 14px;
-        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-      }
-    }
-    .tree-settings-popup::-webkit-scrollbar { width: 3px; }
-    .tree-settings-popup::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
-    .settings-section-header {
-      font-size: 9px;
-      color: var(--text-faint);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      padding: 10px 12px 4px;
-      font-weight: 600;
-    }
-    .settings-divider {
-      border-top: 1px solid var(--background-modifier-border);
-      margin: 4px 0;
-    }
-    .settings-toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 5px 12px;
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-    .settings-toggle-row select {
-      background: rgba(128,128,128,0.06);
-      border: 1px solid var(--background-modifier-border);
-      color: var(--text-normal);
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 10px;
-      outline: none;
-    }
-    .settings-toggle {
-      position: relative;
-      width: 32px;
-      height: 18px;
-      cursor: pointer;
-      display: inline-block;
-    }
-    .settings-toggle input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-      position: absolute;
-    }
-    .settings-toggle .slider {
-      position: absolute;
-      inset: 0;
-      border-radius: 9px;
-      background: rgba(128,128,128,0.2);
-      transition: background 0.2s;
-    }
-    .settings-toggle input:checked + .slider {
-      background: var(--interactive-accent);
-    }
-    .settings-toggle .knob {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: white;
-      transition: left 0.2s;
-    }
-    .settings-toggle input:checked ~ .knob {
-      left: 16px;
-    }
-
-    /* Onboarding overlay */
-    .onboard-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 10000;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .onboard-overlay.oc-hidden { display: none; }
-    .onboard-card {
-      position: relative;
-      background: var(--background-secondary);
-      border: 1px solid var(--background-modifier-border);
-      border-radius: 14px;
-      padding: 28px 24px 20px;
-      width: 100%;
-      max-width: 380px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
-    }
-    .onboard-step-num {
-      background: var(--interactive-accent);
-      color: var(--text-on-accent);
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-    .tree-settings-popup-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      color: var(--text-muted);
-      transition: all 0.12s;
-    }
-    .tree-settings-popup-item:hover {
-      background: rgba(128,128,128,0.1);
-      color: var(--text-normal);
-    }
-    .tree-settings-popup-item svg { flex-shrink: 0; }
-    .tree-settings-popup-item .settings-label { flex: 1; }
-    .tree-settings-popup-item .settings-value {
-      font-size: 11px;
-      color: var(--text-faint);
-    }
-    .tree-settings-cogwheel {
-      background: none;
-      border: none;
-      color: var(--text-faint);
-      cursor: pointer;
-      padding: 6px;
-      border-radius: 6px;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .tree-settings-cogwheel:hover {
-      color: var(--text-normal);
-      background: rgba(255,255,255,0.06);
-    }
-    .settings-field-input {
-      transition: opacity 0.15s, border-color 0.15s;
-    }
-    .settings-field-input:focus {
-      border-color: var(--interactive-accent) !important;
-      opacity: 1 !important;
-    }
-
-    /* ─── Editor Panel ───────────────────────────────────────────── */
-    .editor-tab-bar {
-      flex-shrink: 0;
-      border-bottom: 1px solid var(--background-modifier-border);
-      display: flex;
-      align-items: flex-end;
-      overflow: hidden;
-      min-height: var(--header-height);
-      padding-top: env(safe-area-inset-top, 0px);
-      box-sizing: border-box;
-    }
-    .editor-tabs {
-      display: flex;
-      overflow-x: auto;
-      gap: 1px;
-      flex: 1;
-    }
-    .editor-tabs::-webkit-scrollbar { height: 0; }
-
-    .editor-tab {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      font-size: 12px;
-      cursor: pointer;
-      white-space: nowrap;
-      color: var(--text-faint);
-      transition: background 0.12s, color 0.12s;
-      border-radius: 6px 6px 0 0;
-      flex-shrink: 0;
-    }
-    .editor-tab:hover {
-      background: rgba(128,128,128,0.08);
-      color: var(--text-muted);
-    }
-    .editor-tab.active {
-      background: rgba(128,128,128,0.15);
-      color: var(--text-normal);
-    }
-    .editor-tab-name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 150px;
-    }
-    .editor-tab-close {
-      font-size: 14px;
-      opacity: 0;
-      cursor: pointer;
-      padding: 0 2px;
-      border-radius: 3px;
-      transition: opacity 0.12s, background 0.12s;
-      line-height: 1;
-    }
-    .editor-tab:hover .editor-tab-close,
-    .editor-tab.active .editor-tab-close {
-      opacity: 0.4;
-    }
-    .editor-tab-close:hover {
-      opacity: 1 !important;
-      background: rgba(128,128,128,0.25);
-    }
-
-    .editor-banner {
-      padding: 6px 12px;
-      background: rgba(255, 193, 7, 0.1);
-      color: #ffc107;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-    .editor-banner button {
-      background: none;
-      border: 1px solid rgba(255, 193, 7, 0.3);
-      color: #ffc107;
-      padding: 2px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 11px;
-    }
-    .editor-banner button:hover { background: rgba(255, 193, 7, 0.1); }
-
-    .editor-area {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      position: relative;
-    }
-
-    .editor-toolbar {
-      display: flex;
-      gap: 2px;
-      padding: 6px 12px;
-      border-bottom: 1px solid var(--background-modifier-border);
-      flex-shrink: 0;
-      align-items: center;
-      background: var(--background-secondary);
-    }
-    .editor-btn {
-      background: transparent;
-      color: var(--text-faint);
-      border: none;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.15s;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-weight: 500;
-    }
-    .editor-btn:hover {
-      background: rgba(128,128,128,0.1);
-      color: var(--text-normal);
-    }
-    .editor-btn.active {
-      background: rgba(128,128,128,0.12);
-      color: var(--text-normal);
-    }
-    .editor-btn.save-btn {
-      background: rgba(74,158,255,0.1);
-      color: var(--interactive-accent);
-    }
-    .editor-btn.save-btn:hover {
-      background: rgba(74,158,255,0.2);
-    }
-
-    .editor-textarea {
-      flex: 1;
-      width: 100%;
-      padding: 24px 20px;
-      background: var(--background-primary);
-      color: var(--text-normal);
-      border: none;
-      outline: none;
-      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-      font-size: 14px;
-      line-height: 1.8;
-      resize: none;
-      tab-size: 2;
-      max-width: 100%;
-      box-sizing: border-box;
-      overflow-x: hidden;
-      word-wrap: break-word;
-    }
-    @media (min-width: 1025px) {
-      .editor-textarea { padding: 32px 48px; max-width: 820px; }
-    }
-
-    .editor-preview {
-      flex: 1;
-      padding: 20px 16px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      font-size: 15px;
-      line-height: 1.8;
-      color: var(--text-normal);
-      max-width: 100%;
-      box-sizing: border-box;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      cursor: default;
-    }
-    @media (min-width: 1025px) {
-      .editor-preview { padding: 32px 48px; max-width: 820px; }
-    }
-
-    /* Typography - Obsidian-quality */
-    .editor-preview h1 {
-      font-size: 2em;
-      font-weight: 700;
-      margin: 1.4em 0 0.5em;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
-      color: var(--text-normal);
-    }
-    .editor-preview h1:first-child { margin-top: 0; }
-    .editor-preview h2 {
-      font-size: 1.5em;
-      font-weight: 600;
-      margin: 1.3em 0 0.4em;
-      letter-spacing: -0.01em;
-      line-height: 1.3;
-      padding-bottom: 0.2em;
-      border-bottom: 1px solid var(--background-modifier-border);
-    }
-    .editor-preview h3 {
-      font-size: 1.2em;
-      font-weight: 600;
-      margin: 1.1em 0 0.3em;
-      line-height: 1.4;
-    }
-    .editor-preview h4 { font-size: 1.05em; font-weight: 600; margin: 1em 0 0.2em; }
-    .editor-preview h5 { font-size: 0.95em; font-weight: 600; margin: 0.9em 0 0.2em; color: var(--text-muted); }
-    .editor-preview h6 { font-size: 0.9em; font-weight: 600; margin: 0.8em 0 0.2em; color: var(--text-muted); }
-    .editor-preview p { margin: 0.6em 0; }
-
-    /* Inline code */
-    .editor-preview code {
-      font-size: 0.85em;
-      background: rgba(128,128,128,0.1);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-      color: var(--text-normal);
-    }
-
-    /* Code blocks */
-    .editor-preview .code-block {
-      margin: 16px 0;
-      border-radius: 10px;
-      background: var(--background-secondary);
-      overflow: hidden;
-      border: 1px solid var(--background-modifier-border);
-    }
-    .editor-preview .code-lang {
-      font-size: 11px;
-      color: var(--text-faint);
-      padding: 6px 14px 0;
-      font-family: var(--font-sans);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .editor-preview .code-lang:empty { display: none; }
-    .editor-preview pre {
-      margin: 0;
-      padding: 12px 16px;
-      overflow-x: auto;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-    .editor-preview pre code {
-      padding: 0;
-      background: none;
-      border-radius: 0;
-      font-size: inherit;
-    }
-
-    /* Links */
-    .editor-preview a {
-      color: var(--interactive-accent);
-      text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
-    }
-    .editor-preview a:hover { border-bottom-color: var(--interactive-accent); }
-    .editor-preview .internal-link {
-      color: var(--interactive-accent);
-      text-decoration: none;
-      border-bottom: 1px dashed rgba(74,158,255,0.3);
-    }
-    .editor-preview .internal-link:hover { border-bottom-style: solid; }
-
-    .editor-preview strong { font-weight: 650; }
-    .editor-preview em { font-style: italic; }
-
-    /* Lists */
-    .editor-preview ul, .editor-preview ol {
-      margin: 8px 0;
-      padding-left: 24px;
-    }
-    .editor-preview li {
-      margin-bottom: 4px;
-      line-height: 1.7;
-    }
-    .editor-preview li::marker { color: var(--text-faint); }
-
-    /* Task lists */
-    .editor-preview .task-list {
-      list-style: none;
-      padding-left: 4px;
-      margin: 4px 0;
-    }
-    .editor-preview .task-list li {
-      margin-bottom: 1px;
-      line-height: 1.4;
-    }
-    .editor-preview .task {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-    }
-    .editor-preview .task input[type="checkbox"] {
-      margin-top: 4px;
-      accent-color: var(--interactive-accent);
-      width: 15px;
-      height: 15px;
-      flex-shrink: 0;
-    }
-    .editor-preview .task-done { color: var(--text-faint); text-decoration: line-through; }
-
-    /* Blockquotes */
-    .editor-preview blockquote {
-      border-left: 3px solid var(--interactive-accent);
-      padding: 8px 16px;
-      margin: 12px 0;
-      color: var(--text-muted);
-      background: rgba(128,128,128,0.04);
-      border-radius: 0 8px 8px 0;
-      font-style: italic;
-    }
-
-    /* Tables */
-    .editor-preview table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 16px 0;
-      font-size: 14px;
-    }
-    .editor-preview th {
-      text-align: left;
-      font-weight: 600;
-      padding: 8px 12px;
-      border-bottom: 2px solid var(--background-modifier-border);
-      color: var(--text-normal);
-      font-size: 13px;
-    }
-    .editor-preview td {
-      padding: 6px 12px;
-      border-bottom: 1px solid rgba(128,128,128,0.1);
-    }
-    .editor-preview tr:hover td { background: rgba(128,128,128,0.04); }
-
-    /* Callouts */
-    .editor-preview .callout {
-      margin: 16px 0;
-      border-radius: 10px;
-      padding: 14px 18px;
-      border-left: 4px solid;
-    }
-    .editor-preview .callout-title {
-      font-weight: 600;
-      font-size: 14px;
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .editor-preview .callout-body { font-size: 14px; line-height: 1.6; }
-    .editor-preview .callout-note, .editor-preview .callout-info {
-      background: rgba(74,158,255,0.06);
-      border-color: var(--interactive-accent);
-    }
-    .editor-preview .callout-tip, .editor-preview .callout-success {
-      background: rgba(76,175,80,0.06);
-      border-color: #4caf50;
-    }
-    .editor-preview .callout-warning, .editor-preview .callout-caution {
-      background: rgba(255,193,7,0.06);
-      border-color: #ffc107;
-    }
-    .editor-preview .callout-danger, .editor-preview .callout-bug {
-      background: rgba(239,68,68,0.06);
-      border-color: #ef4444;
-    }
-    .editor-preview .callout-example, .editor-preview .callout-abstract {
-      background: rgba(156,136,255,0.06);
-      border-color: #9c88ff;
-    }
-    .editor-preview .callout-quote {
-      background: rgba(128,128,128,0.04);
-      border-color: var(--text-faint);
-    }
-
-    .editor-preview hr {
-      border: none;
-      border-top: 1px solid var(--background-modifier-border);
-      margin: 24px 0;
-    }
-    .editor-preview del { text-decoration: line-through; color: var(--text-faint); }
-    .editor-preview mark {
-      background: rgba(255,215,0,0.25);
-      padding: 1px 4px;
-      border-radius: 3px;
-    }
-    .editor-preview img { max-width: 100%; border-radius: 8px; margin: 12px 0; }
-
-    .editor-empty {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: var(--text-faint);
-      font-size: 13px;
-    }
-
-    /* Floating mode indicator */
-    .editor-mode-indicator {
-      position: absolute;
-      bottom: 16px;
-      right: 16px;
-      font-size: 11px;
-      font-weight: 500;
-      padding: 4px 10px;
-      border-radius: 6px;
-      pointer-events: none;
-      z-index: 10;
-      letter-spacing: 0.03em;
-      opacity: 0.7;
-      transition: opacity 0.2s;
-    }
-    .editor-mode-indicator.reading {
-      background: rgba(74, 158, 255, 0.12);
-      color: var(--interactive-accent);
-    }
-    .editor-mode-indicator.edit {
-      background: rgba(76, 175, 80, 0.12);
-      color: #4caf50;
     }
 
     /* ─── Light Theme ────────────────────────────────────────────── */
@@ -2275,66 +1198,6 @@
       --text-on-accent: #fff;
       --interactive-accent: #4a7dff;
       --interactive-accent-hover: #3a6ae6;
-    }
-    body[data-theme="light"] .tree-panel {
-      background: rgba(246, 246, 247, 0.92);
-    }
-    body[data-theme="light"] .tree-item {
-      color: rgba(0,0,0,0.55);
-    }
-    body[data-theme="light"] .tree-item:hover {
-      background: rgba(0,0,0,0.04);
-      color: rgba(0,0,0,0.85);
-    }
-    body[data-theme="light"] .tree-item.active {
-      background: rgba(74, 125, 255, 0.08);
-    }
-    body[data-theme="light"] .tree-dir .tree-name { color: rgba(0,0,0,0.7); }
-    body[data-theme="light"] .tree-arrow { color: rgba(0,0,0,0.2); }
-    body[data-theme="light"] .tree-arrow.open { color: rgba(0,0,0,0.35); }
-    body[data-theme="light"] .tree-icon-btn:hover,
-    body[data-theme="light"] .tree-refresh-btn:hover {
-      background: rgba(0,0,0,0.05);
-    }
-    body[data-theme="light"] .tree-search input {
-      background: rgba(0,0,0,0.03);
-      border-color: rgba(0,0,0,0.08);
-    }
-    body[data-theme="light"] .tree-search input:focus {
-      border-color: rgba(74,125,255,0.35);
-      background: #fff;
-    }
-    body[data-theme="light"] .tree-settings {
-      background: rgba(0,0,0,0.02);
-      border-top-color: rgba(0,0,0,0.06);
-    }
-    body[data-theme="light"] .tree-settings-input input {
-      background: #fff;
-      border-color: rgba(0,0,0,0.1);
-    }
-    body[data-theme="light"] .fs-dot { background: rgba(0,0,0,0.15); }
-    body[data-theme="light"] .editor-textarea {
-      background: #fff;
-    }
-    body[data-theme="light"] .editor-preview code {
-      background: rgba(0,0,0,0.06);
-    }
-    body[data-theme="light"] .editor-preview .code-block {
-      background: #f8f8f8;
-      border-color: #e8e8e8;
-    }
-    body[data-theme="light"] .editor-preview mark {
-      background: rgba(255,215,0,0.35);
-    }
-    body[data-theme="light"] .panel-dots {
-      background: rgba(246,246,247,0.95);
-      border-top-color: rgba(0,0,0,0.06);
-    }
-    body[data-theme="light"] .panel-dots .dot {
-      background: rgba(0,0,0,0.12);
-    }
-    body[data-theme="light"] .panel-dots .dot.active {
-      background: var(--interactive-accent);
     }
     body[data-theme="light"] .openclaw-msg-assistant {
       color: var(--text-normal);
@@ -2409,66 +1272,132 @@
   </div>
 
   <div class="app" style="display:none;">
-    <!-- Onboarding -->
-    <div id="onboarding" class="onboarding">
-      <div id="step1" class="onboarding-step">
-        <h2>🤖 Connect to OpenClaw</h2>
-        <div class="input-group">
-          <label for="gateway-url">Gateway URL</label>
-          <input type="text" id="gateway-url" placeholder="https://your-server.tail1234.ts.net">
-          <small>Your OpenClaw gateway URL (Tailscale or public)</small>
-        </div>
-        <div class="input-group">
-          <label for="token">Auth Token</label>
-          <input type="password" id="token" placeholder="Paste your token here">
-          <small>🔒 Stored locally. Never sent to our servers.</small>
-        </div>
-        <button class="btn" id="connect-btn">Connect →</button>
-        <div id="connect-status" class="status-message hidden"></div>
+    <!-- Sidebar (desktop) -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <button class="sidebar-btn active" data-section="chat" title="Chat">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </button>
+        <button class="sidebar-btn" data-section="profile" title="Agent Profile">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+        <button class="sidebar-btn" data-section="controls" title="Control Panel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
       </div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-status" id="sidebar-status" title="Disconnected"></div>
+      </div>
+    </nav>
 
-      <div id="step2" class="onboarding-step hidden">
-        <h2>🔐 Approve this device</h2>
-        <p style="margin-bottom: 0.75rem; color: var(--text-muted);">
-          Device ID: <strong id="request-id" style="color: var(--text-normal); font-family: monospace; font-size: 0.85em;">—</strong>
-        </p>
-        <p style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9em;">
-          Your gateway needs to approve this device before you can connect. Choose one:
-        </p>
-
-        <div style="margin-bottom: 1rem;">
-          <p style="color: var(--text-muted); font-size: 0.8em; margin-bottom: 0.4rem; font-weight: 500;">Option 1 — Run on the server:</p>
-          <div id="approve-cmd" style="background: #1a1a1e; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 0.6rem 0.8rem; font-family: monospace; font-size: 0.82em; color: var(--text-normal); cursor: pointer; position: relative; user-select: all;" title="Click to copy">
-            openclaw devices approve --latest
-            <span id="approve-copy-feedback" style="position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-size: 0.75em; color: var(--text-muted); transition: opacity 0.2s;">📋</span>
+    <!-- Main content area -->
+    <div class="main-content" id="main-content">
+      <!-- Profile section (placeholder) -->
+      <div class="section-view" id="section-profile" style="display:none;">
+        <div class="section-scroll">
+          <div class="section-header">
+            <h2>Agent Profile</h2>
+            <p>View and edit your bot's personality, memory, and preferences.</p>
           </div>
-        </div>
-
-        <div style="margin-bottom: 1.25rem;">
-          <p style="color: var(--text-muted); font-size: 0.8em; margin-bottom: 0.25rem; font-weight: 500;">Option 2 — Ask your bot:</p>
-          <p style="color: var(--text-muted); font-size: 0.82em;">
-            If you already have a channel connected (Telegram, Discord, etc.), just tell your bot: <em>"approve the pending device"</em>
-          </p>
-        </div>
-
-        <div class="status-message info">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <div class="spinner"></div>
-            <span>Waiting for approval...</span>
+          <div class="coming-soon-card">
+            <div class="coming-soon-icon">👤</div>
+            <h3>Coming Soon</h3>
+            <p>Personality cards, memory viewer, and visual settings editor are on the way.</p>
           </div>
         </div>
       </div>
 
-      <div id="step3" class="onboarding-step hidden">
-        <h2>✅ Connected!</h2>
-        <p style="margin-bottom: 1.5rem; color: var(--text-muted);">
-          Your device is approved. Ready to start chatting!
-        </p>
-        <button class="btn" id="start-chat-btn">Open chat →</button>
+      <!-- Control Panel section -->
+      <div class="section-view" id="section-controls" style="display:none;">
+        <div class="section-scroll">
+          <div class="section-header">
+            <h2>Control Panel</h2>
+            <p>Manage your OpenClaw gateway and check on your setup.</p>
+          </div>
+
+          <!-- Connection form (shown when not connected) -->
+          <div class="control-connect" id="control-connect" style="display:none;">
+            <div class="control-card">
+              <h3>🔗 Connect to your OpenClaw</h3>
+              <p>Enter your gateway details to get started.</p>
+              <div class="control-field">
+                <label>Gateway URL</label>
+                <input type="text" id="ctrl-gateway-url" placeholder="https://your-server.tail1234.ts.net">
+              </div>
+              <div class="control-field">
+                <label>Auth Token</label>
+                <input type="password" id="ctrl-token" placeholder="Paste your token">
+              </div>
+              <button class="control-action-btn" id="ctrl-connect-btn">Connect</button>
+              <p class="control-hint">🔒 Stored locally. Never sent to our servers.</p>
+            </div>
+          </div>
+
+          <!-- Controls grid (shown when connected) -->
+          <div class="controls-grid" id="controls-grid">
+            <div class="control-card control-status-card" id="control-status-card">
+              <div class="control-card-header">
+                <span class="control-card-icon">📡</span>
+                <h3>Gateway Status</h3>
+              </div>
+              <div class="control-status-row">
+                <span class="control-dot" id="control-dot"></span>
+                <span id="control-status-text">Checking...</span>
+              </div>
+              <div class="control-meta" id="control-meta"></div>
+            </div>
+
+            <div class="control-card">
+              <div class="control-card-header">
+                <span class="control-card-icon">🔄</span>
+                <h3>Restart Gateway</h3>
+              </div>
+              <p>Restart your OpenClaw gateway. Takes a few seconds.</p>
+              <button class="control-action-btn" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\'s back up.')">Restart</button>
+            </div>
+
+            <div class="control-card">
+              <div class="control-card-header">
+                <span class="control-card-icon">⬆️</span>
+                <h3>Update OpenClaw</h3>
+              </div>
+              <p>Check for and install the latest version.</p>
+              <button class="control-action-btn" onclick="sendControlAction('Check if there\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">Check for Updates</button>
+            </div>
+
+            <div class="control-card">
+              <div class="control-card-header">
+                <span class="control-card-icon">🩺</span>
+                <h3>Run Doctor</h3>
+              </div>
+              <p>Check for common issues with your setup.</p>
+              <button class="control-action-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">Run Doctor</button>
+            </div>
+
+            <div class="control-card">
+              <div class="control-card-header">
+                <span class="control-card-icon">🔧</span>
+                <h3>Fix Issues</h3>
+              </div>
+              <p>Automatically fix common problems.</p>
+              <button class="control-action-btn" onclick="sendControlAction('Run openclaw doctor --fix and then restart the gateway. Tell me what was fixed.')">Fix Issues</button>
+            </div>
+
+            <div class="control-card">
+              <div class="control-card-header">
+                <span class="control-card-icon">🔑</span>
+                <h3>Connection Info</h3>
+              </div>
+              <div class="control-info-row" id="control-info-gateway"></div>
+              <div class="control-info-row" id="control-info-device"></div>
+              <button class="control-action-btn control-disconnect-btn" id="ctrl-disconnect-btn">Disconnect</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Chat UI -->
+    <!-- Chat container -->
     <div id="chat-container" class="openclaw-chat-container">
       <!-- Top bar: tabs + agent switcher -->
       <div class="openclaw-top-bar">
@@ -2542,10 +1471,25 @@
         </div>
       </div>
     </div>
+
+    <!-- Mobile bottom tab bar -->
+    <div class="mobile-tab-bar" id="mobile-tab-bar">
+      <button class="mobile-tab active" data-section="chat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>Chat</span>
+      </button>
+      <button class="mobile-tab" data-section="profile">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Profile</span>
+      </button>
+      <button class="mobile-tab" data-section="controls">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Controls</span>
+      </button>
+    </div>
   </div>
 
   <script src="/app.js?v=22"></script>
-  <script src="/workspace.js?v=18"></script>
   <script>
     // Landing page logic
     (function() {
@@ -2556,7 +1500,6 @@
       function showApp() {
         landing.style.display = 'none';
         app.style.display = '';
-        initWorkspace();
       }
 
       if (hasCredentials) {

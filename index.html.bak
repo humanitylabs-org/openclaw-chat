@@ -7,7 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0B0B0D">
-  <title>OpenClaw Chat</title>
+  <title>Use My Claw — A Better Interface for OpenClaw</title>
+  <meta name="description" content="Chat with your AI agent, browse files, and configure your assistant — all in one place. Designed for humans, not developers.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -2342,7 +2343,72 @@
   <link rel="stylesheet" href="/theme.css?v=11">
 </head>
 <body>
-  <div class="app">
+  <!-- Landing Page (shown when no saved credentials) -->
+  <div id="landing" class="landing">
+    <div class="landing-inner">
+      <nav class="landing-nav">
+        <div class="landing-nav-brand">
+          <img src="/logo-64.png" width="28" height="28" alt="Use My Claw" style="border-radius:6px;">
+          <span>Use My Claw</span>
+        </div>
+        <a href="https://openclaw.ai" target="_blank" rel="noopener" class="landing-nav-link">What's OpenClaw?</a>
+      </nav>
+
+      <main class="landing-hero">
+        <h1>OpenClaw does everything.<br><span class="landing-dim">Telegram shows you nothing.</span></h1>
+        <p class="landing-subtitle">
+          Your OpenClaw bot is a personal AI that's on 24/7. It remembers everything, handles tasks on its own, and keeps working while you sleep. But in Telegram, all you see is messages. This app shows you the full picture.
+        </p>
+        <div class="landing-cta-row">
+          <button class="landing-cta-primary" id="landing-connect-btn">Connect to your OpenClaw →</button>
+          <a href="https://botsetupguide.com" target="_blank" rel="noopener" class="landing-cta-secondary">Don't have OpenClaw yet? Set it up →</a>
+        </div>
+      </main>
+
+      <section class="landing-compare-section">
+        <div class="landing-compare-grid">
+          <div class="landing-compare-item">
+            <div class="landing-compare-label landing-compare-old">Telegram</div>
+            <p>One chat thread. You send a message, you get a reply. You can't see your bot's files, memory, or settings. If it's working on something, you just wait.</p>
+          </div>
+          <div class="landing-compare-item">
+            <div class="landing-compare-label landing-compare-new">This app</div>
+            <p>Chat in multiple tabs. Browse every file your OpenClaw bot has access to. Edit its personality, memory, and preferences. See what it's doing, not just what it says.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-how">
+        <div class="landing-steps">
+          <div class="landing-step">
+            <span class="landing-step-num">1</span>
+            <p>Paste your OpenClaw gateway URL and token</p>
+          </div>
+          <div class="landing-step">
+            <span class="landing-step-num">2</span>
+            <p>Approve this device by telling your bot or running one command</p>
+          </div>
+          <div class="landing-step">
+            <span class="landing-step-num">3</span>
+            <p>You're connected. Add it to your home screen to use it like a regular app.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-bottom-cta">
+        <button class="landing-cta-primary" id="landing-connect-btn-2">Connect to your OpenClaw →</button>
+      </section>
+
+      <footer class="landing-footer">
+        <a class="landing-footer-brand" href="https://humanitylabs.org" target="_blank" rel="noopener">
+          <span>powered by</span>
+          <img src="/humanity-labs-logo.png" alt="Humanity Labs" height="14">
+        </a>
+      </footer>
+    </div>
+  </div>
+
+  <div class="app" style="display:none;">
     <!-- Onboarding -->
     <div id="onboarding" class="onboarding">
       <div id="step1" class="onboarding-step">
@@ -2478,11 +2544,36 @@
     </div>
   </div>
 
-  <script src="/app.js?v=21"></script>
-  <script src="/workspace.js?v=17"></script>
+  <script src="/app.js?v=22"></script>
+  <script src="/workspace.js?v=18"></script>
   <script>
-    // Init workspace panels after DOM is ready
-    initWorkspace();
+    // Landing page logic
+    (function() {
+      const landing = document.getElementById('landing');
+      const app = document.querySelector('.app');
+      const hasCredentials = !!localStorage.getItem('connection');
+
+      function showApp() {
+        landing.style.display = 'none';
+        app.style.display = '';
+        initWorkspace();
+      }
+
+      if (hasCredentials) {
+        // Returning user — skip landing, go straight to app
+        showApp();
+      } else {
+        // New user — show landing page
+        landing.style.display = '';
+        app.style.display = 'none';
+        document.getElementById('landing-connect-btn').addEventListener('click', function() {
+          showApp();
+        });
+        document.getElementById('landing-connect-btn-2').addEventListener('click', function() {
+          showApp();
+        });
+      }
+    })();
   </script>
   <div class="oc-confirm-overlay" id="confirm-overlay">
     <div class="oc-confirm-box">

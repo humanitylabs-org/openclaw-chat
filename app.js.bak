@@ -1,5 +1,5 @@
 // OpenClaw Chat PWA
-// Streamlined chat interface with sidebar navigation
+// Ported from ObsidianClaw plugin — full feature parity
 
 // ─── Utilities ───────────────────────────────────────────────────────
 
@@ -287,10 +287,6 @@ const state = {
   // Attachments
   pendingAttachments: [],
   sending: false,
-
-  // UI
-  currentSection: "chat",
-  isMobile: window.innerWidth <= 768,
 };
 
 // ─── Agent prefix helper ─────────────────────────────────────────────
@@ -315,13 +311,6 @@ const ui = {
   connectStatus: $("connect-status"),
   requestId: $("request-id"),
   startChatBtn: $("start-chat-btn"),
-
-  // Sidebar
-  sidebar: $("sidebar"),
-  sidebarStatusDot: $("sidebar-status-dot"),
-  mainContent: $("main-content"),
-  mainContentInner: $("main-content-inner"),
-  mobileTabBar: $("mobile-tab-bar"),
 
   // Chat
   chatContainer: $("chat-container"),
@@ -357,13 +346,14 @@ async function initApp() {
   state.activeAgent = JSON.parse(localStorage.getItem("activeAgent") || '{"id":"main","name":"Agent","emoji":"🤖","creature":""}');
   state.deviceIdentity = await getOrCreateDeviceIdentity();
 
-  // Initialize UI
-  initSidebar();
-  initMobileTabBar();
+  // Always show chat container — settings cogwheel handles connection setup
+  ui.onboarding.style.display = "none";
+  ui.chatContainer.classList.add("active");
 
   if (state.gatewayUrl && state.token) {
     await startChat();
   } else {
+    // No credentials yet — settings will auto-open via workspace checkAutoOpenSettings
     updateConnectionStatus(false);
   }
 }
@@ -395,6 +385,7 @@ ui.connectBtn.addEventListener("click", async () => {
     await connectToGateway();
   } catch (err) {
     console.error("Connection error:", err);
+    // Show step1 again if we're not in pairing flow
     if (ui.step1.classList.contains("hidden") && ui.step2.classList.contains("hidden")) {
       ui.step1.classList.remove("hidden");
     } else if (ui.step2.classList.contains("hidden")) {
@@ -421,37 +412,45 @@ function showPairingBanner() {
   const banner = document.createElement("div");
   banner.id = "pairing-banner";
   banner.innerHTML = `
-    <div style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;">
-      <div style="max-width:420px;width:calc(100% - 2rem);background:#1a1a1e;border:1px solid rgba(74,158,255,0.3);border-radius:12px;padding:1.2rem 1.4rem;box-shadow:0 8px 32px rgba(0,0,0,0.6);color:#eee;font-size:0.88em;line-height:1.5;">
-        <div style="margin-bottom:0.75rem;">
-          <strong style="color:var(--interactive-accent);font-size:1.05em;">🔐 Device pairing required</strong>
+    <div style="
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      z-index: 10001; max-width: 420px; width: calc(100% - 2rem);
+      background: #1a1a1e; border: 1px solid rgba(74,158,255,0.3);
+      border-radius: 12px; padding: 1.2rem 1.4rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6); color: #eee;
+      font-size: 0.88em; line-height: 1.5;
+    ">
+      <div style="margin-bottom: 0.75rem;">
+        <strong style="color: var(--interactive-accent); font-size: 1.05em;">🔐 Device pairing required</strong>
+      </div>
+      <p style="margin: 0 0 0.5rem; color: #ccc;">
+        This device (<code style="background:#28282d;padding:0.15em 0.4em;border-radius:4px;font-size:0.85em;">${deviceShort}</code>) needs to be approved by your gateway.
+      </p>
+
+      <div style="margin: 0.75rem 0;">
+        <p style="color: #999; font-size: 0.8em; margin-bottom: 0.35rem; font-weight: 500;">Option 1 — Run on the server:</p>
+        <div id="pairing-cmd" style="background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 0.55rem 0.75rem; font-family: monospace; font-size: 0.82em; color: #eee; cursor: pointer; position: relative; user-select: all;" title="Click to copy">
+          openclaw devices approve --latest
+          <span id="pairing-copy-feedback" style="position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-size: 0.75em; color: #888;">📋</span>
         </div>
-        <p style="margin:0 0 0.5rem;color:#ccc;">
-          This device (<code style="background:#28282d;padding:0.15em 0.4em;border-radius:4px;font-size:0.85em;">${deviceShort}</code>) needs to be approved by your gateway.
+      </div>
+
+      <div style="margin-bottom: 0.5rem;">
+        <p style="color: #999; font-size: 0.8em; margin-bottom: 0.2rem; font-weight: 500;">Option 2 — Ask your bot:</p>
+        <p style="color: #ccc; font-size: 0.82em; margin: 0;">
+          Message your bot on Telegram, Discord, etc: <em>"approve the pending device"</em>
         </p>
+      </div>
 
-        <div style="margin:0.75rem 0;">
-          <p style="color:#999;font-size:0.8em;margin-bottom:0.35rem;font-weight:500;">Option 1 — Run on the server:</p>
-          <div id="pairing-cmd" style="background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.55rem 0.75rem;font-family:monospace;font-size:0.82em;color:#eee;cursor:pointer;position:relative;user-select:all;" title="Click to copy">
-            openclaw devices approve --latest
-            <span id="pairing-copy-feedback" style="position:absolute;right:0.6rem;top:50%;transform:translateY(-50%);font-size:0.75em;color:#888;">📋</span>
-          </div>
-        </div>
-
-        <div style="margin-bottom:0.5rem;">
-          <p style="color:#999;font-size:0.8em;margin-bottom:0.2rem;font-weight:500;">Option 2 — Ask your bot:</p>
-          <p style="color:#ccc;font-size:0.82em;margin:0;">
-            Message your bot on Telegram, Discord, etc: <em>"approve the pending device"</em>
-          </p>
-        </div>
-
-        <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.75rem;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.06);">
-          <div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>
-          <span style="color:#888;font-size:0.82em;">Waiting for approval — will connect automatically...</span>
-        </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.06);">
+        <div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>
+        <span style="color: #888; font-size: 0.82em;">Waiting for approval — will connect automatically...</span>
       </div>
     </div>
   `;
+
+  // Dim background
+  banner.style.cssText = "position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.6);";
 
   document.body.appendChild(banner);
 
@@ -477,14 +476,20 @@ async function connectToGateway() {
         helloReceived = true;
         localStorage.setItem("deviceApproved", "true");
 
+        // Dismiss pairing banner if it was showing
         document.getElementById("pairing-banner")?.remove();
 
+        // Handle onboarding step transition
         if (!ui.step2.classList.contains("hidden")) {
           ui.step2.classList.add("hidden");
           ui.step3.classList.remove("hidden");
         }
 
         updateConnectionStatus(true);
+
+        // Auto-connect file server using the same gateway URL
+        if (typeof onChatConnected === "function") onChatConnected();
+
         resolve();
       },
       onClose: (info) => {
@@ -500,6 +505,7 @@ async function connectToGateway() {
 
     state.gateway.start();
 
+    // Timeout only if no pairing flow — pairing waits indefinitely for approval
     setTimeout(() => {
       if (!helloReceived && !pairingDetected) {
         reject(new Error("Connection timeout — check your gateway URL and token"));
@@ -523,6 +529,7 @@ async function startChat() {
   await renderTabs();
   updateModelLabel();
 
+  // Start periodic context meter updates
   setInterval(() => updateContextMeter(), 15000);
 }
 
@@ -534,122 +541,21 @@ function updateConnectionStatus(connected) {
   } else {
     ui.sendBtn.classList.add("oc-hidden");
     ui.messageInput.disabled = true;
-    ui.messageInput.placeholder = "Disconnected — reconnect in settings";
+    ui.messageInput.placeholder = "Disconnected — open settings to connect";
   }
-  updateSidebarStatus(connected);
-}
-
-// ─── Sidebar & Navigation ────────────────────────────────────────────
-
-function initSidebar() {
-  if (!ui.sidebar) return;
-
-  const buttons = ui.sidebar.querySelectorAll('.oc-sidebar-btn');
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const section = btn.dataset.section;
-      switchSection(section);
-    });
-  });
-
-  updateSidebarStatus(false);
-}
-
-function initMobileTabBar() {
-  if (!ui.mobileTabBar) return;
-
-  const buttons = ui.mobileTabBar.querySelectorAll('.oc-mobile-tab');
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const section = btn.dataset.section;
-      switchSection(section);
-    });
-  });
-
-  // Show mobile tab bar on small screens
-  if (state.isMobile) {
-    ui.mobileTabBar.classList.remove('oc-hidden');
-  }
-
-  window.addEventListener('resize', () => {
-    const wasMobile = state.isMobile;
-    state.isMobile = window.innerWidth <= 768;
-    if (wasMobile !== state.isMobile) {
-      if (state.isMobile) {
-        ui.mobileTabBar.classList.remove('oc-hidden');
-      } else {
-        ui.mobileTabBar.classList.add('oc-hidden');
-      }
+  // Update workspace connection state
+  if (typeof workspace !== 'undefined') {
+    workspace.chatConnected = connected;
+    if (typeof updateTreeStatusDot === "function") updateTreeStatusDot();
+    // Refresh popup if open
+    const popup = document.getElementById("tree-settings-popup");
+    if (popup && !popup.classList.contains("oc-hidden")) renderSettingsPopup();
+    // Auto-close settings when fully connected
+    if (connected && workspace.connected && popup && !popup.classList.contains("oc-hidden")) {
+      popup.classList.add("oc-hidden");
+      workspace._settingsCloseHandler && document.removeEventListener("mousedown", workspace._settingsCloseHandler);
     }
-  });
-}
-
-function switchSection(section) {
-  state.currentSection = section;
-
-  // Update sidebar buttons
-  if (ui.sidebar) {
-    ui.sidebar.querySelectorAll('.oc-sidebar-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.section === section);
-    });
   }
-
-  // Update mobile tab bar
-  if (ui.mobileTabBar) {
-    ui.mobileTabBar.querySelectorAll('.oc-mobile-tab').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.section === section);
-    });
-  }
-
-  // Show/hide panels
-  if (section === 'chat') {
-    ui.chatContainer.classList.add('active');
-    ui.mainContent.classList.add('oc-hidden');
-  } else {
-    ui.chatContainer.classList.remove('active');
-    ui.mainContent.classList.remove('oc-hidden');
-    renderSection(section);
-  }
-}
-
-function renderSection(section) {
-  if (!ui.mainContentInner) return;
-
-  if (section === 'profile') {
-    ui.mainContentInner.innerHTML = `
-      <div class="oc-section-header">
-        <h2>Agent Profile</h2>
-      </div>
-      <div class="oc-section-content">
-        <p style="color:var(--text-muted);margin-bottom:1rem;">View and edit your agent's personality files, memory, and configuration.</p>
-        <div class="oc-placeholder">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 10-16 0"/></svg>
-          <p>Profile editor coming soon</p>
-          <small>This will let you browse and edit your agent's SOUL.md, USER.md, MEMORY.md, and other configuration files directly from the web.</small>
-        </div>
-      </div>
-    `;
-  } else if (section === 'controls') {
-    ui.mainContentInner.innerHTML = `
-      <div class="oc-section-header">
-        <h2>Control Panel</h2>
-      </div>
-      <div class="oc-section-content">
-        <p style="color:var(--text-muted);margin-bottom:1rem;">Manage tasks, cron jobs, and automation settings.</p>
-        <div class="oc-placeholder">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M1 12h6m6 0h6"/></svg>
-          <p>Control panel coming soon</p>
-          <small>This will give you a dashboard to manage your agent's active tasks, scheduled cron jobs, and automation rules.</small>
-        </div>
-      </div>
-    `;
-  }
-}
-
-function updateSidebarStatus(connected) {
-  if (!ui.sidebarStatusDot) return;
-  ui.sidebarStatusDot.classList.toggle('connected', connected);
-  ui.sidebarStatusDot.title = connected ? 'Connected' : 'Disconnected';
 }
 
 // ─── Agent Management ────────────────────────────────────────────────
@@ -668,6 +574,7 @@ async function loadAgents() {
       creature: a.creature || "",
     }));
 
+    // Set active agent
     const saved = state.activeAgent;
     const active = state.agents.find(a => a.id === saved.id) || state.agents[0];
     if (active) {
@@ -738,6 +645,7 @@ document.addEventListener("click", () => ui.agentDropdown.classList.add("oc-hidd
 
 // ─── Tab Management ──────────────────────────────────────────────────
 
+// Confirm-close preference
 function isCloseConfirmDisabled() {
   return localStorage.getItem("openclaw-confirm-close-disabled") === "true";
 }
@@ -745,6 +653,7 @@ function setCloseConfirmDisabled(v) {
   localStorage.setItem("openclaw-confirm-close-disabled", v ? "true" : "false");
 }
 
+// Show a confirm-close modal; resolves true if user confirms
 function confirmClose(title, msg) {
   if (isCloseConfirmDisabled()) return Promise.resolve(true);
   return new Promise(resolve => {
@@ -766,6 +675,7 @@ function confirmClose(title, msg) {
   });
 }
 
+// Inline rename for a tab label
 function startTabRename(labelEl, tab) {
   const input = document.createElement("input");
   input.className = "openclaw-tab-label-input";
@@ -796,12 +706,13 @@ function startTabRename(labelEl, tab) {
   input.addEventListener("blur", () => finish(true));
 }
 
+// Check if hamburger mode is needed
 function updateTabMode() {
   const tabBar = ui.tabBar;
   const hamburgerBar = document.getElementById("hamburger-bar");
   if (!tabBar || !hamburgerBar) return;
   const isMobile = window.innerWidth <= 1024;
-  const tabCount = state.tabSessions.length + 1;
+  const tabCount = state.tabSessions.length + 1; // +1 for add button
   const barWidth = tabBar.parentElement?.offsetWidth || 400;
   const perTab = barWidth / tabCount;
   if (isMobile || perTab < 60) {
@@ -827,6 +738,7 @@ function renderMobileTabSwitcher() {
   const current = currentIdx >= 0 ? state.tabSessions[currentIdx] : state.tabSessions[0];
   const idx = currentIdx >= 0 ? currentIdx : 0;
 
+  // Label
   if (current.key === "main") {
     label.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-4px;opacity:0.8"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
     label.title = "";
@@ -842,17 +754,21 @@ function renderMobileTabSwitcher() {
     };
   }
 
+  // Meter
   if (meterFill) meterFill.style.width = (current.pct || 0) + "%";
 
+  // Arrows — always present for layout, just invisible when not applicable
   arrowLeft.style.visibility = idx <= 0 ? "hidden" : "visible";
   arrowLeft.style.pointerEvents = idx <= 0 ? "none" : "auto";
 
   arrowRight.style.visibility = idx >= state.tabSessions.length - 1 ? "hidden" : "visible";
   arrowRight.style.pointerEvents = idx >= state.tabSessions.length - 1 ? "none" : "auto";
 
+  // Action buttons
   actions.innerHTML = "";
   const isHome = current.key === "main";
 
+  // Reset button
   const resetBtn = document.createElement("button");
   resetBtn.className = "oc-tab-switcher-action";
   resetBtn.title = "Reset conversation";
@@ -863,6 +779,7 @@ function renderMobileTabSwitcher() {
   });
   actions.appendChild(resetBtn);
 
+  // Close button (real for non-home, invisible spacer for home)
   const closeBtn = document.createElement("button");
   closeBtn.className = "oc-tab-switcher-action";
   closeBtn.textContent = "×";
@@ -913,6 +830,7 @@ function startSwitcherRename(labelEl, tab) {
   input.addEventListener("click", (e) => e.stopPropagation());
 }
 
+// Init tab switcher arrow events
 (function initTabSwitcher() {
   document.addEventListener("DOMContentLoaded", () => {
     const arrowLeft = document.getElementById("tab-arrow-left");
@@ -947,12 +865,14 @@ function renderHamburgerDropdown() {
     const item = document.createElement("div");
     item.className = `oc-hamburger-dropdown-item${isCurrent ? " oc-active" : ""}`;
 
+    // Home icon or label
     const label = document.createElement("span");
     label.className = "oc-dd-label";
     if (isHome) {
       label.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;opacity:0.7"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg> Home';
     } else {
       label.textContent = tab.label;
+      // Double-click to rename (non-home tabs)
       label.title = "Double-click to rename";
       label.addEventListener("dblclick", (e) => {
         e.stopPropagation();
@@ -961,6 +881,7 @@ function renderHamburgerDropdown() {
     }
     item.appendChild(label);
 
+    // Context meter
     const meter = document.createElement("div");
     meter.className = "oc-dd-meter";
     const fill = document.createElement("div");
@@ -969,9 +890,11 @@ function renderHamburgerDropdown() {
     meter.appendChild(fill);
     item.appendChild(meter);
 
+    // Action buttons container
     const actions = document.createElement("span");
     actions.className = "oc-dd-actions";
 
+    // Reset button (all tabs)
     const resetBtn = document.createElement("span");
     resetBtn.className = "oc-dd-action-btn";
     resetBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
@@ -983,6 +906,7 @@ function renderHamburgerDropdown() {
     });
     actions.appendChild(resetBtn);
 
+    // Close button (non-home tabs get real button, home gets invisible spacer)
     if (!isHome) {
       const closeBtn = document.createElement("span");
       closeBtn.className = "oc-dd-action-btn oc-dd-action-close";
@@ -995,6 +919,7 @@ function renderHamburgerDropdown() {
       });
       actions.appendChild(closeBtn);
     } else {
+      // Invisible spacer to keep alignment with other rows
       const spacer = document.createElement("span");
       spacer.className = "oc-dd-action-btn";
       spacer.style.visibility = "hidden";
@@ -1003,6 +928,7 @@ function renderHamburgerDropdown() {
     }
     item.appendChild(actions);
 
+    // Click to switch tab
     item.addEventListener("click", () => {
       dd.classList.remove("oc-open");
       if (!isCurrent) switchTab(tab);
@@ -1010,6 +936,7 @@ function renderHamburgerDropdown() {
     dd.appendChild(item);
   }
 
+  // "+ New Tab" item at the bottom
   const addItem = document.createElement("div");
   addItem.className = "oc-hamburger-dropdown-item";
   addItem.style.justifyContent = "center";
@@ -1025,6 +952,7 @@ function renderHamburgerDropdown() {
   dd.appendChild(addItem);
 }
 
+// Inline rename inside hamburger dropdown
 function startHamburgerRename(labelEl, tab, dd) {
   const input = document.createElement("input");
   input.className = "oc-dd-rename-input";
@@ -1059,6 +987,7 @@ function startHamburgerRename(labelEl, tab, dd) {
   input.addEventListener("click", (e) => e.stopPropagation());
 }
 
+// Init hamburger events
 (function initHamburger() {
   document.addEventListener("DOMContentLoaded", () => {
     const btn = document.getElementById("hamburger-btn");
@@ -1099,10 +1028,14 @@ async function _renderTabsInner() {
     if (!s.key.startsWith(prefix)) return false;
     if (s.key.includes(":cron:")) return false;
     if (s.key.includes(":subagent:")) return false;
+    // Hide channel-specific sessions (telegram, signal, discord, whatsapp, irc, slack, etc.)
+    // Only show user conversation sessions (suffix has no colons)
+    // Excludes channel sessions, cron jobs, and sub-agents
     const suffix = s.key.slice(prefix.length);
     return !suffix.includes(":");
   });
 
+  // Build tab list
   state.tabSessions = [];
   const mainSession = convSessions.find(s => s.key === `${prefix}main`);
   if (mainSession) {
@@ -1117,6 +1050,7 @@ async function _renderTabsInner() {
     .filter(s => s.key.slice(prefix.length) !== "main")
     .sort((a, b) => (a.createdAt || a.updatedAt || 0) - (b.createdAt || b.updatedAt || 0));
 
+  // Apply saved tab order
   const savedOrder = JSON.parse(localStorage.getItem("tabOrder") || "[]");
   if (savedOrder.length > 0) {
     const orderMap = new Map(savedOrder.map((k, i) => [k, i]));
@@ -1139,6 +1073,7 @@ async function _renderTabsInner() {
     state.tabSessions.push({ key: sk, label, pct });
   }
 
+  // Render each tab
   for (const tab of state.tabSessions) {
     const isCurrent = tab.key === currentKey;
     const isHome = tab.key === "main";
@@ -1151,9 +1086,11 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
 
     if (isHome) {
+      // Home tab: house icon only, non-renameable
       label.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
     } else {
       label.textContent = tab.label;
+      // Double-click to rename
       label.addEventListener("dblclick", (e) => {
         e.stopPropagation();
         startTabRename(label, tab);
@@ -1162,6 +1099,7 @@ async function _renderTabsInner() {
     }
     row.appendChild(label);
 
+    // Action button: Home gets ↻ reset, others get × close
     const actionBtn = document.createElement("span");
     actionBtn.className = "openclaw-tab-close";
 
@@ -1171,6 +1109,7 @@ async function _renderTabsInner() {
       actionBtn.addEventListener("click", (e) => { e.stopPropagation(); resetTab(tab); });
       row.appendChild(actionBtn);
     } else {
+      // Other tabs get both reset and close buttons
       const resetBtn = document.createElement("span");
       resetBtn.className = "openclaw-tab-close openclaw-tab-reset";
       resetBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
@@ -1185,6 +1124,7 @@ async function _renderTabsInner() {
     }
     tabEl.appendChild(row);
 
+    // Meter bar
     const meter = document.createElement("div");
     meter.className = "openclaw-tab-meter";
     const fill = document.createElement("div");
@@ -1193,6 +1133,7 @@ async function _renderTabsInner() {
     meter.appendChild(fill);
     tabEl.appendChild(meter);
 
+    // Drag to reorder (non-Home tabs only)
     if (!isHome) {
       tabEl.draggable = true;
       tabEl.addEventListener("dragstart", (e) => {
@@ -1220,6 +1161,7 @@ async function _renderTabsInner() {
       });
     }
 
+    // Click to switch
     if (!isCurrent) {
       tabEl.addEventListener("click", () => switchTab(tab));
     }
@@ -1227,6 +1169,7 @@ async function _renderTabsInner() {
     ui.tabBar.appendChild(tabEl);
   }
 
+  // + button
   const addBtn = document.createElement("div");
   addBtn.className = "openclaw-tab openclaw-tab-add";
   const addLabel = document.createElement("span");
@@ -1236,6 +1179,7 @@ async function _renderTabsInner() {
   addBtn.addEventListener("click", () => createNewTab());
   ui.tabBar.appendChild(addBtn);
 
+  // Check if we need hamburger mode
   updateTabMode();
 }
 
@@ -1252,12 +1196,14 @@ async function switchTab(tab) {
   showLoading("Loading…");
   await loadChatHistory();
 
+  // Restore stream UI if tab has active stream
   restoreStreamUI();
   await updateContextMeter();
   renderTabs();
 }
 
 async function resetTab(tab) {
+  console.log("[resetTab] called, connected:", !!state.gateway?.connected);
   if (!state.gateway?.connected) return;
   const isHome = tab.key === "main";
   const title = isHome ? "Reset Home?" : `Reset "${tab.label}"?`;
@@ -1286,6 +1232,7 @@ async function resetTab(tab) {
 }
 
 async function closeTab(tab, currentKey) {
+  console.log("[closeTab] called for", tab.key, "connected:", !!state.gateway?.connected, "inProgress:", state.tabDeleteInProgress);
   if (!state.gateway?.connected || state.tabDeleteInProgress) return;
   const ok = await confirmClose("Close tab?", `Close "${tab.label}"? Chat history will be lost.`);
   if (!ok) return;
@@ -1297,7 +1244,9 @@ async function closeTab(tab, currentKey) {
   } finally {
     state.tabDeleteInProgress = false;
   }
+  // Clean up stream state
   finishStream(tab.key);
+  // Switch to main if closed active tab
   if (tab.key === currentKey) {
     state.sessionKey = "main";
     localStorage.setItem("sessionKey", "main");
@@ -1373,6 +1322,7 @@ async function updateContextMeter() {
       sessions.find(s => s.key.endsWith(`:${sk}`));
     if (!session) return;
 
+    // Update model from session
     const fullModel = session.model || "";
     const modelCooldown = Date.now() - state.currentModelSetAt < 15000;
     if (fullModel && fullModel !== state.currentModel && !modelCooldown) {
@@ -1381,6 +1331,7 @@ async function updateContextMeter() {
       updateModelLabel();
     }
 
+    // Update active tab meter
     const activeFill = ui.tabBar?.querySelector(".openclaw-tab.active .openclaw-tab-meter-fill");
     if (activeFill) {
       const used = session.totalTokens || 0;
@@ -1389,6 +1340,7 @@ async function updateContextMeter() {
       activeFill.style.width = pct + "%";
     }
 
+    // Detect session changes and re-render tabs
     const currentSessionKeys = new Set(
       sessions.filter(s => {
           if (!s.key.startsWith(prefix)) return false;
@@ -1436,12 +1388,14 @@ async function openModelPicker() {
     models = result?.models || [];
   } catch { models = []; }
 
+  // Normalize current model
   let currentModel = state.currentModel || "";
   if (currentModel && !currentModel.includes("/")) {
     const match = models.find(m => m.id === currentModel);
     if (match) currentModel = `${match.provider}/${match.id}`;
   }
 
+  // Group by provider
   const providerMap = new Map();
   for (const m of models) {
     const p = m.provider || "unknown";
@@ -1450,7 +1404,6 @@ async function openModelPicker() {
   }
 
   const providers = [...providerMap.keys()];
-
   const currentProvider = currentModel.includes("/") ? currentModel.split("/")[0] : "";
 
   const modal = document.createElement("div");
@@ -1604,6 +1557,7 @@ async function loadChatHistory() {
       })
       .filter(m => (m.text.trim() || m.images.length > 0) && !m.text.startsWith("HEARTBEAT"));
 
+    // Hide first user message (typically system prompt)
     if (state.messages.length > 0 && state.messages[0].role === "user") {
       state.messages = state.messages.slice(1);
     }
@@ -1641,6 +1595,7 @@ function extractContent(content) {
     }
   }
 
+  // Extract inline data URIs
   const dataUriRegex = /(?:^|\n)data:(image\/[^;]+);base64,[A-Za-z0-9+/=\n]+/g;
   let match;
   while ((match = dataUriRegex.exec(text)) !== null) {
@@ -1730,6 +1685,7 @@ function appendMessage(msg) {
   const bubble = document.createElement("div");
   bubble.className = `openclaw-msg ${cls}`;
 
+  // Images
   if (msg.images && msg.images.length > 0) {
     const imgContainer = document.createElement("div");
     imgContainer.className = "openclaw-msg-images";
@@ -1752,8 +1708,10 @@ function appendMessage(msg) {
     bubble.appendChild(imgContainer);
   }
 
+  // Voice refs
   const allAudio = msg.text ? extractVoiceRefs(msg.text) : [];
 
+  // Text
   let displayText = "";
   if (typeof msg.text === "string") displayText = msg.text;
   else if (typeof msg.content === "string") displayText = msg.content;
@@ -1776,6 +1734,7 @@ function appendMessage(msg) {
     bubble.appendChild(textDiv);
   }
 
+  // Audio players
   for (const ap of allAudio) renderAudioPlayer(bubble, ap);
 
   ui.messagesContainer.appendChild(bubble);
@@ -1826,8 +1785,10 @@ function renderAudioPlayer(container, voiceRef) {
 }
 
 function formatMarkdown(text) {
+  // Remove VOICE: refs from display
   text = text.replace(/VOICE:([^\s]+)/g, "");
 
+  // Protect code blocks
   const codeBlocks = [];
   let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
     const idx = codeBlocks.length;
@@ -1836,6 +1797,7 @@ function formatMarkdown(text) {
     return `\x00CB${idx}\x00`;
   });
 
+  // Protect inline code
   const inlineCodes = [];
   processed = processed.replace(/`([^`]+)`/g, (_, code) => {
     const idx = inlineCodes.length;
@@ -1843,11 +1805,14 @@ function formatMarkdown(text) {
     return `\x00IC${idx}\x00`;
   });
 
+  // Escape remaining HTML
   let html = escapeHtmlChat(processed);
 
+  // Restore protected elements
   html = html.replace(/\x00CB(\d+)\x00/g, (_, i) => codeBlocks[i]);
   html = html.replace(/\x00IC(\d+)\x00/g, (_, i) => inlineCodes[i]);
 
+  // Tables
   html = html.replace(/^(\|.+\|)\n(\|[\s\-:|]+\|)\n((?:\|.+\|\n?)+)/gm, (_, header, align, body) => {
     const parseAligns = (row) => row.split('|').filter(c => c.trim()).map(c => {
       c = c.trim();
@@ -1868,41 +1833,53 @@ function formatMarkdown(text) {
     return `<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`;
   });
 
+  // Blockquotes
   html = html.replace(/^(&gt;\s?.+\n?)+/gm, (match) => {
     const inner = match.replace(/^&gt;\s?/gm, '').trim();
     return `<blockquote>${inner}</blockquote>`;
   });
 
+  // Headers
   html = html.replace(/^####\s+(.+)$/gm, "<h4>$1</h4>");
   html = html.replace(/^###\s+(.+)$/gm, "<h3>$1</h3>");
   html = html.replace(/^##\s+(.+)$/gm, "<h2>$1</h2>");
   html = html.replace(/^#\s+(.+)$/gm, "<h1>$1</h1>");
 
+  // Horizontal rules
   html = html.replace(/^---+$/gm, "<hr>");
 
+  // Bold & italic
   html = html.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
   html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
 
+  // Strikethrough
   html = html.replace(/~~(.+?)~~/g, "<del>$1</del>");
 
+  // Images
   html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:4px">');
 
+  // Links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
 
+  // Unordered lists
   html = html.replace(/^[\-\*]\s+(.+)$/gm, "<li>$1</li>");
 
+  // Ordered lists
   html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="ol-item">$1</li>');
 
+  // Wrap consecutive li items
   html = html.replace(/((?:<li(?:\s[^>]*)?>.*?<\/li>\s*)+)/g, (match) => {
     if (match.includes('class="ol-item"')) return '<ol>' + match.replace(/ class="ol-item"/g, '') + '</ol>';
     return '<ul>' + match + '</ul>';
   });
 
+  // Paragraphs
   html = html.replace(/\n\n/g, "</p><p>");
   html = html.replace(/\n/g, "<br>");
   html = "<p>" + html + "</p>";
 
+  // Clean up: remove <p> around block elements
   const blocks = ['h[1-6]', 'pre', 'ul', 'ol', 'table', 'blockquote', 'hr', 'div'];
   for (const tag of blocks) {
     html = html.replace(new RegExp(`<p>\\s*(<${tag}[\\s>])`, 'g'), '$1');
@@ -1914,6 +1891,7 @@ function formatMarkdown(text) {
   }
   html = html.replace(/<p>\s*<\/p>/g, "");
 
+  // Remove stray <br> between list items (fixes excessive spacing)
   html = html.replace(/<\/li>\s*<br>\s*<li/g, '</li><li');
   html = html.replace(/<ul>\s*<br>/g, '<ul>');
   html = html.replace(/<ol>\s*<br>/g, '<ol>');
@@ -1927,6 +1905,14 @@ function escapeHtmlChat(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+function constructAudioUrl(path) {
+  let baseUrl = state.gatewayUrl;
+  if (baseUrl.startsWith("ws://")) baseUrl = "http://" + baseUrl.slice(5);
+  else if (baseUrl.startsWith("wss://")) baseUrl = "https://" + baseUrl.slice(6);
+  baseUrl = baseUrl.replace(/\/+$/, "");
+  return `${baseUrl}/${path.replace(/^\/+/, "")}`;
 }
 
 function scrollToBottom() {
@@ -2227,6 +2213,7 @@ function handleChatEvent(payload) {
   const isActiveTab = eventSessionKey === state.sessionKey;
   const chatState = str(payload.state);
 
+  // No active stream — refresh on final
   if (!ss && (chatState === "final" || chatState === "aborted" || chatState === "error")) {
     if (isActiveTab) { hideBanner(); loadChatHistory(); }
     return;
@@ -2282,6 +2269,7 @@ async function sendMessage(text) {
   ui.messageInput.value = "";
   autoResize();
 
+  // Build attachments
   let fullMessage = text;
   const displayText = text;
   const userImages = [];
@@ -2311,6 +2299,7 @@ async function sendMessage(text) {
   const runId = generateId();
   const sendSessionKey = state.sessionKey;
 
+  // Create stream state
   const ss = {
     runId,
     text: null,
@@ -2330,6 +2319,7 @@ async function sendMessage(text) {
   if (thinkText) thinkText.textContent = "Thinking";
   scrollToBottom();
 
+  // Fallback timeout
   ss.compactTimer = setTimeout(() => {
     const current = state.streams.get(sendSessionKey);
     if (current?.runId === runId && !current.text) {
@@ -2535,6 +2525,7 @@ function updateSendButton() {
     ui.sendBtn.classList.remove("oc-opacity-low");
   }
 
+  // Morph between send arrow and mic
   if (voiceState.recording) {
     ui.sendBtn.innerHTML = MIC_ICON;
     ui.sendBtn.classList.remove("oc-opacity-low", "mic-mode", "transcribing");
@@ -2622,9 +2613,11 @@ function autoResize() {
   ui.messageInput.style.height = Math.min(ui.messageInput.scrollHeight, 120) + "px";
 }
 
+
 // ─── Input Handlers ──────────────────────────────────────────────────
 
 ui.sendBtn.addEventListener("click", () => {
+  // Mic mode: handle voice recording
   if (ui.sendBtn.classList.contains("mic-mode") || ui.sendBtn.classList.contains("recording")) {
     handleMicClick();
     return;
@@ -2647,6 +2640,7 @@ ui.messageInput.addEventListener("input", () => {
   updateSendButton();
 });
 
+// Clipboard paste: capture images + force plain text
 ui.messageInput.addEventListener("paste", (e) => {
   const items = e.clipboardData?.items;
   if (!items) return;
@@ -2658,15 +2652,22 @@ ui.messageInput.addEventListener("paste", (e) => {
       return;
     }
   }
+
 });
 
+// Model label -> model picker
 ui.modelLabel.addEventListener("click", () => openModelPicker());
 
+// Attach button
 ui.attachBtn.addEventListener("click", () => ui.fileInput.click());
 ui.fileInput.addEventListener("change", () => handleFileSelect());
 
+// Abort button
 ui.abortBtn.addEventListener("click", () => abortMessage());
 
+// Reconnect is now handled via settings cogwheel
+
+// Tab bar horizontal scroll
 ui.tabBar.addEventListener("wheel", (e) => {
   e.preventDefault();
   ui.tabBar.scrollLeft += e.deltaY;
@@ -2680,18 +2681,14 @@ ui.tabBar.addEventListener("wheel", (e) => {
 
   if (ui.messagesContainer) {
     ui.messagesContainer.addEventListener("touchstart", (e) => {
-      if (!state.isMobile) return;
-      if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       pulling = false;
     }, { passive: true });
 
     ui.messagesContainer.addEventListener("touchmove", (e) => {
-      if (!state.isMobile) return;
-      if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
-
       const deltaY = e.touches[0].clientY - touchStartY;
+      // Pull-to-refresh: only when scrolled to top
       if (ui.messagesContainer.scrollTop <= 0 && deltaY > 0) {
         if (deltaY > 60) {
           pulling = true;
@@ -2701,29 +2698,36 @@ ui.tabBar.addEventListener("wheel", (e) => {
     }, { passive: true });
 
     ui.messagesContainer.addEventListener("touchend", (e) => {
-      if (!state.isMobile) return;
-      if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
-
       const deltaX = e.changedTouches[0].clientX - touchStartX;
       const deltaY = e.changedTouches[0].clientY - touchStartY;
 
+      // Pull-to-refresh
       if (pulling) {
         pulling = false;
         if (pullIndicator) pullIndicator.classList.remove("oc-pulling");
+        // Reload history
         state.messages = [];
         ui.messagesContainer.innerHTML = "";
         loadChatHistory().then(() => updateContextMeter());
         return;
       }
 
+      // Swipe between tabs (horizontal > vertical, min 80px)
       if (Math.abs(deltaX) > 80 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
         const currentIdx = state.tabSessions.findIndex(t => t.key === state.sessionKey);
         if (currentIdx < 0) return;
         let nextIdx;
         if (deltaX < 0) {
+          // Swipe left = next tab
           nextIdx = currentIdx + 1;
         } else {
+          // Swipe right = previous tab
           nextIdx = currentIdx - 1;
+        }
+        if (nextIdx < 0 && typeof switchPanel === "function") {
+          // On the first tab, swiping right goes to editor panel
+          switchPanel(1);
+          return;
         }
         if (nextIdx >= 0 && nextIdx < state.tabSessions.length) {
           switchTab(state.tabSessions[nextIdx]);
@@ -2733,15 +2737,48 @@ ui.tabBar.addEventListener("wheel", (e) => {
   }
 })();
 
+// ─── Swipe coordination with workspace panels ──────────────────────
+// Called by workspace.js to check if chat has a previous tab to swipe to
+function canSwipeToPrevTab() {
+  const currentIdx = state.tabSessions.findIndex(t => t.key === state.sessionKey);
+  return currentIdx > 0;
+}
+
+// ─── Settings: confirm-close toggle ─────────────────────────────────
+// (Can be wired to a settings UI later; for now expose via console)
 window.ocResetCloseConfirm = () => { setCloseConfirmDisabled(false); console.log("Close confirmation re-enabled"); };
+
+// ─── Virtual Keyboard Detection ──────────────────────────────────────
+
+(function initKeyboardDetection() {
+  const setKeyboard = (open) => {
+    const dots = document.getElementById("panel-dots");
+    if (dots) dots.classList.toggle("oc-keyboard-open", open);
+    ui.chatContainer?.classList.toggle("oc-kb-open", open);
+  };
+
+  // Focus/blur on the input textarea
+  ui.messageInput.addEventListener("focus", () => setKeyboard(true));
+  ui.messageInput.addEventListener("blur", () => setKeyboard(false));
+
+  // Also track visualViewport as backup
+  if (typeof visualViewport !== "undefined") {
+    visualViewport.addEventListener("resize", () => {
+      const keyboardOpen = visualViewport.height < window.innerHeight * 0.75;
+      setKeyboard(keyboardOpen);
+    });
+  }
+})();
 
 // ─── Initialize ──────────────────────────────────────────────────────
 
-// initApp() is called from inline script in index.html after checking credentials
+initApp();
 
+// Register service worker only if user has connected before (avoid caching for landing-only visitors)
 if ("serviceWorker" in navigator && localStorage.getItem("connection")) {
   navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
     .then((reg) => {
+      // Check for updates immediately and periodically
       reg.update().catch(() => {});
       setInterval(() => reg.update().catch(() => {}), 60000);
     })
