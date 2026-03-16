@@ -1228,7 +1228,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=15">
+  <link rel="stylesheet" href="/theme.css?v=16">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1301,107 +1301,85 @@
     <div class="dashboard" id="dashboard">
       <div class="dashboard-scroll">
 
-        <!-- Status Beacon (always visible) -->
-        <div class="hud-beacon">
-          <div class="hud-beacon-ring" id="hud-beacon-ring">
-            <span class="hud-beacon-emoji" id="hud-beacon-emoji">🤖</span>
+        <!-- ═══ HUD Header ═══ -->
+        <div class="hud-header">
+          <div class="hud-beacon">
+            <div class="hud-beacon-ring" id="hud-beacon-ring">
+              <span class="hud-beacon-emoji" id="hud-beacon-emoji">🤖</span>
+            </div>
+            <div class="hud-beacon-info">
+              <div class="hud-agent-name" id="hud-agent-name">Agent</div>
+              <div class="hud-status-line" id="hud-status-line">OFFLINE</div>
+            </div>
           </div>
-          <div class="hud-beacon-info">
-            <div class="hud-agent-name" id="hud-agent-name">Agent</div>
-            <div class="hud-status-line" id="hud-status-line">OFFLINE</div>
+
+          <!-- System stats bar -->
+          <div class="hud-stats-bar" id="hud-stats-bar">
+            <div class="hud-stat" id="hud-stat-model">
+              <span class="hud-stat-val" id="hud-model">—</span>
+              <span class="hud-stat-key">MODEL</span>
+            </div>
+            <div class="hud-stat" id="hud-stat-version">
+              <span class="hud-stat-val" id="hud-version">—</span>
+              <span class="hud-stat-key">VERSION</span>
+            </div>
           </div>
         </div>
 
-        <!-- Alerts (always visible when present) -->
+        <!-- Alerts -->
         <div class="hud-alerts" id="hud-alerts"></div>
 
-        <!-- Bot Files (collapsible) -->
-        <div class="hud-section hud-collapsible" data-section="bot-files">
-          <button class="hud-section-toggle" onclick="toggleSection('bot-files')">
-            <span class="hud-section-label">Bot Files</span>
-            <span class="hud-section-chevron">›</span>
-          </button>
-          <div class="hud-section-body">
-            <div class="hud-file-list" id="hud-file-list">
-              <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Skills (collapsible, dynamically populated) -->
-        <div class="hud-section hud-collapsible" data-section="skills">
-          <button class="hud-section-toggle" onclick="toggleSection('skills')">
-            <span class="hud-section-label">Skills</span>
-            <span class="hud-section-chevron">›</span>
-          </button>
-          <div class="hud-section-body">
-            <div id="hud-skills-list">
-              <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Channels (collapsible, dynamically populated) -->
-        <div class="hud-section hud-collapsible" data-section="channels">
-          <button class="hud-section-toggle" onclick="toggleSection('channels')">
-            <span class="hud-section-label">Channels</span>
-            <span class="hud-section-chevron">›</span>
-          </button>
-          <div class="hud-section-body">
-            <div id="hud-channels-list">
-              <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Scheduled Jobs (collapsible, dynamically populated) -->
-        <div class="hud-section hud-collapsible" data-section="cron">
+        <!-- ═══ Scheduled Jobs ═══ -->
+        <div class="hud-section hud-collapsible hud-open" data-section="cron">
           <button class="hud-section-toggle" onclick="toggleSection('cron')">
             <span class="hud-section-label">Scheduled Jobs</span>
             <span class="hud-section-chevron">›</span>
           </button>
           <div class="hud-section-body">
             <div id="hud-cron-list">
-              <div style="color:var(--text-faint);font-size:12px;padding:4px 2px;">Loading...</div>
+              <div class="hud-empty-hint">Loading...</div>
             </div>
           </div>
         </div>
 
-        <!-- System (collapsible) -->
+        <!-- ═══ Bot Files ═══ -->
+        <div class="hud-section hud-collapsible" data-section="bot-files">
+          <button class="hud-section-toggle" onclick="toggleSection('bot-files')">
+            <span class="hud-section-label">Bot Files</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div class="hud-file-grid" id="hud-file-list">
+              <div class="hud-empty-hint">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ System ═══ -->
         <div class="hud-section hud-collapsible" data-section="system">
           <button class="hud-section-toggle" onclick="toggleSection('system')">
             <span class="hud-section-label">System</span>
             <span class="hud-section-chevron">›</span>
           </button>
           <div class="hud-section-body">
-            <div class="hud-readout" id="hud-readout">
-              <div class="hud-readout-row" id="hud-row-model" style="display:none">
-                <span class="hud-readout-key">MODEL</span>
-                <span class="hud-readout-val" id="hud-model"></span>
-              </div>
-              <div class="hud-readout-row" id="hud-row-version" style="display:none">
-                <span class="hud-readout-key">VERSION</span>
-                <span class="hud-readout-val" id="hud-version"></span>
-              </div>
-            </div>
-            <div class="hud-maintenance-list" style="margin-top:8px">
-              <button class="hud-maintenance-item" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
-                <span class="hud-maintenance-name">Run Diagnostics</span>
-                <span class="hud-maintenance-desc">Check your server for issues</span>
+            <div class="hud-cmd-grid">
+              <button class="hud-cmd" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
+                <svg class="hud-cmd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0-4h18"/></svg>
+                <span class="hud-cmd-label">Diagnostics</span>
               </button>
-              <button class="hud-maintenance-item" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
-                <span class="hud-maintenance-name">Restart Server</span>
-                <span class="hud-maintenance-desc">Restart your OpenClaw server</span>
+              <button class="hud-cmd" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
+                <svg class="hud-cmd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>
+                <span class="hud-cmd-label">Restart</span>
               </button>
-              <button class="hud-maintenance-item" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
-                <span class="hud-maintenance-name">Check for Updates</span>
-                <span class="hud-maintenance-desc">See if a newer version is available</span>
+              <button class="hud-cmd" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
+                <svg class="hud-cmd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span class="hud-cmd-label">Update</span>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Settings (collapsible) -->
+        <!-- ═══ Settings ═══ -->
         <div class="hud-section hud-collapsible" data-section="settings">
           <button class="hud-section-toggle" onclick="toggleSection('settings')">
             <span class="hud-section-label">Settings</span>
@@ -1540,7 +1518,7 @@
 
   </div>
 
-  <script src="/app.js?v=30"></script>
+  <script src="/app.js?v=31"></script>
   <script>
     // Landing page logic
     (function() {

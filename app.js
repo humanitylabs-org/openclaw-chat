@@ -2637,37 +2637,25 @@ async function fetchServerInfo() {
 
     // Load dynamic sections
     loadAgentFiles();
-    loadSkills();
-    loadChannels();
     loadCronJobs();
 
-    // Model
+    // Stats bar
     const modelEl = document.getElementById('hud-model');
-    const modelRow = document.getElementById('hud-row-model');
-    if (modelEl && modelRow) {
+    const versionEl = document.getElementById('hud-version');
+    const statsBar = document.getElementById('hud-stats-bar');
+
+    if (modelEl) {
       const model = state.currentModel || '';
-      if (model) {
-        modelEl.textContent = model.split('/').pop();
-        modelRow.style.display = '';
-      } else {
-        modelRow.style.display = 'none';
-      }
+      modelEl.textContent = model ? model.split('/').pop() : '—';
     }
 
-    // Version from system-presence
-    let currentVersion = null;
-    const versionEl = document.getElementById('hud-version');
-    const versionRow = document.getElementById('hud-row-version');
     try {
       const presence = await state.gateway.request('system-presence', {});
       const hosts = Array.isArray(presence) ? presence : (presence?.hosts || []);
-      if (hosts.length > 0 && hosts[0].version) {
-        currentVersion = hosts[0].version;
-        if (versionEl) versionEl.textContent = currentVersion;
-        if (versionRow) versionRow.style.display = '';
+      if (hosts.length > 0 && hosts[0].version && versionEl) {
+        versionEl.textContent = hosts[0].version;
       }
     } catch (e) { /* version not available */ }
-    if (!currentVersion && versionRow) versionRow.style.display = 'none';
 
     // Check for update (compare versions)
     if (currentVersion) {
@@ -2737,7 +2725,7 @@ function toggleSection(sectionId) {
 }
 
 function restoreCollapsibleState() {
-  const openSections = JSON.parse(localStorage.getItem('openSections') || '{"bot-files":true}');
+  const openSections = JSON.parse(localStorage.getItem('openSections') || '{"cron":true,"bot-files":true}');
   for (const [id, isOpen] of Object.entries(openSections)) {
     if (isOpen) {
       const el = document.querySelector(`.hud-collapsible[data-section="${id}"]`);
@@ -2770,7 +2758,8 @@ async function loadAgentFiles() {
     const meta = friendlyFile(file.name);
     const btn = document.createElement('button');
     btn.className = 'hud-file-item';
-    btn.innerHTML = `<span class="hud-file-name">${meta.label}</span><span class="hud-file-arrow">&rsaquo;</span>`;
+    btn.className = 'hud-file-card';
+    btn.innerHTML = `<span class="hud-file-card-name">${meta.label}</span>`;
     btn.addEventListener('click', () => viewAgentFile(file.name, meta.label));
     container.appendChild(btn);
   }
