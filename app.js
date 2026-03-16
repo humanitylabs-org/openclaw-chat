@@ -313,7 +313,7 @@ const ui = {
   fileInput: $("file-input"),
   attachPreview: $("attach-preview"),
   sendBtn: $("send-btn"),
-  abortBtn: $("abort-btn"),
+  abortBtn: null, // merged into send button
   typingIndicator: $("typing-indicator"),
   modelLabel: $("model-label"),
 };
@@ -972,7 +972,9 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
 
     if (isHome) {
-      label.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
+      const initial = (state.activeAgent?.name || 'A').charAt(0).toUpperCase();
+      label.textContent = initial;
+      label.classList.add('openclaw-tab-home-label');
     } else {
       label.textContent = tab.label;
       label.addEventListener("dblclick", (e) => {
@@ -1063,7 +1065,7 @@ async function _renderTabsInner() {
 async function switchTab(tab) {
   state.streamEl = null;
   ui.typingIndicator.classList.add("oc-hidden");
-  ui.abortBtn.classList.add("oc-hidden");
+  setSendButtonStopMode(false);
   hideBanner();
 
   state.sessionKey = tab.key;
@@ -1154,7 +1156,7 @@ async function createNewTab() {
 
     state.streamEl = null;
     ui.typingIndicator.classList.add("oc-hidden");
-    ui.abortBtn.classList.add("oc-hidden");
+    setSendButtonStopMode(false);
     hideBanner();
 
     state.sessionKey = sessionKey;
@@ -1872,7 +1874,7 @@ function finishStream(sessionKey) {
   if (sk === state.sessionKey) {
     hideBanner();
     state.streamEl = null;
-    ui.abortBtn.classList.add("oc-hidden");
+    setSendButtonStopMode(false);
     ui.typingIndicator.classList.add("oc-hidden");
     const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
     if (typingText) typingText.textContent = "Thinking";
@@ -1882,7 +1884,7 @@ function finishStream(sessionKey) {
 function restoreStreamUI() {
   const ss = state.streams.get(state.sessionKey);
   if (!ss) return;
-  ui.abortBtn.classList.remove("oc-hidden");
+  setSendButtonStopMode(true);
   for (const item of ss.items) {
     if (item.type === "tool") appendToolCall(item.label, item.url);
   }
@@ -2100,7 +2102,6 @@ async function sendMessage(text) {
   if (!state.gateway?.connected) return;
 
   state.sending = true;
-  ui.sendBtn.disabled = true;
   ui.messageInput.value = "";
   autoResize();
 
@@ -2146,7 +2147,7 @@ async function sendMessage(text) {
   state.streams.set(sendSessionKey, ss);
   state.runToSession.set(runId, sendSessionKey);
 
-  ui.abortBtn.classList.remove("oc-hidden");
+  setSendButtonStopMode(true);
   ui.typingIndicator.classList.remove("oc-hidden");
   const thinkText = ui.typingIndicator.querySelector(".openclaw-typing-text");
   if (thinkText) thinkText.textContent = "Thinking";
@@ -2176,11 +2177,10 @@ async function sendMessage(text) {
     state.messages.push({ role: "assistant", text: `Error: ${err}`, images: [], timestamp: Date.now() });
     state.streams.delete(sendSessionKey);
     state.runToSession.delete(runId);
-    ui.abortBtn.classList.add("oc-hidden");
+    setSendButtonStopMode(false);
     renderMessages();
   } finally {
     state.sending = false;
-    ui.sendBtn.disabled = false;
   }
 }
 
@@ -2447,6 +2447,10 @@ function autoResize() {
 // ─── Input Handlers ──────────────────────────────────────────────────
 
 ui.sendBtn.addEventListener("click", () => {
+  if (ui.sendBtn.classList.contains("stop-mode")) {
+    abortMessage();
+    return;
+  }
   if (ui.sendBtn.classList.contains("mic-mode") || ui.sendBtn.classList.contains("recording")) {
     handleMicClick();
     return;
@@ -2487,7 +2491,23 @@ ui.modelLabel.addEventListener("click", () => openModelPicker());
 ui.attachBtn.addEventListener("click", () => ui.fileInput.click());
 ui.fileInput.addEventListener("change", () => handleFileSelect());
 
-ui.abortBtn.addEventListener("click", () => abortMessage());
+// Send button mode: toggles between send and stop
+function setSendButtonStopMode(isStop) {
+  const btn = ui.sendBtn;
+  if (!btn) return;
+  const sendIcon = btn.querySelector('.send-icon');
+  const stopIcon = btn.querySelector('.stop-icon');
+  if (isStop) {
+    btn.classList.add('stop-mode');
+    btn.disabled = false;
+    if (sendIcon) sendIcon.style.display = 'none';
+    if (stopIcon) stopIcon.style.display = '';
+  } else {
+    btn.classList.remove('stop-mode');
+    if (sendIcon) sendIcon.style.display = '';
+    if (stopIcon) stopIcon.style.display = 'none';
+  }
+}
 
 ui.tabBar.addEventListener("wheel", (e) => {
   e.preventDefault();

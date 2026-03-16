@@ -278,29 +278,45 @@
 
     /* Home tab: icon-only, ~40% width of a regular tab */
     .openclaw-tab-home {
-      flex: 0.4 0 0 !important;
-      max-width: 15% !important;
-      min-width: 70px !important;
-      padding: 6px 8px 0 8px;
-      opacity: 0.5;
-    }
-    .openclaw-tab-home.active { opacity: 0.9; }
-    .openclaw-tab-home .openclaw-tab-label {
-      flex: 1;
+      flex: 0 0 auto !important;
+      max-width: none !important;
+      min-width: auto !important;
+      width: 36px;
+      padding: 4px 0 0 0;
+      opacity: 0.6;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .openclaw-tab-home .openclaw-tab-close {
-      font-size: 11px;
-      width: auto;
-      padding: 2px 4px;
-      opacity: 0;
-      flex-shrink: 0;
+    .openclaw-tab-home.active { opacity: 1; }
+    .openclaw-tab-home .openclaw-tab-row {
+      justify-content: center;
+      gap: 0;
     }
-    .openclaw-tab-home:hover .openclaw-tab-close,
-    .openclaw-tab-home.active .openclaw-tab-close {
-      opacity: 0.4;
+    .openclaw-tab-home .openclaw-tab-label.openclaw-tab-home-label {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1.5px solid var(--text-faint);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+      font-size: 13px;
+      font-weight: 300;
+      color: var(--text-muted);
+      flex: none;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .openclaw-tab-home.active .openclaw-tab-home-label {
+      border-color: var(--text-normal);
+      color: var(--text-normal);
+    }
+    .openclaw-tab-home .openclaw-tab-close {
+      display: none;
+    }
+    .openclaw-tab-home .openclaw-tab-meter {
+      display: none;
     }
 
     /* Drag reorder */
@@ -909,24 +925,6 @@
     .openclaw-input::placeholder { color: var(--text-faint); }
 
     /* Abort button */
-    .openclaw-abort-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: none;
-      background: #e53935;
-      color: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: opacity 0.15s;
-      padding: 0;
-      font-size: 14px;
-    }
-    .openclaw-abort-btn:hover { opacity: 0.85; }
-
     /* Send button wrapper with status dot */
     .openclaw-send-wrapper {
       position: relative;
@@ -965,6 +963,14 @@
     }
     .openclaw-send-btn:hover { opacity: 0.85; transform: scale(1.05); }
     .openclaw-send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    /* Stop/Abort mode */
+    .openclaw-send-btn.stop-mode {
+      background: #ef4444;
+      color: white;
+      opacity: 1;
+    }
+    .openclaw-send-btn.stop-mode:hover { opacity: 0.85; }
 
     /* Voice/Mic button states */
     .openclaw-send-btn.mic-mode {
@@ -1483,9 +1489,8 @@
           <button class="openclaw-attach-btn" id="attach-btn" aria-label="Attach file" title="Attach file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
           <input type="file" id="file-input" accept="image/*,.md,.txt,.json,.csv,.pdf,.yaml,.yml,.js,.ts,.py,.html,.css" multiple class="oc-hidden">
           <textarea id="message-input" class="openclaw-input" placeholder="Message..." rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences"></textarea>
-          <button class="openclaw-abort-btn oc-hidden" id="abort-btn" aria-label="Stop">■</button>
           <div class="openclaw-send-wrapper">
-            <button class="openclaw-send-btn oc-opacity-low" id="send-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94l18.04-8.25a.75.75 0 000-1.39L3.478 2.405z"/></svg></button>
+            <button class="openclaw-send-btn oc-opacity-low" id="send-btn"><svg class="send-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94l18.04-8.25a.75.75 0 000-1.39L3.478 2.405z"/></svg><svg class="stop-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
           </div>
         </div>
       </div>
