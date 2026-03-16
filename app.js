@@ -483,8 +483,8 @@ async function loadAgents() {
 
     state.agents = agentList.map(a => ({
       id: a.id || "main",
-      name: a.name || a.id || "Agent",
-      emoji: "🤖",
+      name: a.identity?.name || a.name || a.id || "Agent",
+      emoji: a.identity?.emoji || "🤖",
       creature: a.creature || "",
     }));
 
@@ -2616,38 +2616,39 @@ async function fetchServerInfo() {
       modelEl.textContent = model ? model.split('/').pop() : '—';
     }
 
-    // Version
+    // Version — from system-presence endpoint
     const versionEl = document.getElementById('dash-server-version');
-    if (versionEl && health?.version) {
-      versionEl.textContent = health.version;
-    }
+    try {
+      const presence = await state.gateway.request('system-presence', {});
+      const hosts = Array.isArray(presence) ? presence : (presence?.hosts || []);
+      if (versionEl && hosts.length > 0 && hosts[0].version) {
+        versionEl.textContent = hosts[0].version;
+      }
+    } catch (e) { /* version not available */ }
 
-    // Uptime
+    // Uptime — not in health API, show session age instead
     const uptimeEl = document.getElementById('dash-server-uptime');
-    if (uptimeEl && health?.uptime != null) {
-      const secs = Math.floor(health.uptime / 1000);
-      if (secs < 60) uptimeEl.textContent = secs + 's';
-      else if (secs < 3600) uptimeEl.textContent = Math.floor(secs / 60) + 'm';
-      else if (secs < 86400) uptimeEl.textContent = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
-      else uptimeEl.textContent = Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
+    if (uptimeEl && health?.sessions) {
+      // Find oldest session as proxy for gateway uptime
+      const ages = health.sessions.map(s => s.age || 0).filter(a => a > 0);
+      if (ages.length > 0) {
+        const maxAge = Math.max(...ages);
+        const secs = Math.floor(maxAge / 1000);
+        if (secs < 60) uptimeEl.textContent = secs + 's';
+        else if (secs < 3600) uptimeEl.textContent = Math.floor(secs / 60) + 'm';
+        else if (secs < 86400) uptimeEl.textContent = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
+        else uptimeEl.textContent = Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
+      }
     }
 
-    // Channels
+    // Channels — health.channels is an object keyed by channel id
     const channelsEl = document.getElementById('dash-server-channels');
     if (channelsEl && health?.channels) {
-      const loaded = health.channels.filter(c => c.status === 'loaded' || c.status === 'running' || c.status === 'connected');
-      channelsEl.textContent = loaded.length > 0 ? loaded.map(c => c.name || c.id).join(', ') : 'None';
-    } else if (channelsEl && health?.plugins) {
-      // Try plugins array for channel info
-      const channels = health.plugins.filter(p => p.status === 'loaded' && (p.type === 'channel' || p.kind === 'channel'));
-      channelsEl.textContent = channels.length > 0 ? channels.map(c => c.name || c.id).join(', ') : '—';
-    }
-
-    // Skills (if available in health response)
-    const skillsEl = document.getElementById('dash-server-skills');
-    if (skillsEl && health?.skills && health.skills.length > 0) {
-      skillsEl.innerHTML = '<div class="dash-section-label" style="margin-top:10px;">Skills</div>' +
-        health.skills.map(s => '<span class="dash-skill-tag">' + (s.name || s.id) + '</span>').join('');
+      const channelLabels = health.channelLabels || {};
+      const configured = Object.entries(health.channels)
+        .filter(([, v]) => v.configured)
+        .map(([k]) => channelLabels[k] || k);
+      channelsEl.textContent = configured.length > 0 ? configured.join(', ') : 'None';
     }
 
   } catch (err) {
