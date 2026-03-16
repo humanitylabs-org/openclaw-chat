@@ -2712,28 +2712,52 @@ async function viewAgentFile(filename, label) {
 
   let content = null;
 
-  // Try the gateway API
   if (state.gateway?.connected) {
+    // Try direct API first
     try {
       const result = await state.gateway.request('agents.files.get', { path: filename });
       if (result?.content) content = result.content;
       else if (typeof result === 'string') content = result;
     } catch (err) {
-      console.warn('agents.files.get not available:', err.message);
+      // API not available — use a hidden session to read the file
+      try {
+        const viewerKey = '__file-viewer';
+        await state.gateway.request('chat.send', {
+          sessionKey: viewerKey,
+          message: `Read the file ${filename} and reply with ONLY its raw contents. No commentary, no wrapping in code blocks, no extra text.`,
+          deliver: false,
+          idempotencyKey: 'fv-' + Date.now(),
+        });
+        // Poll for response (up to 15s)
+        for (let i = 0; i < 30; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          try {
+            const history = await state.gateway.request('chat.history', { sessionKey: viewerKey, limit: 4 });
+            const msgs = history?.messages || [];
+            // Find the last assistant message that isn't empty
+            for (let j = msgs.length - 1; j >= 0; j--) {
+              if (msgs[j].role === 'assistant') {
+                const { text } = extractContent(msgs[j].content);
+                const cleaned = text?.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '').trim();
+                if (cleaned && cleaned.length > 10 && cleaned !== 'NO_REPLY') {
+                  content = cleaned;
+                  break;
+                }
+              }
+            }
+            if (content) break;
+          } catch { /* keep polling */ }
+        }
+      } catch (chatErr) {
+        console.error('File viewer chat fallback failed:', chatErr);
+      }
     }
   }
 
   if (content) {
     body.innerHTML = formatMarkdown(content);
   } else {
-    body.innerHTML = `
-      <div style="text-align:center;padding:30px 20px;color:var(--text-faint);">
-        <p style="margin-bottom:12px;">File viewer API not available on this gateway version.</p>
-        <button onclick="document.getElementById('file-viewer-overlay').classList.remove('oc-open'); closeDashboard(); sendControlAction('Show me the current contents of ${filename}. Display it as-is without summarizing.')"
-          style="background:var(--interactive-accent);color:var(--text-on-accent);border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;">
-          Ask agent to show ${filename}
-        </button>
-      </div>`;
+    body.innerHTML = '<p style="color:var(--text-faint);text-align:center;padding:30px;">Could not load file. Try again later.</p>';
   }
 }
 
