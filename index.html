@@ -2351,51 +2351,93 @@
           <img src="/logo-64.png" width="28" height="28" alt="Use My Claw" style="border-radius:6px;">
           <span>Use My Claw</span>
         </div>
-        <a href="https://github.com/humanitylabs-org/openclaw-chat" target="_blank" rel="noopener" class="landing-nav-link">GitHub</a>
+        <div class="landing-nav-links">
+          <a href="https://openclaw.ai" target="_blank" rel="noopener" class="landing-nav-link">What's OpenClaw?</a>
+          <a href="https://github.com/humanitylabs-org/openclaw-chat" target="_blank" rel="noopener" class="landing-nav-link">Source</a>
+        </div>
       </nav>
 
       <main class="landing-hero">
-        <div class="landing-badge">For OpenClaw users</div>
-        <h1>Your AI assistant<br>deserves a real interface.</h1>
+        <h1>Your AI does everything.<br><span class="landing-dim">Telegram shows you nothing.</span></h1>
         <p class="landing-subtitle">
-          Chat, browse files, and configure your agent — all in one place.
-          No terminal required.
+          OpenClaw is the most powerful personal AI on earth.
+          This is the interface it deserves.
         </p>
         <div class="landing-cta-row">
-          <button class="landing-cta-primary" id="landing-connect-btn">Connect Your Agent</button>
-          <a href="https://botsetupguide.com" target="_blank" rel="noopener" class="landing-cta-secondary">New to OpenClaw? Start here →</a>
+          <button class="landing-cta-primary" id="landing-connect-btn">Connect your agent →</button>
+          <a href="https://botsetupguide.com" target="_blank" rel="noopener" class="landing-cta-secondary">Don't have OpenClaw yet? Set it up →</a>
         </div>
       </main>
 
-      <section class="landing-features">
-        <div class="landing-feature">
-          <div class="landing-feature-icon">💬</div>
-          <h3>Chat</h3>
-          <p>Full conversation interface with streaming, tabs, voice, attachments, and model switching.</p>
+      <section class="landing-comparison">
+        <div class="landing-comparison-header">
+          <h2>What you're missing in Telegram</h2>
         </div>
-        <div class="landing-feature">
-          <div class="landing-feature-icon">📁</div>
-          <h3>Files</h3>
-          <p>Browse and edit your agent's workspace. Markdown preview, search, full file tree.</p>
-        </div>
-        <div class="landing-feature">
-          <div class="landing-feature-icon">⚙️</div>
-          <h3>Configure</h3>
-          <p>Edit your agent's personality, memory, and tools — no YAML, no config files.</p>
+        <div class="landing-compare-grid">
+          <div class="landing-compare-item">
+            <div class="landing-compare-label landing-compare-old">Telegram</div>
+            <p>One long thread. Scroll forever to find anything. Can't see what your agent is working on.</p>
+          </div>
+          <div class="landing-compare-item">
+            <div class="landing-compare-label landing-compare-new">Use My Claw</div>
+            <p>Tabs for different conversations. File browser for your agent's entire workspace. Everything in one screen.</p>
+          </div>
         </div>
       </section>
 
-      <section class="landing-pitch">
-        <p>
-          OpenClaw is powerful. Its web UI is built for developers.<br>
-          <strong>This is the version built for everyone else.</strong>
-        </p>
+      <section class="landing-features">
+        <div class="landing-feature">
+          <h3>Chat that keeps up</h3>
+          <p>Multiple tabs, streaming responses, model switching, voice messages, file attachments. Not a single scrolling thread.</p>
+        </div>
+        <div class="landing-feature">
+          <h3>See your agent's world</h3>
+          <p>Browse every file in your agent's workspace. Read its memory, edit its notes, preview markdown. In real time.</p>
+        </div>
+        <div class="landing-feature">
+          <h3>Configure without code</h3>
+          <p>Edit your agent's personality, preferences, and tools visually. No SSH, no YAML, no config files.</p>
+        </div>
+      </section>
+
+      <section class="landing-how">
+        <h2>How it works</h2>
+        <div class="landing-steps">
+          <div class="landing-step">
+            <span class="landing-step-num">1</span>
+            <div>
+              <strong>Paste your gateway URL + token</strong>
+              <p>The same credentials from your OpenClaw setup. Takes 10 seconds.</p>
+            </div>
+          </div>
+          <div class="landing-step">
+            <span class="landing-step-num">2</span>
+            <div>
+              <strong>Approve the device</strong>
+              <p>Tell your bot "approve the pending device" or run one command on your server.</p>
+            </div>
+          </div>
+          <div class="landing-step">
+            <span class="landing-step-num">3</span>
+            <div>
+              <strong>You're in</strong>
+              <p>Chat, browse files, and configure your agent. Works on any device. Install as an app from your browser.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-bottom-cta">
+        <p class="landing-bottom-tagline">Same AI. Better window into it.</p>
+        <button class="landing-cta-primary" id="landing-connect-btn-2">Connect your agent →</button>
       </section>
 
       <footer class="landing-footer">
         <span>Built by <a href="https://humanitylabs.ai" target="_blank" rel="noopener">Humanity Labs</a></span>
         <span class="landing-footer-sep">·</span>
-        <span>Powered by <a href="https://github.com/nicepkg/openclaw" target="_blank" rel="noopener">OpenClaw</a></span>
+        <span>Open source on <a href="https://github.com/humanitylabs-org/openclaw-chat" target="_blank" rel="noopener">GitHub</a></span>
+        <span class="landing-footer-sep">·</span>
+        <span>Powered by <a href="https://openclaw.ai" target="_blank" rel="noopener">OpenClaw</a></span>
       </footer>
     </div>
   </div>
@@ -2559,6 +2601,9 @@
         landing.style.display = '';
         app.style.display = 'none';
         document.getElementById('landing-connect-btn').addEventListener('click', function() {
+          showApp();
+        });
+        document.getElementById('landing-connect-btn-2').addEventListener('click', function() {
           showApp();
         });
       }
