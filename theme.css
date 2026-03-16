@@ -292,14 +292,22 @@
   transition: background 0.15s, color 0.15s;
 }
 
+.sidebar-btn svg {
+  pointer-events: none;
+}
+
 .sidebar-btn:hover {
-  background: rgba(128,128,128,0.12);
+  background: rgba(255,255,255,0.08);
   color: var(--text-muted);
 }
 
 .sidebar-btn.active {
-  background: rgba(128,128,128,0.18);
-  color: var(--text-normal);
+  background: rgba(255,255,255,0.12);
+  color: #F2F2F2;
+}
+
+.sidebar-btn.active svg {
+  stroke: #F2F2F2;
 }
 
 .sidebar-status {
@@ -587,6 +595,11 @@
 
 .mobile-tab.active {
   color: var(--text-normal);
+}
+
+.mobile-tab svg,
+.mobile-tab span {
+  pointer-events: none;
 }
 
 .mobile-tab svg {
