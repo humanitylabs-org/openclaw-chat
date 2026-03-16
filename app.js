@@ -2562,23 +2562,15 @@ window.ocResetCloseConfirm = () => { setCloseConfirmDisabled(false); console.log
 function updateDashboard() {
   const connected = state.gateway?.connected;
 
-  // Status dot + text
+  // Connection status
   const dot = document.getElementById('dash-dot');
-  const statusText = document.getElementById('dash-status-text');
+  const connLabel = document.getElementById('dash-connection-label');
   if (dot) dot.className = 'dash-dot' + (connected ? ' connected' : '');
-  if (statusText) statusText.textContent = connected ? 'Connected' : 'Disconnected';
-
-  // Meta info (version, model)
-  const meta = document.getElementById('dash-meta');
-  if (meta) {
-    const parts = [];
-    if (state.currentModel) parts.push(state.currentModel.split('/').pop());
-    meta.textContent = parts.join(' · ');
-  }
+  if (connLabel) connLabel.textContent = connected ? 'Connected' : 'Disconnected';
 
   // Agent info
   const agentName = document.getElementById('dash-agent-name');
-  const agentEmoji = document.querySelector('.dash-agent-emoji');
+  const agentEmoji = document.getElementById('dash-agent-emoji');
   if (agentName) agentName.textContent = state.activeAgent?.name || 'Agent';
   if (agentEmoji) agentEmoji.textContent = state.activeAgent?.emoji || '🤖';
 
@@ -2603,6 +2595,57 @@ function updateDashboard() {
   } else {
     if (connectForm) connectForm.style.display = 'none';
     sections.forEach(s => s.style.display = '');
+  }
+
+  // Load settings from localStorage
+  loadDashSettings();
+}
+
+// ─── Agent File Viewer ────────────────────────────────────────────
+
+function viewAgentFile(filename, label) {
+  closeDashboard();
+  sendControlAction('Show me the current contents of ' + filename + '. Display it as-is without summarizing.');
+}
+
+// ─── Settings ─────────────────────────────────────────────────────
+
+function loadDashSettings() {
+  const settings = JSON.parse(localStorage.getItem('dashSettings') || '{}');
+
+  const darkToggle = document.getElementById('dash-darkmode');
+  if (darkToggle) darkToggle.checked = settings.darkMode !== false;
+
+  const voiceToggle = document.getElementById('dash-voice-toggle');
+  if (voiceToggle) {
+    voiceToggle.checked = !!settings.voiceInput;
+    const keyRow = document.getElementById('dash-voice-key-row');
+    if (keyRow) keyRow.style.display = settings.voiceInput ? '' : 'none';
+  }
+
+  const ttsToggle = document.getElementById('dash-tts-toggle');
+  if (ttsToggle) ttsToggle.checked = !!settings.ttsOutput;
+
+  const keyInput = document.getElementById('dash-openai-key');
+  if (keyInput) keyInput.value = settings.openaiKey || '';
+}
+
+function saveDashSettings() {
+  const settings = {
+    darkMode: document.getElementById('dash-darkmode')?.checked !== false,
+    voiceInput: document.getElementById('dash-voice-toggle')?.checked || false,
+    ttsOutput: document.getElementById('dash-tts-toggle')?.checked || false,
+    openaiKey: document.getElementById('dash-openai-key')?.value || '',
+  };
+  localStorage.setItem('dashSettings', JSON.stringify(settings));
+  applyDashSettings(settings);
+}
+
+function applyDashSettings(settings) {
+  if (settings.darkMode === false) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
   }
 }
 
@@ -2664,6 +2707,43 @@ function closeDashboard() {
     document.getElementById('landing').style.display = '';
     document.querySelector('.app').style.display = 'none';
   });
+
+  // Connection toggle (expand/collapse)
+  document.getElementById('dash-connection-toggle')?.addEventListener('click', () => {
+    const details = document.getElementById('dash-connection-details');
+    const chevron = document.getElementById('dash-chevron');
+    if (details) {
+      const open = details.style.display !== 'none';
+      details.style.display = open ? 'none' : '';
+      if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
+    }
+  });
+
+  // Maintenance toggle (expand/collapse)
+  document.getElementById('dash-maintenance-toggle')?.addEventListener('click', () => {
+    const content = document.getElementById('dash-maintenance-content');
+    const chevron = document.getElementById('dash-maintenance-chevron');
+    if (content) {
+      const open = content.style.display !== 'none';
+      content.style.display = open ? 'none' : '';
+      if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
+    }
+  });
+
+  // Settings change listeners
+  document.getElementById('dash-darkmode')?.addEventListener('change', saveDashSettings);
+  document.getElementById('dash-voice-toggle')?.addEventListener('change', () => {
+    const keyRow = document.getElementById('dash-voice-key-row');
+    const checked = document.getElementById('dash-voice-toggle')?.checked;
+    if (keyRow) keyRow.style.display = checked ? '' : 'none';
+    saveDashSettings();
+  });
+  document.getElementById('dash-tts-toggle')?.addEventListener('change', saveDashSettings);
+  document.getElementById('dash-openai-key')?.addEventListener('change', saveDashSettings);
+
+  // Apply saved settings on load
+  const saved = JSON.parse(localStorage.getItem('dashSettings') || '{}');
+  applyDashSettings(saved);
 
   // Responsive: show/hide menu button
   function updateDashLayout() {
