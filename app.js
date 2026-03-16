@@ -288,9 +288,6 @@ const state = {
   pendingAttachments: [],
   sending: false,
 
-  // UI
-  currentSection: "chat",
-  isMobile: window.innerWidth <= 768,
 };
 
 // ─── Agent prefix helper ─────────────────────────────────────────────
@@ -304,25 +301,6 @@ function agentPrefix() {
 const $ = (id) => document.getElementById(id);
 
 const ui = {
-  // Onboarding
-  onboarding: $("onboarding"),
-  step1: $("step1"),
-  step2: $("step2"),
-  step3: $("step3"),
-  gatewayUrlInput: $("gateway-url"),
-  tokenInput: $("token"),
-  connectBtn: $("connect-btn"),
-  connectStatus: $("connect-status"),
-  requestId: $("request-id"),
-  startChatBtn: $("start-chat-btn"),
-
-  // Sidebar
-  sidebar: $("sidebar"),
-  sidebarStatusDot: $("sidebar-status-dot"),
-  mainContent: $("main-content"),
-  mainContentInner: $("main-content-inner"),
-  mobileTabBar: $("mobile-tab-bar"),
-
   // Chat
   chatContainer: $("chat-container"),
   tabBar: $("tab-bar"),
@@ -357,60 +335,19 @@ async function initApp() {
   state.activeAgent = JSON.parse(localStorage.getItem("activeAgent") || '{"id":"main","name":"Agent","emoji":"🤖","creature":""}');
   state.deviceIdentity = await getOrCreateDeviceIdentity();
 
-  // Initialize UI
-  initSidebar();
-  initMobileTabBar();
+  // Always show chat container
+  ui.chatContainer.classList.add("active");
 
   if (state.gatewayUrl && state.token) {
     await startChat();
   } else {
     updateConnectionStatus(false);
   }
+  updateControlPanel();
 }
 
-// Click-to-copy for approve command
-document.getElementById("approve-cmd")?.addEventListener("click", () => {
-  const cmd = "openclaw devices approve --latest";
-  navigator.clipboard.writeText(cmd).then(() => {
-    const fb = document.getElementById("approve-copy-feedback");
-    if (fb) { fb.textContent = "✓"; setTimeout(() => { fb.textContent = "📋"; }, 1500); }
-  }).catch(() => {});
-});
-
-ui.connectBtn.addEventListener("click", async () => {
-  const gatewayUrl = ui.gatewayUrlInput.value.trim();
-  const token = ui.tokenInput.value.trim();
-  if (!gatewayUrl || !token) { showStatus("Please fill in both fields", "error"); return; }
-
-  ui.connectBtn.disabled = true;
-  showStatus("Connecting...", "info");
-
-  try {
-    state.gatewayUrl = gatewayUrl;
-    state.token = token;
-    state.deviceIdentity = await getOrCreateDeviceIdentity();
-    localStorage.setItem("connection", JSON.stringify({ gatewayUrl, token }));
-
-    showStatus("Connecting...", "info");
-    await connectToGateway();
-  } catch (err) {
-    console.error("Connection error:", err);
-    if (ui.step1.classList.contains("hidden") && ui.step2.classList.contains("hidden")) {
-      ui.step1.classList.remove("hidden");
-    } else if (ui.step2.classList.contains("hidden")) {
-      ui.step1.classList.remove("hidden");
-    }
-    showStatus("Connection failed: " + err.message, "error");
-    ui.connectBtn.disabled = false;
-  }
-});
-
-ui.startChatBtn.addEventListener("click", () => startChat());
-
 function showStatus(message, type) {
-  ui.connectStatus.textContent = message;
-  ui.connectStatus.className = `status-message ${type}`;
-  ui.connectStatus.classList.remove("hidden");
+  console.log(`[${type}] ${message}`);
 }
 
 function showPairingBanner() {
@@ -479,11 +416,6 @@ async function connectToGateway() {
 
         document.getElementById("pairing-banner")?.remove();
 
-        if (!ui.step2.classList.contains("hidden")) {
-          ui.step2.classList.add("hidden");
-          ui.step3.classList.remove("hidden");
-        }
-
         updateConnectionStatus(true);
         resolve();
       },
@@ -509,7 +441,6 @@ async function connectToGateway() {
 }
 
 async function startChat() {
-  ui.onboarding.style.display = "none";
   ui.chatContainer.classList.add("active");
 
   if (!state.gateway || !state.gateway.connected) {
@@ -536,121 +467,148 @@ function updateConnectionStatus(connected) {
     ui.messageInput.disabled = true;
     ui.messageInput.placeholder = "Disconnected — reconnect in settings";
   }
-  updateSidebarStatus(connected);
+  updateControlPanel();
 }
 
-// ─── Sidebar & Navigation ────────────────────────────────────────────
+// ─── Section Navigation ─────────────────────────────────────────────
 
-function initSidebar() {
-  if (!ui.sidebar) return;
-
-  const buttons = ui.sidebar.querySelectorAll('.oc-sidebar-btn');
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const section = btn.dataset.section;
-      switchSection(section);
-    });
-  });
-
-  updateSidebarStatus(false);
-}
-
-function initMobileTabBar() {
-  if (!ui.mobileTabBar) return;
-
-  const buttons = ui.mobileTabBar.querySelectorAll('.oc-mobile-tab');
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const section = btn.dataset.section;
-      switchSection(section);
-    });
-  });
-
-  // Show mobile tab bar on small screens
-  if (state.isMobile) {
-    ui.mobileTabBar.classList.remove('oc-hidden');
-  }
-
-  window.addEventListener('resize', () => {
-    const wasMobile = state.isMobile;
-    state.isMobile = window.innerWidth <= 768;
-    if (wasMobile !== state.isMobile) {
-      if (state.isMobile) {
-        ui.mobileTabBar.classList.remove('oc-hidden');
-      } else {
-        ui.mobileTabBar.classList.add('oc-hidden');
-      }
-    }
-  });
-}
+let currentSection = 'chat';
 
 function switchSection(section) {
-  state.currentSection = section;
+  currentSection = section;
+  const isMobile = window.innerWidth <= 768;
 
-  // Update sidebar buttons
-  if (ui.sidebar) {
-    ui.sidebar.querySelectorAll('.oc-sidebar-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.section === section);
-    });
-  }
+  // Update sidebar buttons (desktop)
+  document.querySelectorAll('.sidebar-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.section === section);
+  });
 
-  // Update mobile tab bar
-  if (ui.mobileTabBar) {
-    ui.mobileTabBar.querySelectorAll('.oc-mobile-tab').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.section === section);
-    });
-  }
+  // Update mobile tabs
+  document.querySelectorAll('.mobile-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.section === section);
+  });
 
-  // Show/hide panels
+  // Show/hide sections
+  document.querySelectorAll('.section-view').forEach(el => el.style.display = 'none');
+  const mainContent = document.getElementById('main-content');
+  const chatContainer = document.getElementById('chat-container');
+
   if (section === 'chat') {
-    ui.chatContainer.classList.add('active');
-    ui.mainContent.classList.add('oc-hidden');
+    mainContent.style.display = 'none';
+    chatContainer.style.display = 'flex';
+    chatContainer.classList.add('active');
   } else {
-    ui.chatContainer.classList.remove('active');
-    ui.mainContent.classList.remove('oc-hidden');
-    renderSection(section);
+    if (isMobile) {
+      chatContainer.style.display = 'none';
+    } else {
+      chatContainer.style.display = 'flex';
+      chatContainer.classList.add('active');
+    }
+    mainContent.style.display = 'flex';
+    const sectionEl = document.getElementById('section-' + section);
+    if (sectionEl) sectionEl.style.display = 'flex';
+  }
+
+  // Update control panel connection state
+  if (section === 'controls') updateControlPanel();
+}
+
+function updateControlPanel() {
+  const connected = state.gateway?.connected;
+  const connectForm = document.getElementById('control-connect');
+  const controlsGrid = document.getElementById('controls-grid');
+
+  if (!state.gatewayUrl || !state.token) {
+    if (connectForm) connectForm.style.display = '';
+    if (controlsGrid) controlsGrid.style.display = 'none';
+  } else {
+    if (connectForm) connectForm.style.display = 'none';
+    if (controlsGrid) controlsGrid.style.display = '';
+  }
+
+  // Update status card
+  const dot = document.getElementById('control-dot');
+  const statusText = document.getElementById('control-status-text');
+  if (dot) dot.className = 'control-dot' + (connected ? ' connected' : '');
+  if (statusText) statusText.textContent = connected ? 'Connected' : 'Disconnected';
+
+  // Update connection info
+  const gwInfo = document.getElementById('control-info-gateway');
+  const devInfo = document.getElementById('control-info-device');
+  if (gwInfo) gwInfo.innerHTML = '<span class="control-info-label">Gateway</span><span class="control-info-value">' + (state.gatewayUrl || 'Not set') + '</span>';
+  if (devInfo) devInfo.innerHTML = '<span class="control-info-label">Device</span><span class="control-info-value">' + (state.deviceIdentity?.deviceId?.slice(0, 12) || 'Unknown') + '...</span>';
+
+  // Sidebar status dot
+  const sidebarDot = document.getElementById('sidebar-status');
+  if (sidebarDot) {
+    sidebarDot.className = 'sidebar-status' + (connected ? ' connected' : '');
+    sidebarDot.title = connected ? 'Connected' : 'Disconnected';
   }
 }
 
-function renderSection(section) {
-  if (!ui.mainContentInner) return;
+function sendControlAction(message) {
+  // Switch to chat view on mobile
+  if (window.innerWidth <= 768) switchSection('chat');
 
-  if (section === 'profile') {
-    ui.mainContentInner.innerHTML = `
-      <div class="oc-section-header">
-        <h2>Agent Profile</h2>
-      </div>
-      <div class="oc-section-content">
-        <p style="color:var(--text-muted);margin-bottom:1rem;">View and edit your agent's personality files, memory, and configuration.</p>
-        <div class="oc-placeholder">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 10-16 0"/></svg>
-          <p>Profile editor coming soon</p>
-          <small>This will let you browse and edit your agent's SOUL.md, USER.md, MEMORY.md, and other configuration files directly from the web.</small>
-        </div>
-      </div>
-    `;
-  } else if (section === 'controls') {
-    ui.mainContentInner.innerHTML = `
-      <div class="oc-section-header">
-        <h2>Control Panel</h2>
-      </div>
-      <div class="oc-section-content">
-        <p style="color:var(--text-muted);margin-bottom:1rem;">Manage tasks, cron jobs, and automation settings.</p>
-        <div class="oc-placeholder">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M1 12h6m6 0h6"/></svg>
-          <p>Control panel coming soon</p>
-          <small>This will give you a dashboard to manage your agent's active tasks, scheduled cron jobs, and automation rules.</small>
-        </div>
-      </div>
-    `;
+  // Send the message as if user typed it
+  const input = document.getElementById('message-input');
+  if (input) {
+    input.value = message;
+    // Trigger send
+    document.getElementById('send-btn')?.click();
   }
 }
 
-function updateSidebarStatus(connected) {
-  if (!ui.sidebarStatusDot) return;
-  ui.sidebarStatusDot.classList.toggle('connected', connected);
-  ui.sidebarStatusDot.title = connected ? 'Connected' : 'Disconnected';
-}
+// Setup navigation event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  // Sidebar buttons
+  document.querySelectorAll('.sidebar-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchSection(btn.dataset.section));
+  });
+
+  // Mobile tab bar
+  document.querySelectorAll('.mobile-tab').forEach(btn => {
+    btn.addEventListener('click', () => switchSection(btn.dataset.section));
+  });
+
+  // Control panel connect button
+  document.getElementById('ctrl-connect-btn')?.addEventListener('click', () => {
+    const url = document.getElementById('ctrl-gateway-url')?.value.trim();
+    const token = document.getElementById('ctrl-token')?.value.trim();
+    if (!url || !token) return;
+    state.gatewayUrl = url;
+    state.token = token;
+    localStorage.setItem('connection', JSON.stringify({ gatewayUrl: url, token: token }));
+    connectToGateway().catch(err => console.error('Connect failed:', err));
+    updateControlPanel();
+  });
+
+  // Disconnect button
+  document.getElementById('ctrl-disconnect-btn')?.addEventListener('click', () => {
+    if (state.gateway) state.gateway.stop();
+    localStorage.removeItem('connection');
+    localStorage.removeItem('deviceIdentity');
+    localStorage.removeItem('deviceApproved');
+    state.gatewayUrl = '';
+    state.token = '';
+    // Return to landing page
+    document.getElementById('landing').style.display = '';
+    document.querySelector('.app').style.display = 'none';
+  });
+
+  // Layout responsive
+  function updateLayout() {
+    const isMobile = window.innerWidth <= 768;
+    const sidebar = document.getElementById('sidebar');
+    const mobileBar = document.getElementById('mobile-tab-bar');
+    if (sidebar) sidebar.style.display = isMobile ? 'none' : '';
+    if (mobileBar) mobileBar.style.display = isMobile ? '' : 'none';
+    switchSection(currentSection);
+  }
+
+  window.addEventListener('resize', updateLayout);
+  updateLayout();
+});
 
 // ─── Agent Management ────────────────────────────────────────────────
 
@@ -2737,7 +2695,7 @@ window.ocResetCloseConfirm = () => { setCloseConfirmDisabled(false); console.log
 
 // ─── Initialize ──────────────────────────────────────────────────────
 
-// initApp() is called from inline script in index.html after checking credentials
+initApp();
 
 if ("serviceWorker" in navigator && localStorage.getItem("connection")) {
   navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
