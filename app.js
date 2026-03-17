@@ -2674,7 +2674,7 @@ function updateDashboard() {
 
   // Show connect form or dashboard content
   const connectForm = document.getElementById('dash-connect-form');
-  const hudSections = document.querySelectorAll('#dashboard .hud-switcher, #dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section');
+  const hudSections = document.querySelectorAll('#dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section');
   if (!state.gatewayUrl || !state.token) {
     if (connectForm) connectForm.style.display = '';
     hudSections.forEach(s => s.style.display = 'none');
@@ -2972,27 +2972,69 @@ async function loadChannels() {
 
 // ─── Agent Switcher ───────────────────────────────────────────────
 
-async function loadAgentSwitcher() {
-  const container = document.getElementById('hud-agent-switcher');
+// ─── Agent dropdown (in identity section) ─────────────────────────
+
+let agentDropdownOpen = false;
+
+function toggleAgentDropdown2() {
+  const dd = document.getElementById('hud-agent-dropdown');
+  if (!dd) return;
+  agentDropdownOpen = !agentDropdownOpen;
+  dd.classList.toggle('open', agentDropdownOpen);
+  if (agentDropdownOpen) loadAgentDropdown();
+}
+
+function closeAgentDropdown() {
+  const dd = document.getElementById('hud-agent-dropdown');
+  if (dd) dd.classList.remove('open');
+  agentDropdownOpen = false;
+}
+
+// Click identity section to toggle
+document.getElementById('hud-identity')?.addEventListener('click', (e) => {
+  // Don't trigger on disconnect link
+  if (e.target.closest('.hud-disconnect-link')) return;
+  e.stopPropagation();
+  toggleAgentDropdown2();
+});
+
+// Close on outside click
+document.addEventListener('click', () => closeAgentDropdown());
+
+async function loadAgentDropdown() {
+  const container = document.getElementById('hud-agent-dropdown');
   if (!container || !state.gateway?.connected) return;
 
   try {
     const result = await state.gateway.request('agents.list', {});
     const agents = result?.agents || [];
     container.innerHTML = '';
+
     for (const agent of agents) {
-      const chip = document.createElement('button');
-      chip.className = 'hud-agent-chip' + (agent.id === (state.activeAgent?.id || result?.defaultId) ? ' active' : '');
-      chip.innerHTML = `<span class="hud-agent-chip-emoji">${agent.identity?.emoji || '🤖'}</span> ${agent.identity?.name || agent.id}`;
-      // TODO: switching agent would need session routing changes
-      container.appendChild(chip);
+      const isActive = agent.id === (state.activeAgent?.id || result?.defaultId);
+      const btn = document.createElement('button');
+      btn.className = 'hud-agent-dropdown-item' + (isActive ? ' active' : '');
+      btn.innerHTML = `<span class="agent-dot"></span><span>${agent.identity?.emoji || '🤖'} ${agent.identity?.name || agent.id}</span>`;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAgentDropdown();
+        // TODO: agent switching would need session routing changes
+      });
+      container.appendChild(btn);
     }
-    // Add "new agent" chip
-    const addChip = document.createElement('button');
-    addChip.className = 'hud-agent-chip hud-agent-add';
-    addChip.textContent = '+';
-    addChip.title = 'Create new agent';
-    addChip.addEventListener('click', () => {
+
+    // Separator
+    const sep = document.createElement('div');
+    sep.className = 'hud-agent-dropdown-sep';
+    container.appendChild(sep);
+
+    // Create new agent
+    const addBtn = document.createElement('button');
+    addBtn.className = 'hud-agent-dropdown-add';
+    addBtn.innerHTML = '<span class="add-icon">+</span><span>New agent</span>';
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAgentDropdown();
       closeDashboard();
       const input = document.getElementById('message-input');
       if (input) {
@@ -3001,11 +3043,14 @@ async function loadAgentSwitcher() {
         input.dispatchEvent(new Event('input'));
       }
     });
-    container.appendChild(addChip);
+    container.appendChild(addBtn);
   } catch (err) {
     console.warn('agents.list failed:', err);
   }
 }
+
+// Compat: old call sites reference loadAgentSwitcher
+async function loadAgentSwitcher() { /* replaced by dropdown */ }
 
 function cronTimeAgo(ms) {
   if (!ms) return '';

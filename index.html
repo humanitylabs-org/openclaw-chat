@@ -1327,11 +1327,8 @@
     <div class="dashboard" id="dashboard">
       <div class="dashboard-scroll">
 
-        <!-- ═══ Agent Switcher ═══ -->
-        <div class="hud-switcher" id="hud-agent-switcher"></div>
-
-        <!-- ═══ Identity ═══ -->
-        <div class="hud-identity">
+        <!-- ═══ Identity (clickable agent switcher) ═══ -->
+        <div class="hud-identity" id="hud-identity">
           <div class="hud-orb" id="hud-orb">
             <div class="hud-orb-glow" id="hud-orb-glow"></div>
             <span class="hud-orb-emoji" id="hud-beacon-emoji">🤖</span>
@@ -1346,6 +1343,8 @@
             <span id="hud-version-val"></span>
             <span class="hud-update-badge" id="hud-update-badge" style="display:none"></span>
           </div>
+          <!-- Agent dropdown (hidden by default) -->
+          <div class="hud-agent-dropdown" id="hud-agent-dropdown"></div>
         </div>
 
         <!-- Hidden elements for JS compat -->
