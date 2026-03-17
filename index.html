@@ -1342,47 +1342,30 @@
         <!-- ═══ Schedule ═══ -->
         <div class="hud-timeline" id="hud-cron-list"></div>
 
-        <!-- ═══ Dark Mode (always visible) ═══ -->
-        <div class="hud-inline-setting">
-          <span class="hud-setting-name">Dark Mode</span>
-          <label class="hud-toggle">
-            <input type="checkbox" id="dash-darkmode" checked>
-            <span class="hud-toggle-track"></span>
-          </label>
-        </div>
-
-        <!-- ═══ Maintenance ═══ -->
-        <div class="hud-section hud-collapsible" data-section="maintenance">
-          <button class="hud-section-toggle" onclick="toggleSection('maintenance')">
-            <span class="hud-section-label">Maintenance</span>
-            <span class="hud-section-chevron">›</span>
-          </button>
-          <div class="hud-section-body">
-            <div class="hud-server-warn">These actions affect the live server.</div>
-            <div class="hud-server-actions">
-              <button class="hud-server-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
-                <span class="hud-server-btn-label">Run diagnostics</span>
-              </button>
-              <button class="hud-server-btn" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
-                <span class="hud-server-btn-label">Restart gateway</span>
-              </button>
-              <button class="hud-server-btn" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
-                <span class="hud-server-btn-label">Check for updates</span>
-              </button>
+        <!-- ═══ Bottom controls ═══ -->
+        <div class="hud-bottom">
+          <div class="hud-bottom-row">
+            <label class="hud-toggle-inline">
+              <span>Dark</span>
+              <label class="hud-toggle"><input type="checkbox" id="dash-darkmode" checked><span class="hud-toggle-track"></span></label>
+            </label>
+            <label class="hud-toggle-inline">
+              <span>Voice</span>
+              <label class="hud-toggle"><input type="checkbox" id="dash-voice-toggle"><span class="hud-toggle-track"></span></label>
+            </label>
+          </div>
+          <div class="hud-voice-key" id="dash-voice-key-row" style="display:none;">
+            <div class="dash-field" style="margin:0;width:100%;">
+              <label>OpenAI API Key</label>
+              <input type="password" id="dash-openai-key" placeholder="sk-...">
             </div>
-            <div class="hud-setting-row" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.03);padding-top:12px;">
-              <span class="hud-setting-name">Voice Input</span>
-              <label class="hud-toggle">
-                <input type="checkbox" id="dash-voice-toggle">
-                <span class="hud-toggle-track"></span>
-              </label>
-            </div>
-            <div class="hud-voice-key" id="dash-voice-key-row" style="display:none;">
-              <div class="dash-field" style="margin:0;width:100%;">
-                <label>OpenAI API Key</label>
-                <input type="password" id="dash-openai-key" placeholder="sk-...">
-              </div>
-            </div>
+          </div>
+          <div class="hud-maint-row">
+            <button class="hud-maint-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">diagnostics</button>
+            <span class="hud-maint-sep">·</span>
+            <button class="hud-maint-btn" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">restart</button>
+            <span class="hud-maint-sep">·</span>
+            <button class="hud-maint-btn" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">update</button>
           </div>
         </div>
 
