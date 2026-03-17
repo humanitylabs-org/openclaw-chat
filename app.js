@@ -2711,8 +2711,9 @@ async function fetchServerInfo() {
     // Update available
     const upd = snap.updateAvailable;
     const updateEl = document.getElementById('hud-update-badge');
+    const updateRow = document.getElementById('hud-update-row');
     if (updateEl && upd && upd.latestVersion && upd.currentVersion !== upd.latestVersion) {
-      updateEl.style.display = '';
+      if (updateRow) updateRow.style.display = '';
       updateEl.textContent = 'v' + upd.latestVersion + ' available';
     }
 
@@ -3143,7 +3144,12 @@ async function loadCronJobs() {
       // Expandable detail on click
       const detail = document.createElement('div');
       detail.className = 'hud-tl-detail';
-      detail.innerHTML = `${schedule}${lastRan ? ' · last ' + lastRan : ''}${lastStatus === 'error' ? ' · <span style="color:rgba(239,68,68,0.7)">failed</span>' : ''}`;
+      const parts = [];
+      if (schedule) parts.push(schedule);
+      if (lastRan) parts.push('ran ' + lastRan);
+      if (lastStatus === 'error') parts.push('<span style="color:rgba(239,68,68,0.7)">last run failed</span>');
+      if (job.model) parts.push(job.model.split('/').pop());
+      detail.innerHTML = parts.join(' · ');
       detail.style.display = 'none';
       item.querySelector('.hud-tl-body').addEventListener('click', () => {
         detail.style.display = detail.style.display === 'none' ? '' : 'none';
