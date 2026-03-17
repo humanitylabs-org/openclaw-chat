@@ -3091,7 +3091,6 @@ function cronFriendlyName(name) {
 
 async function loadCronJobs() {
   const container = document.getElementById('hud-cron-list');
-  const nextUp = document.getElementById('hud-next-up');
   if (!container || !state.gateway?.connected) return;
 
   try {
@@ -3100,30 +3099,17 @@ async function loadCronJobs() {
 
     if (!Array.isArray(jobs) || jobs.length === 0) {
       container.innerHTML = '';
-      if (nextUp) nextUp.style.display = 'none';
       return;
     }
 
     // Sort by next run
     const sorted = [...jobs].sort((a, b) => (a.state?.nextRunAtMs || Infinity) - (b.state?.nextRunAtMs || Infinity));
 
-    // "Next Up" hero card - the soonest job
-    const soonest = sorted[0];
-    if (nextUp && soonest) {
-      nextUp.style.display = '';
-      const nameEl = document.getElementById('hud-next-name');
-      const timeEl = document.getElementById('hud-next-time');
-      if (nameEl) nameEl.textContent = cronFriendlyName(soonest.name);
-      if (timeEl) timeEl.textContent = cronTimeUntil(soonest.state?.nextRunAtMs);
-    }
-
-    // Timeline: all jobs
     container.innerHTML = '';
     for (const job of sorted) {
       const item = document.createElement('div');
       item.className = 'hud-tl-item';
       const lastStatus = job.state?.lastRunStatus || job.state?.lastStatus;
-      const dotClass = !lastStatus ? 'idle' : lastStatus === 'ok' ? 'ok' : 'err';
       const next = cronTimeUntil(job.state?.nextRunAtMs);
       const lastRan = cronTimeAgo(job.state?.lastRunAtMs);
       const schedule = job.schedule?.kind === 'every'
@@ -3132,12 +3118,17 @@ async function loadCronJobs() {
           ? (job.schedule.expr || '')
           : '';
 
+      // Status: only show if last run failed
+      const statusHtml = lastStatus === 'error'
+        ? '<span class="hud-tl-status err">failed</span>'
+        : '';
+
       item.innerHTML = `
-        <div class="hud-tl-dot ${dotClass}"></div>
         <div class="hud-tl-body">
           <span class="hud-tl-name">${cronFriendlyName(job.name)}</span>
           <span class="hud-tl-when">${next}</span>
         </div>
+        ${statusHtml}
         <button class="hud-tl-run" title="Run now" onclick="cronRunNow('${job.id}', this)">run</button>
       `;
 
@@ -3147,7 +3138,6 @@ async function loadCronJobs() {
       const parts = [];
       if (schedule) parts.push(schedule);
       if (lastRan) parts.push('ran ' + lastRan);
-      if (lastStatus === 'error') parts.push('<span style="color:rgba(239,68,68,0.7)">last run failed</span>');
       if (job.model) parts.push(job.model.split('/').pop());
       detail.innerHTML = parts.join(' · ');
       detail.style.display = 'none';

@@ -481,30 +481,6 @@
   cursor: pointer;
 }
 
-/* ── Next Up ──────────────────────────────────────────── */
-
-.hud-next {
-  text-align: center;
-  padding: 20px 16px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-}
-
-.hud-next-name {
-  font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--text-muted);
-  margin-bottom: 2px;
-}
-
-.hud-next-time {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--text-faint);
-  opacity: 0.6;
-}
-
 /* ── Timeline (schedule) ─────────────────────────────── */
 
 .hud-timeline {
@@ -524,16 +500,14 @@
   background: rgba(255,255,255,0.02);
 }
 
-.hud-tl-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.hud-tl-status {
+  font-family: var(--font-sans);
+  font-size: 10px;
   flex-shrink: 0;
-  transition: background 0.3s;
+  opacity: 0.6;
 }
-.hud-tl-dot.ok { background: rgba(76,175,80,0.6); }
-.hud-tl-dot.err { background: rgba(239,68,68,0.6); }
-.hud-tl-dot.idle { background: rgba(255,255,255,0.1); }
+.hud-tl-status.err { color: rgba(239,68,68,0.8); }
+.hud-tl-status.ok { color: rgba(76,175,80,0.6); }
 
 .hud-tl-body {
   flex: 1;
