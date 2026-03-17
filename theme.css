@@ -383,10 +383,35 @@
   transition: all 0.4s;
 }
 
+.hud-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.hud-status-sep {
+  font-size: 10px;
+  color: rgba(255,255,255,0.1);
+}
+
 .hud-status-line.online {
   color: rgba(76,175,80,0.7);
   opacity: 1;
 }
+
+.hud-disconnect-link {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: rgba(255,255,255,0.15);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+.hud-disconnect-link:hover { color: rgba(239,68,68,0.5); }
 
 .hud-version-line {
   display: flex;
@@ -563,6 +588,7 @@
 .hud-files-row {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 6px;
   padding: 16px 0;
   border-bottom: 1px solid rgba(255,255,255,0.03);

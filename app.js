@@ -413,6 +413,8 @@ async function connectToGateway() {
         console.log("Connected to gateway:", payload);
         helloReceived = true;
         localStorage.setItem("deviceApproved", "true");
+        state.snapshot = payload?.snapshot || {};
+        state.serverVersion = payload?.server?.version || '';
 
         document.getElementById("pairing-banner")?.remove();
 
@@ -2634,47 +2636,34 @@ async function fetchServerInfo() {
     loadAgentFiles();
     loadCronJobs();
 
-    // Uptime ring (computed from presence ts)
-    try {
-      const presence = await state.gateway.request('system-presence', {});
-      const hosts = Array.isArray(presence) ? presence : (presence?.hosts || []);
-      const gateway = hosts.find(h => h.mode === 'gateway');
-      if (gateway && gateway.ts) {
-        const secs = Math.floor((Date.now() - gateway.ts) / 1000);
-        const uptimeEl = document.getElementById('hud-uptime');
-        const arc = document.getElementById('hud-uptime-arc');
-        if (uptimeEl) {
-          if (secs < 3600) uptimeEl.textContent = Math.floor(secs / 60) + 'm';
-          else if (secs < 86400) uptimeEl.textContent = Math.floor(secs / 3600) + 'h';
-          else uptimeEl.textContent = Math.floor(secs / 86400) + 'd';
-        }
-        if (arc) {
-          const pct = Math.min(secs / 86400, 1);
-          arc.style.strokeDashoffset = 220 - (220 * pct);
-        }
-        // Store version for update check
-        if (gateway.version) {
-          window._gatewayVersion = gateway.version;
-          const vEl = document.getElementById('hud-version-val');
-          if (vEl) vEl.textContent = gateway.version;
-        }
-      }
-    } catch (e) { /* presence not available */ }
+    // Uptime + Version + Update (from connect snapshot)
+    const snap = state.snapshot || {};
+    const uptimeMs = snap.uptimeMs || 0;
+    const secs = Math.floor(uptimeMs / 1000);
+    const uptimeEl = document.getElementById('hud-uptime');
+    const arc = document.getElementById('hud-uptime-arc');
+    if (uptimeEl && secs > 0) {
+      if (secs < 3600) uptimeEl.textContent = Math.floor(secs / 60) + 'm';
+      else if (secs < 86400) uptimeEl.textContent = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
+      else uptimeEl.textContent = Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
+    }
+    if (arc && secs > 0) {
+      // Ring fills over 7 days
+      const pct = Math.min(secs / (7 * 86400), 1);
+      arc.style.strokeDashoffset = 220 - (220 * pct);
+    }
 
-    // Update check
-    try {
-      const resp = await fetch('https://registry.npmjs.org/openclaw/latest', { signal: AbortSignal.timeout(5000) });
-      if (resp.ok) {
-        const pkg = await resp.json();
-        const latest = pkg.version;
-        const current = window._gatewayVersion;
-        const updateEl = document.getElementById('hud-update-badge');
-        if (updateEl && latest && current && latest !== current) {
-          updateEl.style.display = '';
-          updateEl.textContent = latest + ' available';
-        }
-      }
-    } catch (e) { /* can't check */ }
+    // Version
+    const vEl = document.getElementById('hud-version-val');
+    if (vEl && state.serverVersion) vEl.textContent = 'v' + state.serverVersion;
+
+    // Update available
+    const upd = snap.updateAvailable;
+    const updateEl = document.getElementById('hud-update-badge');
+    if (updateEl && upd && upd.latestVersion && upd.currentVersion !== upd.latestVersion) {
+      updateEl.style.display = '';
+      updateEl.textContent = 'v' + upd.latestVersion + ' available';
+    }
 
     // Check for update (compare versions)
     if (currentVersion) {
