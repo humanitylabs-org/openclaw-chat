@@ -1177,13 +1177,14 @@
     }
     .openclaw-picker-footer a { color: var(--text-faint); text-decoration: underline; }
 
-    /* ─── Model Label (bottom left) ──────────────────────────────── */
+    /* ─── Model Bar (above input) ───────────────────────────────── */
     .openclaw-model-bar {
       display: flex;
       align-items: center;
-      padding: 0 14px;
-      gap: 4px;
+      padding: 2px 14px;
+      gap: 2px;
       line-height: 1;
+      flex-wrap: wrap;
     }
     .openclaw-model-label {
       font-size: 10px;
@@ -1197,6 +1198,31 @@
     .openclaw-model-label:hover {
       background: rgba(128,128,128,0.12);
       color: var(--text-muted);
+    }
+    .openclaw-model-bar .bar-sep {
+      color: var(--text-faint);
+      opacity: 0.3;
+      font-size: 10px;
+      margin: 0 1px;
+      user-select: none;
+    }
+    .openclaw-model-bar .bar-chip {
+      font-size: 10px;
+      color: var(--text-faint);
+      padding: 1px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .openclaw-model-bar .bar-chip:hover {
+      background: rgba(128,128,128,0.12);
+      color: var(--text-muted);
+    }
+    .openclaw-model-bar .bar-chip.active {
+      color: var(--text-muted);
+      background: rgba(128,128,128,0.10);
     }
 
     /* Mobile adjustments */
@@ -1463,6 +1489,12 @@
         <!-- Model label bar -->
         <div class="openclaw-model-bar">
           <span class="openclaw-model-label" id="model-label" title="Click to change model"></span>
+          <span class="bar-sep">·</span>
+          <span class="bar-chip" id="bar-thinking" title="Thinking level">think: off</span>
+          <span class="bar-sep">·</span>
+          <span class="bar-chip" id="bar-reasoning" title="Reasoning mode">reason: off</span>
+          <span class="bar-sep">·</span>
+          <span class="bar-chip" id="bar-verbose" title="Verbose mode">verbose: off</span>
         </div>
         <div class="openclaw-input-row">
           <button class="openclaw-attach-btn" id="attach-btn" aria-label="Attach file" title="Attach file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>

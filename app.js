@@ -274,6 +274,11 @@ const state = {
   currentModel: "",
   currentModelSetAt: 0,
 
+  // Session controls
+  thinkingLevel: "",   // off|minimal|low|medium|high|xhigh
+  reasoningLevel: "",  // off|on|stream
+  verboseLevel: "",    // off|on|full
+
   // Tabs
   tabSessions: [],
   renderingTabs: false,
@@ -1207,6 +1212,12 @@ async function updateContextMeter() {
       updateModelLabel();
     }
 
+    // Sync session controls
+    state.thinkingLevel = session.thinkingLevel || "";
+    state.reasoningLevel = session.reasoningLevel || "";
+    state.verboseLevel = session.verboseLevel || "";
+    updateBarControls();
+
     const activeFill = ui.tabBar?.querySelector(".openclaw-tab.active .openclaw-tab-meter-fill");
     if (activeFill) {
       const used = session.totalTokens || 0;
@@ -1255,6 +1266,60 @@ function updateModelLabel() {
   ui.modelLabel.textContent = shortModelName(state.currentModel) + " ▾";
   updateDashboard();
 }
+
+// ─── Bar Controls (thinking/reasoning/verbose) ──────────────────────
+
+const THINKING_CYCLE = ["", "off", "low", "medium", "high"];
+const REASONING_CYCLE = ["", "off", "on", "stream"];
+const VERBOSE_CYCLE = ["", "off", "on", "full"];
+
+function updateBarControls() {
+  const thinkEl = document.getElementById("bar-thinking");
+  const reasonEl = document.getElementById("bar-reasoning");
+  const verboseEl = document.getElementById("bar-verbose");
+
+  if (thinkEl) {
+    const v = state.thinkingLevel || "inherit";
+    thinkEl.textContent = "think: " + v;
+    thinkEl.classList.toggle("active", !!state.thinkingLevel);
+  }
+  if (reasonEl) {
+    const v = state.reasoningLevel || "inherit";
+    reasonEl.textContent = "reason: " + v;
+    reasonEl.classList.toggle("active", !!state.reasoningLevel);
+  }
+  if (verboseEl) {
+    const v = state.verboseLevel || "inherit";
+    verboseEl.textContent = "verbose: " + v;
+    verboseEl.classList.toggle("active", !!state.verboseLevel);
+  }
+}
+
+async function cycleBarControl(field, cycle) {
+  if (!state.gateway?.connected) return;
+  const current = state[field] || "";
+  const idx = cycle.indexOf(current);
+  const next = cycle[(idx + 1) % cycle.length];
+  const patch = {};
+  patch[field] = next || null; // null = clear override (inherit)
+  try {
+    await state.gateway.request("sessions.patch", {
+      key: `${agentPrefix()}${state.sessionKey}`,
+      ...patch,
+    });
+    state[field] = next;
+    updateBarControls();
+  } catch (err) {
+    console.error(`Failed to set ${field}:`, err);
+  }
+}
+
+document.getElementById("bar-thinking")?.addEventListener("click", () =>
+  cycleBarControl("thinkingLevel", THINKING_CYCLE));
+document.getElementById("bar-reasoning")?.addEventListener("click", () =>
+  cycleBarControl("reasoningLevel", REASONING_CYCLE));
+document.getElementById("bar-verbose")?.addEventListener("click", () =>
+  cycleBarControl("verboseLevel", VERBOSE_CYCLE));
 
 async function openModelPicker() {
   let models = [];
