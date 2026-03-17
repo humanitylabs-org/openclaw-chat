@@ -2638,7 +2638,6 @@ async function fetchServerInfo() {
     // Load dynamic sections
     loadAgentFiles();
     loadCronJobs();
-    loadChannels();
 
     // Stats bar
     const modelEl = document.getElementById('hud-model');
