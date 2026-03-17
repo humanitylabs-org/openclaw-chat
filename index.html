@@ -1313,21 +1313,47 @@
             </div>
           </div>
 
-          <!-- System stats bar -->
-          <div class="hud-stats-bar" id="hud-stats-bar">
-            <div class="hud-stat" id="hud-stat-model">
-              <span class="hud-stat-val" id="hud-model">—</span>
-              <span class="hud-stat-key">MODEL</span>
+          <!-- Vital Signs -->
+          <div class="hud-vitals" id="hud-vitals">
+            <div class="hud-vital">
+              <span class="hud-vital-val" id="hud-uptime">—</span>
+              <span class="hud-vital-key">UPTIME</span>
             </div>
-            <div class="hud-stat" id="hud-stat-version">
-              <span class="hud-stat-val" id="hud-version">—</span>
-              <span class="hud-stat-key">VERSION</span>
+            <div class="hud-vital-divider"></div>
+            <div class="hud-vital">
+              <span class="hud-vital-val" id="hud-tokens">—</span>
+              <span class="hud-vital-key">TOKENS</span>
             </div>
+            <div class="hud-vital-divider"></div>
+            <div class="hud-vital">
+              <span class="hud-vital-val" id="hud-cost">—</span>
+              <span class="hud-vital-key">COST</span>
+            </div>
+          </div>
+
+          <!-- Model + Version micro bar -->
+          <div class="hud-micro-bar">
+            <span class="hud-micro" id="hud-model">—</span>
+            <span class="hud-micro-sep">·</span>
+            <span class="hud-micro" id="hud-version">—</span>
           </div>
         </div>
 
         <!-- Alerts -->
         <div class="hud-alerts" id="hud-alerts"></div>
+
+        <!-- ═══ Usage Breakdown ═══ -->
+        <div class="hud-section hud-collapsible" data-section="usage">
+          <button class="hud-section-toggle" onclick="toggleSection('usage')">
+            <span class="hud-section-label">Usage</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div id="hud-usage-breakdown">
+              <div class="hud-empty-hint">Loading...</div>
+            </div>
+          </div>
+        </div>
 
         <!-- ═══ Scheduled Jobs ═══ -->
         <div class="hud-section hud-collapsible hud-open" data-section="cron">

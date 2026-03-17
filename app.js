@@ -2638,24 +2638,65 @@ async function fetchServerInfo() {
     // Load dynamic sections
     loadAgentFiles();
     loadCronJobs();
+    loadUsageBreakdown();
 
-    // Stats bar
+    // Model + Version micro bar
     const modelEl = document.getElementById('hud-model');
     const versionEl = document.getElementById('hud-version');
-    const statsBar = document.getElementById('hud-stats-bar');
 
     if (modelEl) {
       const model = state.currentModel || '';
       modelEl.textContent = model ? model.split('/').pop() : '—';
     }
 
+    // System presence: uptime + version
     try {
       const presence = await state.gateway.request('system-presence', {});
       const hosts = Array.isArray(presence) ? presence : (presence?.hosts || []);
-      if (hosts.length > 0 && hosts[0].version && versionEl) {
-        versionEl.textContent = hosts[0].version;
+      if (hosts.length > 0) {
+        const h = hosts[0];
+        if (h.version && versionEl) versionEl.textContent = h.version;
+
+        // Uptime
+        const uptimeEl = document.getElementById('hud-uptime');
+        if (uptimeEl && h.uptime) {
+          const secs = h.uptime;
+          if (secs < 3600) uptimeEl.textContent = Math.floor(secs / 60) + 'm';
+          else if (secs < 86400) uptimeEl.textContent = Math.floor(secs / 3600) + 'h';
+          else uptimeEl.textContent = Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
+        }
       }
-    } catch (e) { /* version not available */ }
+    } catch (e) { /* presence not available */ }
+
+    // Usage summary: tokens + cost
+    try {
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const endDate = now.toISOString().split('T')[0];
+      const [usage, costData] = await Promise.all([
+        state.gateway.request('sessions.usage', { startDate, endDate, limit: 1000 }).catch(() => null),
+        state.gateway.request('usage.cost', { startDate, endDate }).catch(() => null)
+      ]);
+
+      const tokensEl = document.getElementById('hud-tokens');
+      const costEl = document.getElementById('hud-cost');
+
+      if (tokensEl && usage) {
+        const sessions = usage?.sessions || usage || [];
+        let totalTokens = 0;
+        if (Array.isArray(sessions)) {
+          for (const s of sessions) totalTokens += (s.totalTokens || s.tokens || 0);
+        }
+        if (totalTokens > 1000000) tokensEl.textContent = (totalTokens / 1000000).toFixed(1) + 'M';
+        else if (totalTokens > 1000) tokensEl.textContent = (totalTokens / 1000).toFixed(0) + 'K';
+        else tokensEl.textContent = totalTokens || '0';
+      }
+
+      if (costEl && costData) {
+        const total = costData.totalCost ?? costData.total ?? 0;
+        costEl.textContent = total > 0 ? '$' + total.toFixed(2) : '$0';
+      }
+    } catch (e) { /* usage not available */ }
 
     // Check for update (compare versions)
     if (currentVersion) {
@@ -2911,6 +2952,89 @@ async function loadChannels() {
 }
 
 // ─── Cron Jobs List ───────────────────────────────────────────────
+
+// ─── Usage Breakdown ──────────────────────────────────────────────
+
+async function loadUsageBreakdown() {
+  const container = document.getElementById('hud-usage-breakdown');
+  if (!container || !state.gateway?.connected) return;
+
+  try {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const endDate = now.toISOString().split('T')[0];
+
+    const costData = await state.gateway.request('usage.cost', { startDate, endDate }).catch(() => null);
+
+    if (!costData) {
+      container.innerHTML = '<div class="hud-empty-hint">No usage data</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+
+    // Model breakdown bars
+    const models = costData.byModel || [];
+    if (models.length > 0) {
+      const maxTokens = Math.max(...models.map(m => m.totals?.tokens || m.tokens || 0), 1);
+      const modelsDiv = document.createElement('div');
+      modelsDiv.className = 'hud-usage-models';
+
+      for (const m of models.slice(0, 5)) {
+        const tokens = m.totals?.tokens || m.tokens || 0;
+        const cost = m.totals?.cost || m.cost || 0;
+        const pct = (tokens / maxTokens) * 100;
+        const name = (m.model || 'unknown').split('/').pop().replace(/-\d{8}$/, '');
+
+        const row = document.createElement('div');
+        row.className = 'hud-usage-row';
+        row.innerHTML = `
+          <span class="hud-usage-label">${name}</span>
+          <span class="hud-usage-bar-wrap"><span class="hud-usage-bar" style="width:${pct}%"></span></span>
+          <span class="hud-usage-val">${cost > 0 ? '$' + cost.toFixed(2) : tokens > 1000 ? Math.floor(tokens/1000) + 'K' : tokens}</span>
+        `;
+        modelsDiv.appendChild(row);
+      }
+      container.appendChild(modelsDiv);
+    }
+
+    // Daily mini chart
+    const daily = costData.daily || [];
+    if (daily.length > 1) {
+      const maxDay = Math.max(...daily.map(d => d.tokens || d.totals?.tokens || 0), 1);
+      const chartDiv = document.createElement('div');
+      chartDiv.className = 'hud-usage-daily';
+
+      // Show last 14 days max
+      const recentDays = daily.slice(-14);
+      for (const day of recentDays) {
+        const tokens = day.tokens || day.totals?.tokens || 0;
+        const pct = Math.max((tokens / maxDay) * 100, 2);
+        const bar = document.createElement('div');
+        bar.className = 'hud-usage-day';
+        bar.style.height = pct + '%';
+        bar.title = (day.date || '') + ': ' + (tokens > 1000 ? Math.floor(tokens/1000) + 'K' : tokens) + ' tokens';
+        chartDiv.appendChild(bar);
+      }
+      container.appendChild(chartDiv);
+
+      // Period labels
+      const periodDiv = document.createElement('div');
+      periodDiv.className = 'hud-usage-period';
+      const first = recentDays[0]?.date || '';
+      const last = recentDays[recentDays.length - 1]?.date || '';
+      periodDiv.innerHTML = `
+        <span class="hud-usage-period-label">${first.slice(5)}</span>
+        <span class="hud-usage-period-label">${last.slice(5)}</span>
+      `;
+      container.appendChild(periodDiv);
+    }
+
+  } catch (err) {
+    console.warn('Usage breakdown failed:', err);
+    container.innerHTML = '<div class="hud-empty-hint">Could not load usage</div>';
+  }
+}
 
 function cronTimeAgo(ms) {
   if (!ms) return '';
