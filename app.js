@@ -2638,6 +2638,7 @@ async function fetchServerInfo() {
     // Load dynamic sections
     loadAgentFiles();
     loadCronJobs();
+    loadChannels();
 
     // Stats bar
     const modelEl = document.getElementById('hud-model');
@@ -2912,6 +2913,38 @@ async function loadChannels() {
 
 // ─── Cron Jobs List ───────────────────────────────────────────────
 
+function cronTimeAgo(ms) {
+  if (!ms) return '';
+  const diff = Date.now() - ms;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  return Math.floor(diff / 86400000) + 'd ago';
+}
+
+function cronTimeUntil(ms) {
+  if (!ms) return '';
+  const diff = ms - Date.now();
+  if (diff < 0) return 'overdue';
+  if (diff < 3600000) return 'in ' + Math.floor(diff / 60000) + 'm';
+  if (diff < 86400000) return 'in ' + Math.floor(diff / 3600000) + 'h';
+  return 'in ' + Math.floor(diff / 86400000) + 'd';
+}
+
+async function cronRunNow(jobId, btn) {
+  if (!state.gateway?.connected) return;
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    await state.gateway.request('cron.run', { id: jobId });
+    btn.textContent = '✓';
+    setTimeout(() => { btn.textContent = '▶'; btn.disabled = false; loadCronJobs(); }, 3000);
+  } catch (err) {
+    btn.textContent = '✗';
+    setTimeout(() => { btn.textContent = '▶'; btn.disabled = false; }, 2000);
+  }
+}
+
 async function loadCronJobs() {
   const container = document.getElementById('hud-cron-list');
   if (!container || !state.gateway?.connected) return;
@@ -2926,28 +2959,37 @@ async function loadCronJobs() {
     }
 
     container.innerHTML = '';
-    const list = document.createElement('div');
-    list.className = 'hud-status-list';
     for (const job of jobs) {
-      const item = document.createElement('div');
-      item.className = 'hud-status-item';
+      const card = document.createElement('div');
+      card.className = 'hud-cron-card';
       const name = job.name || job.id || 'Unnamed';
       const enabled = job.enabled !== false;
       const schedule = job.schedule?.kind === 'every'
         ? `every ${Math.round((job.schedule.everyMs || 0) / 60000)}m`
         : job.schedule?.kind === 'cron'
-          ? job.schedule.expr
+          ? job.schedule.expr + (job.schedule.tz ? ' ' + job.schedule.tz : '')
           : job.schedule?.kind === 'at'
             ? 'one-time'
             : '';
-      item.innerHTML = `
-        <span class="hud-status-item-name">${name}</span>
-        ${schedule ? `<span class="hud-status-badge">${schedule}</span>` : ''}
-        <span class="hud-status-dot ${enabled ? 'on' : 'off'}"></span>
+      const lastStatus = job.state?.lastRunStatus || job.state?.lastStatus;
+      const lastDot = !lastStatus ? 'grey' : lastStatus === 'ok' ? 'on' : 'error';
+      const lastRun = cronTimeAgo(job.state?.lastRunAtMs);
+      const nextRun = cronTimeUntil(job.state?.nextRunAtMs);
+
+      card.innerHTML = `
+        <div class="hud-cron-header">
+          <span class="hud-status-dot ${lastDot}"></span>
+          <span class="hud-cron-name">${name}</span>
+          <button class="hud-cron-run" title="Run now" onclick="cronRunNow('${job.id}', this)">▶</button>
+        </div>
+        <div class="hud-cron-meta">
+          <span class="hud-status-badge">${schedule}</span>
+          ${nextRun ? `<span class="hud-cron-next">${nextRun}</span>` : ''}
+          ${lastRun ? `<span class="hud-cron-last">${lastRun}</span>` : ''}
+        </div>
       `;
-      list.appendChild(item);
+      container.appendChild(card);
     }
-    container.appendChild(list);
   } catch (err) {
     console.warn('cron.list failed:', err);
     container.innerHTML = '<div class="hud-empty-hint">Could not load jobs</div>';

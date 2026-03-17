@@ -1002,6 +1002,66 @@
   padding: 4px 2px;
 }
 
+.hud-status-dot.error { background: #ef4444; }
+.hud-status-dot.grey { background: rgba(255,255,255,0.1); }
+
+.hud-cron-card {
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.hud-cron-card:last-child { border-bottom: none; }
+
+.hud-cron-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-cron-name {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-cron-run {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-faint);
+  font-size: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.hud-cron-run:hover { border-color: rgba(255,255,255,0.3); color: var(--text-muted); }
+.hud-cron-run:disabled { opacity: 0.4; cursor: default; }
+
+.hud-cron-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding-left: 15px;
+}
+
+.hud-cron-next, .hud-cron-last {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 300;
+  color: var(--text-faint);
+}
+
 /* (light theme overrides moved to main light theme block) */
 [data-theme="light"] .oc-file-viewer { background: #f6f6f7; border-color: #e3e3e5; }
 [data-theme="light"] .oc-file-viewer-header { border-bottom-color: rgba(0,0,0,0.08); }
