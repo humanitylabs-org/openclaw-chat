@@ -2928,11 +2928,6 @@ async function loadAgentSwitcher() {
   try {
     const result = await state.gateway.request('agents.list', {});
     const agents = result?.agents || [];
-    if (agents.length <= 1 && agents.length > 0) {
-      // Single agent -- hide switcher, just show a subtle label
-      container.innerHTML = '';
-      return;
-    }
     container.innerHTML = '';
     for (const agent of agents) {
       const chip = document.createElement('button');
@@ -3033,6 +3028,12 @@ async function loadCronJobs() {
       const lastStatus = job.state?.lastRunStatus || job.state?.lastStatus;
       const dotClass = !lastStatus ? 'idle' : lastStatus === 'ok' ? 'ok' : 'err';
       const next = cronTimeUntil(job.state?.nextRunAtMs);
+      const lastRan = cronTimeAgo(job.state?.lastRunAtMs);
+      const schedule = job.schedule?.kind === 'every'
+        ? 'every ' + Math.round((job.schedule.everyMs || 0) / 60000) + 'm'
+        : job.schedule?.kind === 'cron'
+          ? (job.schedule.expr || '')
+          : '';
 
       item.innerHTML = `
         <div class="hud-tl-dot ${dotClass}"></div>
@@ -3042,6 +3043,16 @@ async function loadCronJobs() {
         </div>
         <button class="hud-tl-run" title="Run now" onclick="cronRunNow('${job.id}', this)">run</button>
       `;
+
+      // Expandable detail on click
+      const detail = document.createElement('div');
+      detail.className = 'hud-tl-detail';
+      detail.innerHTML = `${schedule}${lastRan ? ' · last ' + lastRan : ''}${lastStatus === 'error' ? ' · <span style="color:rgba(239,68,68,0.7)">failed</span>' : ''}`;
+      detail.style.display = 'none';
+      item.querySelector('.hud-tl-body').addEventListener('click', () => {
+        detail.style.display = detail.style.display === 'none' ? '' : 'none';
+      });
+      item.appendChild(detail);
       container.appendChild(item);
     }
   } catch (err) {

@@ -1347,21 +1347,30 @@
           </svg>
           <div class="hud-uptime-inner">
             <span class="hud-uptime-val" id="hud-uptime">--</span>
-            <span class="hud-uptime-label">uptime</span>
+            <span class="hud-uptime-label">running</span>
           </div>
         </div>
 
         <!-- ═══ Files ═══ -->
         <div class="hud-files-row" id="hud-file-list"></div>
 
-        <!-- ═══ Server ═══ -->
-        <div class="hud-section hud-collapsible" data-section="server">
-          <button class="hud-section-toggle" onclick="toggleSection('server')">
-            <span class="hud-section-label">Server</span>
+        <!-- ═══ Dark Mode (always visible) ═══ -->
+        <div class="hud-inline-setting">
+          <span class="hud-setting-name">Dark Mode</span>
+          <label class="hud-toggle">
+            <input type="checkbox" id="dash-darkmode" checked>
+            <span class="hud-toggle-track"></span>
+          </label>
+        </div>
+
+        <!-- ═══ Maintenance ═══ -->
+        <div class="hud-section hud-collapsible" data-section="maintenance">
+          <button class="hud-section-toggle" onclick="toggleSection('maintenance')">
+            <span class="hud-section-label">Maintenance</span>
             <span class="hud-section-chevron">›</span>
           </button>
           <div class="hud-section-body">
-            <div class="hud-server-warn">Changes here affect the live server. Proceed carefully.</div>
+            <div class="hud-server-warn">These actions affect the live server.</div>
             <div class="hud-server-actions">
               <button class="hud-server-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
                 <span class="hud-server-btn-label">Run diagnostics</span>
@@ -1373,24 +1382,7 @@
                 <span class="hud-server-btn-label">Check for updates</span>
               </button>
             </div>
-          </div>
-        </div>
-
-        <!-- ═══ Settings ═══ -->
-        <div class="hud-section hud-collapsible" data-section="settings">
-          <button class="hud-section-toggle" onclick="toggleSection('settings')">
-            <span class="hud-section-label">Settings</span>
-            <span class="hud-section-chevron">›</span>
-          </button>
-          <div class="hud-section-body">
-            <div class="hud-setting-row">
-              <span class="hud-setting-name">Dark Mode</span>
-              <label class="hud-toggle">
-                <input type="checkbox" id="dash-darkmode" checked>
-                <span class="hud-toggle-track"></span>
-              </label>
-            </div>
-            <div class="hud-setting-row">
+            <div class="hud-setting-row" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.03);padding-top:12px;">
               <span class="hud-setting-name">Voice Input</span>
               <label class="hud-toggle">
                 <input type="checkbox" id="dash-voice-toggle">
@@ -1406,9 +1398,9 @@
           </div>
         </div>
 
-        <!-- Disconnect -->
-        <div class="hud-footer">
-          <button class="hud-disconnect" id="dash-disconnect-btn">Disconnect</button>
+        <!-- Hidden disconnect (triggered by inline link) -->
+        <div style="display:none;">
+          <button id="dash-disconnect-btn">Disconnect</button>
         </div>
 
         <!-- Connect form (only when no credentials) -->

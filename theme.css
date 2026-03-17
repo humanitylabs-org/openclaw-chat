@@ -520,6 +520,16 @@
   flex-shrink: 0;
 }
 
+.hud-tl-body { cursor: pointer; }
+
+.hud-tl-detail {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  opacity: 0.4;
+  padding: 2px 0 4px 16px;
+}
+
 .hud-tl-run {
   background: none;
   border: none;
@@ -612,7 +622,17 @@
   color: var(--text-normal);
 }
 
-/* ── Server Section ──────────────────────────────────── */
+/* ── Inline Setting ──────────────────────────────────── */
+
+.hud-inline-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+/* ── Maintenance / Server Section ────────────────────── */
 
 .hud-server-warn {
   font-family: var(--font-sans);
