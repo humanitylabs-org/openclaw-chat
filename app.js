@@ -2609,7 +2609,7 @@ function updateDashboard() {
 
   // Show connect form or dashboard content
   const connectForm = document.getElementById('dash-connect-form');
-  const hudSections = document.querySelectorAll('#dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-uptime-wrap, #dashboard .hud-files-row, #dashboard .hud-actions, #dashboard .hud-section, #dashboard .hud-footer');
+  const hudSections = document.querySelectorAll('#dashboard .hud-switcher, #dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section');
   if (!state.gatewayUrl || !state.token) {
     if (connectForm) connectForm.style.display = '';
     hudSections.forEach(s => s.style.display = 'none');
@@ -2636,22 +2636,8 @@ async function fetchServerInfo() {
     loadAgentFiles();
     loadCronJobs();
 
-    // Uptime + Version + Update (from connect snapshot)
+    // Version + Update (from connect snapshot)
     const snap = state.snapshot || {};
-    const uptimeMs = snap.uptimeMs || 0;
-    const secs = Math.floor(uptimeMs / 1000);
-    const uptimeEl = document.getElementById('hud-uptime');
-    const arc = document.getElementById('hud-uptime-arc');
-    if (uptimeEl && secs > 0) {
-      if (secs < 3600) uptimeEl.textContent = Math.floor(secs / 60) + 'm';
-      else if (secs < 86400) uptimeEl.textContent = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
-      else uptimeEl.textContent = Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
-    }
-    if (arc && secs > 0) {
-      // Ring fills over 7 days
-      const pct = Math.min(secs / (7 * 86400), 1);
-      arc.style.strokeDashoffset = 220 - (220 * pct);
-    }
 
     // Version
     const vEl = document.getElementById('hud-version-val');
