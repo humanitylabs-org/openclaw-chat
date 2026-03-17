@@ -3089,6 +3089,62 @@ function cronFriendlyName(name) {
   return (name || 'unnamed').replace(/-/g, ' ');
 }
 
+function humanizeEvery(ms) {
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return 'every ' + mins + 'm';
+  const hrs = Math.round(mins / 60);
+  if (hrs === 1) return 'every hour';
+  return 'every ' + hrs + 'h';
+}
+
+function humanizeCron(expr) {
+  if (!expr) return '';
+  const parts = expr.trim().split(/\s+/);
+  if (parts.length < 5) return expr;
+  const [min, hour, dom, mon, dow] = parts;
+
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // Format time
+  let timeStr = '';
+  if (hour !== '*' && min !== '*') {
+    const h = parseInt(hour, 10);
+    const m = parseInt(min, 10);
+    const ampm = h >= 12 ? 'pm' : 'am';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    timeStr = h12 + (m > 0 ? ':' + String(m).padStart(2, '0') : '') + ampm;
+  }
+
+  // Specific days of week
+  if (dow !== '*' && dom === '*' && mon === '*') {
+    const dayList = dow.split(',').map(d => DAYS[parseInt(d, 10)] || d).join(', ');
+    return timeStr ? dayList + ' at ' + timeStr : dayList;
+  }
+
+  // Daily
+  if (dom === '*' && mon === '*' && dow === '*') {
+    if (timeStr) return 'daily at ' + timeStr;
+    if (hour === '*' && min !== '*') return 'every hour at :' + String(parseInt(min, 10)).padStart(2, '0');
+    return 'daily';
+  }
+
+  // Specific intervals in hour field like */4
+  if (hour.startsWith('*/')) {
+    const interval = parseInt(hour.slice(2), 10);
+    return 'every ' + interval + 'h';
+  }
+
+  // Comma-separated hours (e.g. "0 1,5,9,13,17,21 * * *")
+  if (hour.includes(',') && dom === '*' && mon === '*' && dow === '*') {
+    const hours = hour.split(',');
+    return hours.length + 'x daily' + (timeStr ? '' : '');
+  }
+
+  // Fallback: return something readable if we have time
+  if (timeStr) return 'at ' + timeStr;
+  return expr;
+}
+
 async function loadCronJobs() {
   const container = document.getElementById('hud-cron-list');
   if (!container || !state.gateway?.connected) return;
@@ -3113,9 +3169,9 @@ async function loadCronJobs() {
       const next = cronTimeUntil(job.state?.nextRunAtMs);
       const lastRan = cronTimeAgo(job.state?.lastRunAtMs);
       const schedule = job.schedule?.kind === 'every'
-        ? 'every ' + Math.round((job.schedule.everyMs || 0) / 60000) + 'm'
+        ? humanizeEvery(job.schedule.everyMs || 0)
         : job.schedule?.kind === 'cron'
-          ? (job.schedule.expr || '')
+          ? humanizeCron(job.schedule.expr || '')
           : '';
 
       // Status: only show if last run failed
