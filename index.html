@@ -1301,6 +1301,9 @@
     <div class="dashboard" id="dashboard">
       <div class="dashboard-scroll">
 
+        <!-- ═══ Agent Switcher ═══ -->
+        <div class="hud-switcher" id="hud-agent-switcher"></div>
+
         <!-- ═══ Identity ═══ -->
         <div class="hud-identity">
           <div class="hud-orb" id="hud-orb">
@@ -1309,6 +1312,10 @@
           </div>
           <div class="hud-agent-name" id="hud-agent-name">Agent</div>
           <div class="hud-status-line" id="hud-status-line">OFFLINE</div>
+          <div class="hud-version-line">
+            <span id="hud-version-val"></span>
+            <span class="hud-update-badge" id="hud-update-badge" style="display:none"></span>
+          </div>
         </div>
 
         <!-- Hidden elements for JS compat -->
@@ -1343,17 +1350,26 @@
         <!-- ═══ Files ═══ -->
         <div class="hud-files-row" id="hud-file-list"></div>
 
-        <!-- ═══ Actions ═══ -->
-        <div class="hud-actions">
-          <button class="hud-action" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')" title="Diagnostics">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0-4h18"/></svg>
+        <!-- ═══ Server ═══ -->
+        <div class="hud-section hud-collapsible" data-section="server">
+          <button class="hud-section-toggle" onclick="toggleSection('server')">
+            <span class="hud-section-label">Server</span>
+            <span class="hud-section-chevron">›</span>
           </button>
-          <button class="hud-action" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')" title="Restart">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>
-          </button>
-          <button class="hud-action" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')" title="Update">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </button>
+          <div class="hud-section-body">
+            <div class="hud-server-warn">Changes here affect the live server. Proceed carefully.</div>
+            <div class="hud-server-actions">
+              <button class="hud-server-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">
+                <span class="hud-server-btn-label">Run diagnostics</span>
+              </button>
+              <button class="hud-server-btn" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">
+                <span class="hud-server-btn-label">Restart gateway</span>
+              </button>
+              <button class="hud-server-btn" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">
+                <span class="hud-server-btn-label">Check for updates</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- ═══ Settings ═══ -->

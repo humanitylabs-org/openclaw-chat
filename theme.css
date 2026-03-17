@@ -273,6 +273,50 @@
 .dashboard-scroll::-webkit-scrollbar { width: 3px; }
 .dashboard-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
 
+/* ── Agent Switcher ───────────────────────────────────── */
+
+.hud-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 0 0;
+  flex-wrap: wrap;
+}
+.hud-switcher:empty { display: none; }
+
+.hud-agent-chip {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-faint);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.hud-agent-chip:hover {
+  border-color: rgba(255,255,255,0.15);
+  color: var(--text-muted);
+}
+.hud-agent-chip.active {
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text-normal);
+  background: rgba(255,255,255,0.06);
+}
+.hud-agent-chip-emoji { margin-right: 2px; }
+
+.hud-agent-add {
+  font-size: 14px;
+  font-weight: 300;
+  width: 28px;
+  padding: 4px;
+  text-align: center;
+  opacity: 0.4;
+}
+.hud-agent-add:hover { opacity: 0.8; }
+
 /* ── Identity (Orb + Name) ────────────────────────────── */
 
 .hud-identity {
@@ -342,6 +386,29 @@
 .hud-status-line.online {
   color: rgba(76,175,80,0.7);
   opacity: 1;
+}
+
+.hud-version-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  opacity: 0.35;
+}
+
+.hud-update-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: rgba(76,175,80,0.8);
+  background: rgba(76,175,80,0.08);
+  border: 1px solid rgba(76,175,80,0.15);
+  border-radius: 10px;
+  padding: 2px 8px;
+  cursor: default;
 }
 
 /* ── Next Up (hero card) ─────────────────────────────── */
@@ -431,14 +498,17 @@
 .hud-tl-run {
   background: none;
   border: none;
-  color: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.0);
+  font-family: var(--font-mono);
   font-size: 9px;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  padding: 4px;
-  transition: color 0.15s;
+  padding: 4px 6px;
+  transition: all 0.2s;
   flex-shrink: 0;
 }
-.hud-tl-run:hover { color: rgba(255,255,255,0.4); }
+.hud-tl-item:hover .hud-tl-run { color: rgba(255,255,255,0.2); }
+.hud-tl-run:hover { color: rgba(255,255,255,0.5) !important; }
 .hud-tl-run:disabled { opacity: 0.3; cursor: default; }
 
 /* ── Uptime Ring ─────────────────────────────────────── */
@@ -516,41 +586,44 @@
   color: var(--text-normal);
 }
 
-/* ── Action Buttons ──────────────────────────────────── */
+/* ── Server Section ──────────────────────────────────── */
 
-.hud-actions {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  padding: 16px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+.hud-server-warn {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-faint);
+  opacity: 0.5;
+  padding: 0 0 12px;
+  line-height: 1.4;
 }
 
-.hud-action {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.02);
+.hud-server-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hud-server-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
+  padding: 10px 12px;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
 }
-
-.hud-action:hover {
-  border-color: rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.05);
+.hud-server-btn:hover {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.08);
 }
 
-.hud-action svg {
-  width: 16px;
-  height: 16px;
-  stroke: var(--text-faint);
-  transition: stroke 0.15s;
+.hud-server-btn-label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
 }
-.hud-action:hover svg { stroke: var(--text-normal); }
 
 /* ── Alerts ────────────────────────────────────────────── */
 

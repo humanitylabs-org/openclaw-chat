@@ -2630,30 +2630,51 @@ async function fetchServerInfo() {
     const alerts = [];
 
     // Load dynamic sections
+    loadAgentSwitcher();
     loadAgentFiles();
     loadCronJobs();
 
-    // Uptime ring
+    // Uptime ring (computed from presence ts)
     try {
       const presence = await state.gateway.request('system-presence', {});
       const hosts = Array.isArray(presence) ? presence : (presence?.hosts || []);
-      if (hosts.length > 0) {
-        const h = hosts[0];
+      const gateway = hosts.find(h => h.mode === 'gateway');
+      if (gateway && gateway.ts) {
+        const secs = Math.floor((Date.now() - gateway.ts) / 1000);
         const uptimeEl = document.getElementById('hud-uptime');
         const arc = document.getElementById('hud-uptime-arc');
-        if (uptimeEl && h.uptime) {
-          const secs = h.uptime;
+        if (uptimeEl) {
           if (secs < 3600) uptimeEl.textContent = Math.floor(secs / 60) + 'm';
           else if (secs < 86400) uptimeEl.textContent = Math.floor(secs / 3600) + 'h';
           else uptimeEl.textContent = Math.floor(secs / 86400) + 'd';
-          // Ring fills based on 24h cycle
-          if (arc) {
-            const pct = Math.min(secs / 86400, 1);
-            arc.style.strokeDashoffset = 220 - (220 * pct);
-          }
+        }
+        if (arc) {
+          const pct = Math.min(secs / 86400, 1);
+          arc.style.strokeDashoffset = 220 - (220 * pct);
+        }
+        // Store version for update check
+        if (gateway.version) {
+          window._gatewayVersion = gateway.version;
+          const vEl = document.getElementById('hud-version-val');
+          if (vEl) vEl.textContent = gateway.version;
         }
       }
     } catch (e) { /* presence not available */ }
+
+    // Update check
+    try {
+      const resp = await fetch('https://registry.npmjs.org/openclaw/latest', { signal: AbortSignal.timeout(5000) });
+      if (resp.ok) {
+        const pkg = await resp.json();
+        const latest = pkg.version;
+        const current = window._gatewayVersion;
+        const updateEl = document.getElementById('hud-update-badge');
+        if (updateEl && latest && current && latest !== current) {
+          updateEl.style.display = '';
+          updateEl.textContent = latest + ' available';
+        }
+      }
+    } catch (e) { /* can't check */ }
 
     // Check for update (compare versions)
     if (currentVersion) {
@@ -2909,6 +2930,48 @@ async function loadChannels() {
 
 // ─── Cron Jobs List ───────────────────────────────────────────────
 
+// ─── Agent Switcher ───────────────────────────────────────────────
+
+async function loadAgentSwitcher() {
+  const container = document.getElementById('hud-agent-switcher');
+  if (!container || !state.gateway?.connected) return;
+
+  try {
+    const result = await state.gateway.request('agents.list', {});
+    const agents = result?.agents || [];
+    if (agents.length <= 1 && agents.length > 0) {
+      // Single agent -- hide switcher, just show a subtle label
+      container.innerHTML = '';
+      return;
+    }
+    container.innerHTML = '';
+    for (const agent of agents) {
+      const chip = document.createElement('button');
+      chip.className = 'hud-agent-chip' + (agent.id === (state.activeAgent?.id || result?.defaultId) ? ' active' : '');
+      chip.innerHTML = `<span class="hud-agent-chip-emoji">${agent.identity?.emoji || '🤖'}</span> ${agent.identity?.name || agent.id}`;
+      // TODO: switching agent would need session routing changes
+      container.appendChild(chip);
+    }
+    // Add "new agent" chip
+    const addChip = document.createElement('button');
+    addChip.className = 'hud-agent-chip hud-agent-add';
+    addChip.textContent = '+';
+    addChip.title = 'Create new agent';
+    addChip.addEventListener('click', () => {
+      closeDashboard();
+      const input = document.getElementById('message-input');
+      if (input) {
+        input.value = 'I want to create a new agent. Walk me through the setup.';
+        input.focus();
+        input.dispatchEvent(new Event('input'));
+      }
+    });
+    container.appendChild(addChip);
+  } catch (err) {
+    console.warn('agents.list failed:', err);
+  }
+}
+
 function cronTimeAgo(ms) {
   if (!ms) return '';
   const diff = Date.now() - ms;
@@ -2988,7 +3051,7 @@ async function loadCronJobs() {
           <span class="hud-tl-name">${cronFriendlyName(job.name)}</span>
           <span class="hud-tl-when">${next}</span>
         </div>
-        <button class="hud-tl-run" title="Run now" onclick="cronRunNow('${job.id}', this)">▶</button>
+        <button class="hud-tl-run" title="Run now" onclick="cronRunNow('${job.id}', this)">run</button>
       `;
       container.appendChild(item);
     }
