@@ -1339,10 +1339,6 @@
             <span class="hud-status-sep">·</span>
             <button class="hud-disconnect-link" id="hud-disconnect-inline" onclick="document.getElementById('dash-disconnect-btn')?.click()">disconnect</button>
           </div>
-          <div class="hud-version-line">
-            <span id="hud-version-val"></span>
-            <span class="hud-update-badge" id="hud-update-badge" style="display:none"></span>
-          </div>
           <!-- Agent dropdown (hidden by default) -->
           <div class="hud-agent-dropdown" id="hud-agent-dropdown"></div>
         </div>
@@ -1385,12 +1381,19 @@
               <input type="password" id="dash-openai-key" placeholder="sk-...">
             </div>
           </div>
-          <div class="hud-maint-row">
-            <button class="hud-maint-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">diagnostics</button>
-            <span class="hud-maint-sep">·</span>
-            <button class="hud-maint-btn" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">restart</button>
-            <span class="hud-maint-sep">·</span>
-            <button class="hud-maint-btn" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">update</button>
+          <div class="hud-server-section">
+            <div class="hud-server-version-row">
+              <span class="hud-server-label">SERVER</span>
+              <span class="hud-server-ver" id="hud-version-val"></span>
+              <span class="hud-update-badge" id="hud-update-badge" style="display:none"></span>
+            </div>
+            <div class="hud-maint-row">
+              <button class="hud-maint-btn" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">diagnostics</button>
+              <span class="hud-maint-sep">·</span>
+              <button class="hud-maint-btn" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">restart</button>
+              <span class="hud-maint-sep">·</span>
+              <button class="hud-maint-btn" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">update</button>
+            </div>
           </div>
         </div>
 

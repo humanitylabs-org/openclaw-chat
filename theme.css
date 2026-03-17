@@ -469,18 +469,6 @@
 }
 .hud-disconnect-link:hover { color: rgba(239,68,68,0.5); }
 
-.hud-version-line {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 6px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-faint);
-  opacity: 0.35;
-}
-
 .hud-update-badge {
   font-family: var(--font-mono);
   font-size: 9px;
@@ -489,7 +477,7 @@
   border: 1px solid rgba(76,175,80,0.15);
   border-radius: 10px;
   padding: 2px 8px;
-  cursor: default;
+  cursor: pointer;
 }
 
 /* ── Next Up (hero card) ─────────────────────────────── */
@@ -726,6 +714,37 @@
 .hud-maint-sep {
   font-size: 10px;
   color: rgba(255,255,255,0.06);
+}
+
+/* Server section (version + maintenance) */
+.hud-server-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.hud-server-version-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.hud-server-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--text-faint);
+  opacity: 0.3;
+}
+
+.hud-server-ver {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  opacity: 0.5;
 }
 
 /* ── Alerts ────────────────────────────────────────────── */
@@ -1384,6 +1403,11 @@
 [data-theme="light"] .hud-agent-dropdown-add { color: #999; }
 [data-theme="light"] .hud-agent-dropdown-add:hover { background: rgba(0,0,0,0.04); color: #666; }
 [data-theme="light"] .hud-agent-dropdown-add .add-icon { border-color: rgba(0,0,0,0.15); }
+[data-theme="light"] .hud-server-label { color: #999; }
+[data-theme="light"] .hud-server-ver { color: #999; }
+[data-theme="light"] .hud-maint-btn { color: rgba(0,0,0,0.2); }
+[data-theme="light"] .hud-maint-btn:hover { color: rgba(0,0,0,0.5); }
+[data-theme="light"] .hud-maint-sep { color: rgba(0,0,0,0.1); }
 [data-theme="light"] .hud-stats-bar { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.06); }
 [data-theme="light"] .hud-stat { background: rgba(0,0,0,0.01); }
 [data-theme="light"] .hud-file-card { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); }
