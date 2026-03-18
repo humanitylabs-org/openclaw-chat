@@ -279,6 +279,9 @@ const state = {
   reasoningLevel: "",  // off|on|stream
   verboseLevel: "",    // off|on|full
 
+  // Agent defaults (from config)
+  defaults: { model: "", thinking: "", verbose: "" },
+
   // Tabs
   tabSessions: [],
   renderingTabs: false,
@@ -456,6 +459,7 @@ async function startChat() {
   }
 
   updateConnectionStatus(true);
+  await loadDefaults();
   await loadAgents();
   await loadChatHistory();
   await renderTabs();
@@ -480,6 +484,23 @@ function updateConnectionStatus(connected) {
 
 
 // ─── Agent Management ────────────────────────────────────────────────
+
+async function loadDefaults() {
+  if (!state.gateway?.connected) return;
+  try {
+    const result = await state.gateway.request("config.get", {});
+    const cfg = result?.config || result || {};
+    const ad = cfg?.agents?.defaults || {};
+    const model = ad?.model?.primary || ad?.model || "";
+    const thinking = ad?.thinkingDefault || "";
+    const verbose = ad?.verboseDefault || "";
+    state.defaults = { model: typeof model === "string" ? model : "", thinking, verbose };
+    updateDefaultsPanel();
+    updateBarControls();
+  } catch (err) {
+    console.warn("Failed to load defaults:", err);
+  }
+}
 
 async function loadAgents() {
   if (!state.gateway?.connected) return;
@@ -1273,23 +1294,27 @@ const THINKING_CYCLE = ["", "off", "low", "medium", "high"];
 const REASONING_CYCLE = ["", "off", "on", "stream"];
 const VERBOSE_CYCLE = ["", "off", "on", "full"];
 
+function defaultLabel(defaultVal) {
+  return defaultVal ? "default (" + defaultVal + ")" : "default";
+}
+
 function updateBarControls() {
   const thinkEl = document.getElementById("bar-thinking");
   const reasonEl = document.getElementById("bar-reasoning");
   const verboseEl = document.getElementById("bar-verbose");
 
   if (thinkEl) {
-    const v = state.thinkingLevel || "inherit";
+    const v = state.thinkingLevel || defaultLabel(state.defaults.thinking);
     thinkEl.textContent = "think: " + v;
     thinkEl.classList.toggle("active", !!state.thinkingLevel);
   }
   if (reasonEl) {
-    const v = state.reasoningLevel || "inherit";
+    const v = state.reasoningLevel || "default";
     reasonEl.textContent = "reason: " + v;
     reasonEl.classList.toggle("active", !!state.reasoningLevel);
   }
   if (verboseEl) {
-    const v = state.verboseLevel || "inherit";
+    const v = state.verboseLevel || defaultLabel(state.defaults.verbose);
     verboseEl.textContent = "verbose: " + v;
     verboseEl.classList.toggle("active", !!state.verboseLevel);
   }
@@ -3210,6 +3235,28 @@ async function loadCronJobs() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────
+
+function updateDefaultsPanel() {
+  const el = document.getElementById("hud-defaults-panel");
+  if (!el) return;
+  const d = state.defaults;
+  const model = d.model ? shortModelName(d.model) : "—";
+  const think = d.thinking || "—";
+  const verbose = d.verbose || "—";
+  el.innerHTML =
+    '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">Model</span>' +
+      '<span class="hud-defaults-value">' + model + '</span>' +
+    '</div>' +
+    '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">Think</span>' +
+      '<span class="hud-defaults-value">' + think + '</span>' +
+    '</div>' +
+    '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">Verbose</span>' +
+      '<span class="hud-defaults-value">' + verbose + '</span>' +
+    '</div>';
+}
 
 function loadDashSettings() {
   const settings = JSON.parse(localStorage.getItem('dashSettings') || '{}');

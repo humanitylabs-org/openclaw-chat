@@ -1257,7 +1257,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=16">
+  <link rel="stylesheet" href="/theme.css?v=17">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1358,6 +1358,17 @@
 
         <!-- ═══ Schedule ═══ -->
         <div class="hud-timeline" id="hud-cron-list"></div>
+
+        <!-- ═══ Defaults ═══ -->
+        <div class="hud-section hud-collapsible" data-section="defaults" onclick="toggleSection('defaults')">
+          <div class="hud-section-header">
+            <div class="hud-section-label">DEFAULTS</div>
+            <span class="hud-section-chevron">›</span>
+          </div>
+          <div class="hud-section-body" onclick="event.stopPropagation()">
+            <div id="hud-defaults-panel" class="hud-defaults-panel"></div>
+          </div>
+        </div>
 
         <!-- ═══ Bottom controls ═══ -->
         <div class="hud-bottom">
@@ -1508,7 +1519,7 @@
 
   </div>
 
-  <script src="/app.js?v=31"></script>
+  <script src="/app.js?v=32"></script>
   <script>
     // Landing page logic
     (function() {
