@@ -1268,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=26">
+  <link rel="stylesheet" href="/theme.css?v=27">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1402,24 +1402,23 @@
 
           <!-- Text-to-Speech (server-side TTS) -->
           <div class="hud-speech-section">
-            <div class="hud-speech-header">
-              <span class="hud-speech-label">Text-to-Speech</span>
-              <select class="hud-speech-select" id="dash-tts-mode">
-                <option value="off">off</option>
-                <option value="always">always</option>
-                <option value="inbound">inbound</option>
-                <option value="tagged">tagged</option>
-              </select>
+            <div class="hud-speech-label">Text-to-Speech</div>
+            <div class="hud-tts-modes" id="dash-tts-modes">
+              <button class="hud-tts-chip active" data-tts="off">off</button>
+              <button class="hud-tts-chip" data-tts="always">always</button>
+              <button class="hud-tts-chip" data-tts="inbound">inbound</button>
+              <button class="hud-tts-chip" data-tts="tagged">tagged</button>
             </div>
             <div class="hud-speech-body" id="dash-tts-config" style="display:none">
-              <div class="dash-field" style="margin:0;width:100%;">
-                <label>Provider</label>
-                <select class="hud-speech-select hud-speech-select-full" id="dash-tts-provider">
-                  <option value="edge">Edge (free, no key)</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="elevenlabs">ElevenLabs</option>
-                </select>
+              <div class="hud-tts-provider-row">
+                <span class="hud-speech-sublabel">Provider</span>
+                <div class="hud-tts-modes" id="dash-tts-providers">
+                  <button class="hud-tts-chip active" data-provider="edge">Edge</button>
+                  <button class="hud-tts-chip" data-provider="openai">OpenAI</button>
+                  <button class="hud-tts-chip" data-provider="elevenlabs">ElevenLabs</button>
+                </div>
               </div>
+              <div class="hud-tts-provider-hint" id="dash-tts-provider-hint">Free, no API key needed</div>
               <div class="dash-field" id="dash-tts-key-row" style="margin:0;width:100%;display:none;">
                 <label id="dash-tts-key-label">API Key</label>
                 <input type="password" id="dash-tts-key" placeholder="sk-...">
@@ -1567,7 +1566,7 @@
 
   </div>
 
-  <script src="/app.js?v=43"></script>
+  <script src="/app.js?v=44"></script>
   <script>
     // Landing page logic
     (function() {

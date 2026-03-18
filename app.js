@@ -3431,37 +3431,40 @@ function loadDashSettings() {
 }
 
 function loadTTSSettings() {
-  const modeEl = document.getElementById('dash-tts-mode');
-  const providerEl = document.getElementById('dash-tts-provider');
-  const ttsConfig = document.getElementById('dash-tts-config');
-  const ttsKeyRow = document.getElementById('dash-tts-key-row');
-  const ttsKey = document.getElementById('dash-tts-key');
-  const ttsKeyLabel = document.getElementById('dash-tts-key-label');
-  
   const tts = state.ttsConfig || {};
+  const mode = tts.auto || 'off';
+  const provider = tts.provider || 'edge';
   
-  if (modeEl) {
-    modeEl.value = tts.auto || 'off';
-    if (ttsConfig) ttsConfig.style.display = (tts.auto && tts.auto !== 'off') ? '' : 'none';
-  }
-  if (providerEl) {
-    providerEl.value = tts.provider || 'edge';
-  }
-  updateTTSKeyVisibility();
+  // Highlight active mode chip
+  document.querySelectorAll('#dash-tts-modes .hud-tts-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.tts === mode);
+  });
+  
+  // Show config body when not off
+  const ttsConfig = document.getElementById('dash-tts-config');
+  if (ttsConfig) ttsConfig.style.display = (mode !== 'off') ? '' : 'none';
+  
+  // Highlight active provider chip
+  document.querySelectorAll('#dash-tts-providers .hud-tts-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.provider === provider);
+  });
+  
+  updateTTSProviderUI(provider);
 }
 
-function updateTTSKeyVisibility() {
-  const provider = document.getElementById('dash-tts-provider')?.value || 'edge';
+function updateTTSProviderUI(provider) {
   const ttsKeyRow = document.getElementById('dash-tts-key-row');
-  const ttsKey = document.getElementById('dash-tts-key');
   const ttsKeyLabel = document.getElementById('dash-tts-key-label');
+  const ttsKey = document.getElementById('dash-tts-key');
+  const hint = document.getElementById('dash-tts-provider-hint');
   
   if (provider === 'edge') {
     if (ttsKeyRow) ttsKeyRow.style.display = 'none';
+    if (hint) { hint.style.display = ''; hint.textContent = 'Free, no API key needed'; }
   } else {
     if (ttsKeyRow) ttsKeyRow.style.display = '';
     if (ttsKeyLabel) ttsKeyLabel.textContent = provider === 'openai' ? 'OpenAI API Key' : 'ElevenLabs API Key';
-    // Load saved key from state
+    if (hint) hint.style.display = 'none';
     const tts = state.ttsConfig || {};
     const savedKey = provider === 'openai' ? (tts.openaiKey || '') : (tts.elevenlabsKey || '');
     if (ttsKey) ttsKey.value = savedKey;
@@ -3486,10 +3489,15 @@ function saveDashSettings() {
   applyDashSettings(settings);
 }
 
-async function saveTTSMode() {
-  const mode = document.getElementById('dash-tts-mode')?.value || 'off';
+async function saveTTSMode(mode) {
+  // Update UI
+  document.querySelectorAll('#dash-tts-modes .hud-tts-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.tts === mode);
+  });
   const ttsConfig = document.getElementById('dash-tts-config');
-  if (ttsConfig) ttsConfig.style.display = (mode && mode !== 'off') ? '' : 'none';
+  if (ttsConfig) ttsConfig.style.display = (mode !== 'off') ? '' : 'none';
+  
+  state.ttsConfig = { ...(state.ttsConfig || {}), auto: mode };
   
   // Send /tts command for session-level change
   if (state.gateway?.connected) {
@@ -3504,9 +3512,14 @@ async function saveTTSMode() {
   }
 }
 
-async function saveTTSProvider() {
-  const provider = document.getElementById('dash-tts-provider')?.value || 'edge';
-  updateTTSKeyVisibility();
+async function saveTTSProvider(provider) {
+  // Update UI
+  document.querySelectorAll('#dash-tts-providers .hud-tts-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.provider === provider);
+  });
+  updateTTSProviderUI(provider);
+  
+  state.ttsConfig = { ...(state.ttsConfig || {}), provider };
   
   // Save provider to gateway config
   if (state.gateway?.connected) {
@@ -3515,7 +3528,6 @@ async function saveTTSProvider() {
       const hash = getResult?.hash || "";
       const raw = JSON.stringify({ messages: { tts: { provider: provider } } });
       await state.gateway.request("config.patch", { raw, baseHash: hash });
-      state.ttsConfig = { ...(state.ttsConfig || {}), provider };
     } catch (err) { console.warn("Failed to save TTS provider:", err); }
   }
 }
@@ -3758,9 +3770,14 @@ function closeDashboard() {
   });
   document.getElementById('dash-openai-key')?.addEventListener('change', saveDashSettings);
   
-  // TTS controls
-  document.getElementById('dash-tts-mode')?.addEventListener('change', saveTTSMode);
-  document.getElementById('dash-tts-provider')?.addEventListener('change', saveTTSProvider);
+  // TTS mode chips
+  document.querySelectorAll('#dash-tts-modes .hud-tts-chip').forEach(chip => {
+    chip.addEventListener('click', () => saveTTSMode(chip.dataset.tts));
+  });
+  // TTS provider chips
+  document.querySelectorAll('#dash-tts-providers .hud-tts-chip').forEach(chip => {
+    chip.addEventListener('click', () => saveTTSProvider(chip.dataset.provider));
+  });
   document.getElementById('dash-tts-key')?.addEventListener('change', saveTTSKey);
 
   // Apply saved settings on load
