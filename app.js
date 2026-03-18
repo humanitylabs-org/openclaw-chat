@@ -1326,9 +1326,11 @@ function updateBarControls() {
     thinkEl.classList.toggle("active", !!state.thinkingLevel);
   }
   if (reasonEl) {
-    const v = state.reasoningLevel || defaultLabel(state.defaults.reasoning, "reasoning");
-    reasonEl.textContent = "reason: " + v;
-    reasonEl.classList.toggle("active", !!state.reasoningLevel);
+    // Reasoning is a toggle-style chip: just show the mode, highlight when on
+    const level = state.reasoningLevel || "";
+    const isOn = level === "on" || level === "stream";
+    reasonEl.textContent = isOn ? (level === "stream" ? "reasoning ⚡" : "reasoning ●") : "reasoning";
+    reasonEl.classList.toggle("active", isOn);
   }
   if (verboseEl) {
     const v = state.verboseLevel || defaultLabel(state.defaults.verbose, "verbose");
@@ -1363,14 +1365,16 @@ document.getElementById("bar-reasoning")?.addEventListener("click", () =>
 document.getElementById("bar-verbose")?.addEventListener("click", () =>
   cycleBarControl("verboseLevel", VERBOSE_CYCLE));
 
-async function openModelPicker() {
+async function openModelPicker(opts = {}) {
+  // opts.current: current model id, opts.onSelect: callback(fullId, modal)
+  // If no onSelect, uses default session model switch behavior
   let models = [];
   try {
     const result = await state.gateway?.request("models.list", {});
     models = result?.models || [];
   } catch { models = []; }
 
-  let currentModel = state.currentModel || "";
+  let currentModel = opts.current || state.currentModel || "";
   if (currentModel && !currentModel.includes("/")) {
     const match = models.find(m => m.id === currentModel);
     if (match) currentModel = `${match.provider}/${match.id}`;
@@ -1394,10 +1398,12 @@ async function openModelPicker() {
   const box = document.createElement("div");
   box.className = "modal";
 
+  const onSelect = opts.onSelect || null;
+
   if (providers.length > 1) {
-    renderProviderList(box, providerMap, currentModel, currentProvider, modal);
+    renderProviderList(box, providerMap, currentModel, currentProvider, modal, onSelect);
   } else if (providers.length === 1) {
-    renderModelList(box, providerMap.get(providers[0]), providers[0], currentModel, modal, null);
+    renderModelList(box, providerMap.get(providers[0]), providers[0], currentModel, modal, null, onSelect);
   } else {
     box.innerHTML = "<h3>No models available</h3>";
   }
@@ -1406,7 +1412,7 @@ async function openModelPicker() {
   document.body.appendChild(modal);
 }
 
-function renderProviderList(box, providerMap, currentModel, currentProvider, modal) {
+function renderProviderList(box, providerMap, currentModel, currentProvider, modal, onSelect) {
   box.innerHTML = "<h3>Select Provider</h3>";
   const list = document.createElement("div");
   list.className = "openclaw-picker-list";
@@ -1427,7 +1433,7 @@ function renderProviderList(box, providerMap, currentModel, currentProvider, mod
     `;
     row.addEventListener("click", () => {
       box.innerHTML = "";
-      renderModelList(box, models, provider, currentModel, modal, providerMap);
+      renderModelList(box, models, provider, currentModel, modal, providerMap, onSelect);
     });
     list.appendChild(row);
   }
@@ -1439,7 +1445,7 @@ function renderProviderList(box, providerMap, currentModel, currentProvider, mod
   box.appendChild(footer);
 }
 
-function renderModelList(box, models, provider, currentModel, modal, providerMap) {
+function renderModelList(box, models, provider, currentModel, modal, providerMap, onSelect) {
   box.innerHTML = "";
 
   if (providerMap && providerMap.size > 1) {
@@ -1449,7 +1455,7 @@ function renderModelList(box, models, provider, currentModel, modal, providerMap
     backBtn.addEventListener("click", () => {
       box.innerHTML = "";
       const currentProvider = currentModel.includes("/") ? currentModel.split("/")[0] : "";
-      renderProviderList(box, providerMap, currentModel, currentProvider, modal);
+      renderProviderList(box, providerMap, currentModel, currentProvider, modal, onSelect);
     });
     box.appendChild(backBtn);
   }
@@ -1469,6 +1475,11 @@ function renderModelList(box, models, provider, currentModel, modal, providerMap
       </div>
     `;
     row.addEventListener("click", async () => {
+      if (onSelect) {
+        // Custom callback (e.g. for defaults panel)
+        onSelect(fullId, modal);
+        return;
+      }
       if (!state.gateway?.connected) return;
       row.className = "openclaw-picker-row openclaw-picker-selecting";
       row.textContent = "Switching...";
@@ -3245,9 +3256,9 @@ async function loadCronJobs() {
 
 // ─── Settings ─────────────────────────────────────────────────────
 
-const DEFAULT_CYCLES = {
-  thinking: ["", "off", "low", "medium", "high"],
-  verbose: ["", "off", "on", "full"],
+const DEFAULT_OPTIONS = {
+  thinking: ["not set", "off", "low", "medium", "high"],
+  verbose: ["not set", "off", "on", "full"],
 };
 
 function updateDefaultsPanel() {
@@ -3258,26 +3269,33 @@ function updateDefaultsPanel() {
   if (section) section.style.display = d.model ? "" : "none";
   if (!d.model) return;
   
-  function renderVal(key, label) {
+  const pendingModel = pendingDefaults.model;
+  const modelDisplay = shortModelName(pendingModel || d.model);
+  const modelPending = pendingModel && pendingModel !== d.model;
+  
+  function renderSelect(key, label) {
     const isPending = key in pendingDefaults;
-    const val = isPending ? pendingDefaults[key] : d[key];
-    const display = val || "not set";
-    const classes = ['hud-defaults-value', 'hud-defaults-editable'];
-    if (!val) classes.push('hud-defaults-unset');
-    if (isPending) classes.push('hud-defaults-pending');
+    const current = isPending ? (pendingDefaults[key] || "") : (d[key] || "");
+    const options = DEFAULT_OPTIONS[key];
+    const optionsHtml = options.map(opt => {
+      const val = opt === "not set" ? "" : opt;
+      const selected = val === current ? ' selected' : '';
+      return '<option value="' + val + '"' + selected + '>' + opt + '</option>';
+    }).join('');
+    const cls = isPending ? ' hud-defaults-pending' : '';
     return '<div class="hud-defaults-row">' +
       '<span class="hud-defaults-label">' + label + '</span>' +
-      '<span class="' + classes.join(' ') + '" data-default-key="' + key + '">' + display + '</span>' +
+      '<select class="hud-defaults-select' + cls + '" data-default-key="' + key + '">' + optionsHtml + '</select>' +
     '</div>';
   }
   
   let html =
     '<div class="hud-defaults-row">' +
       '<span class="hud-defaults-label">Model</span>' +
-      '<span class="hud-defaults-value">' + shortModelName(d.model) + '</span>' +
+      '<span class="hud-defaults-value hud-defaults-editable' + (modelPending ? ' hud-defaults-pending' : '') + '" id="hud-default-model">' + modelDisplay + '</span>' +
     '</div>' +
-    renderVal("thinking", "Think") +
-    renderVal("verbose", "Verbose");
+    renderSelect("thinking", "Think") +
+    renderSelect("verbose", "Verbose");
   
   if (hasPendingDefaults()) {
     html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">restart to apply</button>';
@@ -3285,34 +3303,37 @@ function updateDefaultsPanel() {
   
   el.innerHTML = html;
   
-  // Wire up click-to-cycle on editable values
-  el.querySelectorAll('.hud-defaults-editable').forEach(valEl => {
-    valEl.addEventListener('click', () => cycleDefault(valEl));
+  // Wire up model click
+  document.getElementById("hud-default-model")?.addEventListener("click", () => {
+    openModelPicker({
+      current: pendingDefaults.model || d.model,
+      onSelect: (fullId, modal) => {
+        if (fullId === d.model) {
+          delete pendingDefaults.model;
+        } else {
+          pendingDefaults.model = fullId;
+        }
+        updateDefaultsPanel();
+        modal.remove();
+      }
+    });
   });
-}
-
-// Pending default changes (not yet applied)
-const pendingDefaults = {};
-
-function cycleDefault(valEl) {
-  const key = valEl.dataset.defaultKey;
-  const cycle = DEFAULT_CYCLES[key];
-  if (!cycle) return;
   
-  // Use pending value if exists, otherwise current
-  const current = (key in pendingDefaults) ? pendingDefaults[key] : (state.defaults[key] || "");
-  const idx = cycle.indexOf(current);
-  const next = cycle[(idx + 1) % cycle.length];
+  // Wire up select pickers
+  el.querySelectorAll('.hud-defaults-select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const key = sel.dataset.defaultKey;
+      const val = sel.value;
   
-  // If same as original, remove from pending
-  if (next === (state.defaults[key] || "")) {
-    delete pendingDefaults[key];
-  } else {
-    pendingDefaults[key] = next;
-  }
-  
-  updateDefaultsPanel();
-  updateBarControls();
+      if (val === (state.defaults[key] || "")) {
+        delete pendingDefaults[key];
+      } else {
+        pendingDefaults[key] = val;
+      }
+      updateDefaultsPanel();
+      updateBarControls();
+    });
+  });
 }
 
 function hasPendingDefaults() {
@@ -3341,6 +3362,10 @@ async function applyPendingDefaults() {
     const patch = {};
     for (const [key, val] of Object.entries(pendingDefaults)) {
       if (configKeys[key]) patch[configKeys[key]] = val || null;
+    }
+    // Handle model change
+    if (pendingDefaults.model) {
+      patch.model = { primary: pendingDefaults.model };
     }
     
     const raw = JSON.stringify({ agents: { defaults: patch } });

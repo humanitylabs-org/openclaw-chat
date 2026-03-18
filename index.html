@@ -1227,6 +1227,17 @@
       color: var(--text-muted);
       background: rgba(128,128,128,0.08);
     }
+    .openclaw-model-bar .bar-chip-toggle {
+      border: 1px solid rgba(128,128,128,0.15);
+      border-radius: 10px;
+      padding: 2px 10px;
+      font-size: 11px;
+    }
+    .openclaw-model-bar .bar-chip-toggle.active {
+      color: var(--accent, #4a9eff);
+      background: rgba(74,158,255,0.1);
+      border-color: rgba(74,158,255,0.25);
+    }
 
     /* Mobile adjustments */
     @media (max-width: 768px) {
@@ -1257,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=22">
+  <link rel="stylesheet" href="/theme.css?v=23">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1507,9 +1518,9 @@
         <div class="openclaw-model-bar">
           <span class="openclaw-model-label" id="model-label" title="Click to change model"></span>
           <span class="bar-sep">·</span>
-          <span class="bar-chip" id="bar-thinking" title="Thinking level">think: off</span>
+          <span class="bar-chip bar-chip-toggle" id="bar-reasoning" title="Reasoning mode (session only)">reasoning</span>
           <span class="bar-sep">·</span>
-          <span class="bar-chip" id="bar-reasoning" title="Reasoning mode">reason: off</span>
+          <span class="bar-chip" id="bar-thinking" title="Thinking level">think: off</span>
           <span class="bar-sep">·</span>
           <span class="bar-chip" id="bar-verbose" title="Verbose mode">verbose: off</span>
           <span class="bar-sep" id="bar-dock-sep" style="display:none">·</span>
@@ -1529,7 +1540,7 @@
 
   </div>
 
-  <script src="/app.js?v=38"></script>
+  <script src="/app.js?v=39"></script>
   <script>
     // Landing page logic
     (function() {
