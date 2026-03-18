@@ -3412,8 +3412,8 @@ async function applyPendingDefaults() {
 function loadDashSettings() {
   const settings = JSON.parse(localStorage.getItem('dashSettings') || '{}');
 
-  const darkToggle = document.getElementById('dash-darkmode');
-  if (darkToggle) darkToggle.checked = settings.darkMode !== false;
+  // Theme
+  applyDashSettings(settings);
 
   // STT (Speech-to-Text)
   const sttToggle = document.getElementById('dash-stt-toggle');
@@ -3523,7 +3523,7 @@ async function applyTTSConfig() {
 
 function saveDashSettings() {
   const settings = {
-    darkMode: document.getElementById('dash-darkmode')?.checked !== false,
+    darkMode: !document.documentElement.getAttribute('data-theme'),
     voiceInput: document.getElementById('dash-stt-toggle')?.checked || false,
     openaiKey: document.getElementById('dash-openai-key')?.value || '',
   };
@@ -3561,11 +3561,28 @@ function onTTSKeyChange() {
   markTTSPending('apiKey', document.getElementById('dash-tts-key')?.value || '');
 }
 
-function applyDashSettings(settings) {
-  if (settings.darkMode === false) {
+function setTheme(theme) {
+  if (theme === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
   } else {
     document.documentElement.removeAttribute('data-theme');
+  }
+  document.getElementById('dash-theme-dark')?.classList.toggle('active', theme !== 'light');
+  document.getElementById('dash-theme-light')?.classList.toggle('active', theme === 'light');
+  const settings = JSON.parse(localStorage.getItem('dashSettings') || '{}');
+  settings.darkMode = theme !== 'light';
+  localStorage.setItem('dashSettings', JSON.stringify(settings));
+}
+
+function applyDashSettings(settings) {
+  if (settings.darkMode === false) {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.getElementById('dash-theme-dark')?.classList.remove('active');
+    document.getElementById('dash-theme-light')?.classList.add('active');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    document.getElementById('dash-theme-dark')?.classList.add('active');
+    document.getElementById('dash-theme-light')?.classList.remove('active');
   }
 }
 
@@ -3763,8 +3780,6 @@ function closeDashboard() {
   });
 
   // Settings change listeners
-  document.getElementById('dash-darkmode')?.addEventListener('change', saveDashSettings);
-  
   // STT toggle
   document.getElementById('dash-stt-toggle')?.addEventListener('change', () => {
     const sttConfig = document.getElementById('dash-stt-config');

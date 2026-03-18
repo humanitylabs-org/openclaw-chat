@@ -955,44 +955,20 @@
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.hud-audio-section {
-  width: 100%;
-  padding: 8px 0;
-  border-top: 1px solid rgba(255,255,255,0.04);
-}
-.hud-audio-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.hud-audio-label {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-.hud-audio-sublabel {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  color: var(--text-faint);
-  white-space: nowrap;
-}
-.hud-audio-input {
-  width: 100%;
+.hud-settings-input {
   font-family: var(--font-mono, monospace);
   font-size: 11px;
   color: var(--text-muted);
   background: rgba(128,128,128,0.06);
   border: 1px solid rgba(128,128,128,0.1);
   border-radius: 4px;
-  padding: 5px 8px;
-  margin-top: 6px;
+  padding: 3px 8px;
   outline: none;
+  width: 140px;
+  text-align: right;
   transition: border-color 0.15s;
 }
-.hud-audio-input:focus { border-color: rgba(128,128,128,0.3); }
+.hud-settings-input:focus { border-color: rgba(128,128,128,0.3); }
 .hud-chip-group {
   display: flex;
   gap: 3px;
@@ -1018,11 +994,8 @@
   background: rgba(74,158,255,0.1);
   border-color: rgba(74,158,255,0.25);
 }
-[data-theme="light"] .hud-audio-section { border-top-color: rgba(0,0,0,0.06); }
-[data-theme="light"] .hud-audio-label { color: #444; }
-[data-theme="light"] .hud-audio-sublabel { color: #888; }
-[data-theme="light"] .hud-audio-input { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.1); color: #333; }
-[data-theme="light"] .hud-audio-input:focus { border-color: rgba(0,0,0,0.2); }
+[data-theme="light"] .hud-settings-input { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.1); color: #333; }
+[data-theme="light"] .hud-settings-input:focus { border-color: rgba(0,0,0,0.2); }
 [data-theme="light"] .hud-chip { border-color: rgba(0,0,0,0.1); color: #888; }
 [data-theme="light"] .hud-chip:hover { background: rgba(0,0,0,0.05); color: #555; }
 [data-theme="light"] .hud-chip.active { color: #2563eb; background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.2); }

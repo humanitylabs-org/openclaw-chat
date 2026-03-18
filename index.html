@@ -1268,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=28">
+  <link rel="stylesheet" href="/theme.css?v=29">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1379,50 +1379,56 @@
 
         <!-- ═══ Bottom controls ═══ -->
         <div class="hud-bottom">
-          <div class="hud-bottom-row">
-            <label class="hud-toggle-inline">
-              <span>Dark mode</span>
-              <label class="hud-toggle"><input type="checkbox" id="dash-darkmode" checked><span class="hud-toggle-track"></span></label>
-            </label>
-          </div>
-
-          <!-- Speech-to-Text (client-side Whisper) -->
-          <div class="hud-audio-section">
-            <div class="hud-audio-row">
-              <span class="hud-audio-label">Speech-to-Text</span>
-              <label class="hud-toggle"><input type="checkbox" id="dash-stt-toggle"><span class="hud-toggle-track"></span></label>
-            </div>
-            <div id="dash-stt-config" style="display:none">
-              <input type="password" class="hud-audio-input" id="dash-openai-key" placeholder="OpenAI API key">
-            </div>
-          </div>
-
-          <!-- Text-to-Speech (server-side, config.patch) -->
-          <div class="hud-audio-section">
-            <div class="hud-audio-row">
-              <span class="hud-audio-label">Text-to-Speech</span>
-              <div class="hud-chip-group" id="dash-tts-modes">
-                <button class="hud-chip active" data-tts="off">off</button>
-                <button class="hud-chip" data-tts="always">always</button>
-                <button class="hud-chip" data-tts="inbound">inbound</button>
-                <button class="hud-chip" data-tts="tagged">tagged</button>
-              </div>
-            </div>
-            <div id="dash-tts-config" style="display:none">
-              <div class="hud-audio-row" style="margin-top:6px">
-                <span class="hud-audio-sublabel">Provider</span>
-                <div class="hud-chip-group" id="dash-tts-providers">
-                  <button class="hud-chip active" data-provider="edge">Edge</button>
-                  <button class="hud-chip" data-provider="openai">OpenAI</button>
-                  <button class="hud-chip" data-provider="elevenlabs">ElevenLabs</button>
+          <!-- ═══ Settings ═══ -->
+          <div class="hud-section" style="padding-top:6px">
+            <div class="hud-section-label" style="padding:4px 0 8px">SETTINGS</div>
+            <div class="hud-defaults-panel">
+              <div class="hud-defaults-row">
+                <span class="hud-defaults-label">Theme</span>
+                <div class="hud-chip-group">
+                  <button class="hud-chip active" id="dash-theme-dark" onclick="setTheme('dark')">dark</button>
+                  <button class="hud-chip" id="dash-theme-light" onclick="setTheme('light')">light</button>
                 </div>
               </div>
-              <div id="dash-tts-key-row" style="display:none;margin-top:6px">
-                <input type="password" class="hud-audio-input" id="dash-tts-key" placeholder="API key">
+              <div class="hud-defaults-row">
+                <span class="hud-defaults-label">Dictation</span>
+                <label class="hud-toggle"><input type="checkbox" id="dash-stt-toggle"><span class="hud-toggle-track"></span></label>
               </div>
-              <button class="hud-defaults-apply" id="dash-tts-apply" style="display:none" onclick="applyTTSConfig()">restart to apply</button>
+              <div id="dash-stt-config" style="display:none">
+                <div class="hud-defaults-row">
+                  <span class="hud-defaults-label" style="text-transform:none;letter-spacing:0">OpenAI key</span>
+                  <input type="password" class="hud-settings-input" id="dash-openai-key" placeholder="sk-...">
+                </div>
+              </div>
+              <div class="hud-defaults-row">
+                <span class="hud-defaults-label">Read aloud</span>
+                <div class="hud-chip-group" id="dash-tts-modes">
+                  <button class="hud-chip active" data-tts="off">off</button>
+                  <button class="hud-chip" data-tts="always">always</button>
+                  <button class="hud-chip" data-tts="inbound">inbound</button>
+                  <button class="hud-chip" data-tts="tagged">tagged</button>
+                </div>
+              </div>
+              <div id="dash-tts-config" style="display:none">
+                <div class="hud-defaults-row">
+                  <span class="hud-defaults-label" style="text-transform:none;letter-spacing:0">Provider</span>
+                  <div class="hud-chip-group" id="dash-tts-providers">
+                    <button class="hud-chip active" data-provider="edge">Edge</button>
+                    <button class="hud-chip" data-provider="openai">OpenAI</button>
+                    <button class="hud-chip" data-provider="elevenlabs">ElevenLabs</button>
+                  </div>
+                </div>
+                <div id="dash-tts-key-row" style="display:none">
+                  <div class="hud-defaults-row">
+                    <span class="hud-defaults-label" style="text-transform:none;letter-spacing:0">API key</span>
+                    <input type="password" class="hud-settings-input" id="dash-tts-key" placeholder="sk-...">
+                  </div>
+                </div>
+                <button class="hud-defaults-apply" id="dash-tts-apply" style="display:none" onclick="applyTTSConfig()">restart to apply</button>
+              </div>
             </div>
           </div>
+
           <div class="hud-server-section">
             <span class="hud-server-ver" id="hud-version-val"></span>
             <div class="hud-server-row">
@@ -1564,7 +1570,7 @@
 
   </div>
 
-  <script src="/app.js?v=45"></script>
+  <script src="/app.js?v=46"></script>
   <script>
     // Landing page logic
     (function() {
