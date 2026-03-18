@@ -1268,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=25">
+  <link rel="stylesheet" href="/theme.css?v=26">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1381,18 +1381,49 @@
         <div class="hud-bottom">
           <div class="hud-bottom-row">
             <label class="hud-toggle-inline">
-              <span>Dark</span>
+              <span>Dark mode</span>
               <label class="hud-toggle"><input type="checkbox" id="dash-darkmode" checked><span class="hud-toggle-track"></span></label>
             </label>
-            <label class="hud-toggle-inline">
-              <span>Voice</span>
-              <label class="hud-toggle"><input type="checkbox" id="dash-voice-toggle"><span class="hud-toggle-track"></span></label>
-            </label>
           </div>
-          <div class="hud-voice-key" id="dash-voice-key-row" style="display:none;">
-            <div class="dash-field" style="margin:0;width:100%;">
-              <label>OpenAI API Key</label>
-              <input type="password" id="dash-openai-key" placeholder="sk-...">
+
+          <!-- Speech-to-Text (client-side Whisper) -->
+          <div class="hud-speech-section">
+            <div class="hud-speech-header">
+              <span class="hud-speech-label">Speech-to-Text</span>
+              <label class="hud-toggle"><input type="checkbox" id="dash-stt-toggle"><span class="hud-toggle-track"></span></label>
+            </div>
+            <div class="hud-speech-body" id="dash-stt-config" style="display:none">
+              <div class="dash-field" style="margin:0;width:100%;">
+                <label>OpenAI API Key</label>
+                <input type="password" id="dash-openai-key" placeholder="sk-...">
+              </div>
+            </div>
+          </div>
+
+          <!-- Text-to-Speech (server-side TTS) -->
+          <div class="hud-speech-section">
+            <div class="hud-speech-header">
+              <span class="hud-speech-label">Text-to-Speech</span>
+              <select class="hud-speech-select" id="dash-tts-mode">
+                <option value="off">off</option>
+                <option value="always">always</option>
+                <option value="inbound">inbound</option>
+                <option value="tagged">tagged</option>
+              </select>
+            </div>
+            <div class="hud-speech-body" id="dash-tts-config" style="display:none">
+              <div class="dash-field" style="margin:0;width:100%;">
+                <label>Provider</label>
+                <select class="hud-speech-select hud-speech-select-full" id="dash-tts-provider">
+                  <option value="edge">Edge (free, no key)</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="elevenlabs">ElevenLabs</option>
+                </select>
+              </div>
+              <div class="dash-field" id="dash-tts-key-row" style="margin:0;width:100%;display:none;">
+                <label id="dash-tts-key-label">API Key</label>
+                <input type="password" id="dash-tts-key" placeholder="sk-...">
+              </div>
             </div>
           </div>
           <div class="hud-server-section">
@@ -1536,7 +1567,7 @@
 
   </div>
 
-  <script src="/app.js?v=42"></script>
+  <script src="/app.js?v=43"></script>
   <script>
     // Landing page logic
     (function() {

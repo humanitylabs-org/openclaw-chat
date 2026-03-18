@@ -285,6 +285,9 @@ const state = {
   // Pending default changes (not yet applied to config)
   pendingDefaults: {},
   
+  // TTS config from gateway
+  ttsConfig: {},
+  
   // Dock channel
   dockChannel: "",  // "" = webchat (here), "telegram", "discord", etc.
   availableChannels: [],
@@ -508,8 +511,22 @@ async function loadDefaults() {
     const reasoning = ad?.reasoningDefault || "";
     const verbose = ad?.verboseDefault || "";
     state.defaults = { model: typeof model === "string" ? model : "", thinking, reasoning, verbose };
+    
+    // Parse TTS config
+    const tts = parsed?.messages?.tts || cfg?.messages?.tts || {};
+    state.ttsConfig = {
+      auto: tts.auto || (tts.enabled ? "always" : "off"),
+      provider: tts.provider || "",
+      openaiKey: tts.openai?.apiKey || "",
+      elevenlabsKey: tts.elevenlabs?.apiKey || "",
+    };
+    // Redacted keys show as __OPENCLAW_REDACTED__ - treat as empty for display but don't overwrite
+    if (state.ttsConfig.openaiKey === "__OPENCLAW_REDACTED__") state.ttsConfig.openaiKey = "••••••••";
+    if (state.ttsConfig.elevenlabsKey === "__OPENCLAW_REDACTED__") state.ttsConfig.elevenlabsKey = "••••••••";
+    
     updateDefaultsPanel();
     updateBarControls();
+    loadTTSSettings();
     
     // Load available channels for dock switcher
     loadAvailableChannels();
@@ -3398,25 +3415,134 @@ function loadDashSettings() {
   const darkToggle = document.getElementById('dash-darkmode');
   if (darkToggle) darkToggle.checked = settings.darkMode !== false;
 
-  const voiceToggle = document.getElementById('dash-voice-toggle');
-  if (voiceToggle) {
-    voiceToggle.checked = !!settings.voiceInput;
-    const keyRow = document.getElementById('dash-voice-key-row');
-    if (keyRow) keyRow.style.display = settings.voiceInput ? '' : 'none';
+  // STT (Speech-to-Text)
+  const sttToggle = document.getElementById('dash-stt-toggle');
+  if (sttToggle) {
+    sttToggle.checked = !!settings.voiceInput;
+    const sttConfig = document.getElementById('dash-stt-config');
+    if (sttConfig) sttConfig.style.display = settings.voiceInput ? '' : 'none';
   }
 
   const keyInput = document.getElementById('dash-openai-key');
   if (keyInput) keyInput.value = settings.openaiKey || '';
+  
+  // TTS (Text-to-Speech) - load from state (populated by loadDefaults)
+  loadTTSSettings();
+}
+
+function loadTTSSettings() {
+  const modeEl = document.getElementById('dash-tts-mode');
+  const providerEl = document.getElementById('dash-tts-provider');
+  const ttsConfig = document.getElementById('dash-tts-config');
+  const ttsKeyRow = document.getElementById('dash-tts-key-row');
+  const ttsKey = document.getElementById('dash-tts-key');
+  const ttsKeyLabel = document.getElementById('dash-tts-key-label');
+  
+  const tts = state.ttsConfig || {};
+  
+  if (modeEl) {
+    modeEl.value = tts.auto || 'off';
+    if (ttsConfig) ttsConfig.style.display = (tts.auto && tts.auto !== 'off') ? '' : 'none';
+  }
+  if (providerEl) {
+    providerEl.value = tts.provider || 'edge';
+  }
+  updateTTSKeyVisibility();
+}
+
+function updateTTSKeyVisibility() {
+  const provider = document.getElementById('dash-tts-provider')?.value || 'edge';
+  const ttsKeyRow = document.getElementById('dash-tts-key-row');
+  const ttsKey = document.getElementById('dash-tts-key');
+  const ttsKeyLabel = document.getElementById('dash-tts-key-label');
+  
+  if (provider === 'edge') {
+    if (ttsKeyRow) ttsKeyRow.style.display = 'none';
+  } else {
+    if (ttsKeyRow) ttsKeyRow.style.display = '';
+    if (ttsKeyLabel) ttsKeyLabel.textContent = provider === 'openai' ? 'OpenAI API Key' : 'ElevenLabs API Key';
+    // Load saved key from state
+    const tts = state.ttsConfig || {};
+    const savedKey = provider === 'openai' ? (tts.openaiKey || '') : (tts.elevenlabsKey || '');
+    if (ttsKey) ttsKey.value = savedKey;
+  }
 }
 
 function saveDashSettings() {
   const settings = {
     darkMode: document.getElementById('dash-darkmode')?.checked !== false,
-    voiceInput: document.getElementById('dash-voice-toggle')?.checked || false,
+    voiceInput: document.getElementById('dash-stt-toggle')?.checked || false,
     openaiKey: document.getElementById('dash-openai-key')?.value || '',
   };
   localStorage.setItem('dashSettings', JSON.stringify(settings));
+  
+  // Save STT key to localStorage for Whisper
+  if (settings.voiceInput && settings.openaiKey) {
+    localStorage.setItem('openclaw-stt-key', settings.openaiKey);
+  } else if (!settings.voiceInput) {
+    localStorage.removeItem('openclaw-stt-key');
+  }
+  
   applyDashSettings(settings);
+}
+
+async function saveTTSMode() {
+  const mode = document.getElementById('dash-tts-mode')?.value || 'off';
+  const ttsConfig = document.getElementById('dash-tts-config');
+  if (ttsConfig) ttsConfig.style.display = (mode && mode !== 'off') ? '' : 'none';
+  
+  // Send /tts command for session-level change
+  if (state.gateway?.connected) {
+    try {
+      await state.gateway.request("chat.send", {
+        sessionKey: state.sessionKey,
+        message: '/tts ' + mode,
+        deliver: false,
+        idempotencyKey: "tts-" + Date.now(),
+      });
+    } catch (err) { console.warn("Failed to set TTS mode:", err); }
+  }
+}
+
+async function saveTTSProvider() {
+  const provider = document.getElementById('dash-tts-provider')?.value || 'edge';
+  updateTTSKeyVisibility();
+  
+  // Save provider to gateway config
+  if (state.gateway?.connected) {
+    try {
+      const getResult = await state.gateway.request("config.get", {});
+      const hash = getResult?.hash || "";
+      const raw = JSON.stringify({ messages: { tts: { provider: provider } } });
+      await state.gateway.request("config.patch", { raw, baseHash: hash });
+      state.ttsConfig = { ...(state.ttsConfig || {}), provider };
+    } catch (err) { console.warn("Failed to save TTS provider:", err); }
+  }
+}
+
+async function saveTTSKey() {
+  const provider = document.getElementById('dash-tts-provider')?.value || 'edge';
+  const key = document.getElementById('dash-tts-key')?.value || '';
+  if (provider === 'edge' || !key) return;
+  
+  if (state.gateway?.connected) {
+    try {
+      const getResult = await state.gateway.request("config.get", {});
+      const hash = getResult?.hash || "";
+      const patch = {};
+      if (provider === 'openai') {
+        patch.openai = { apiKey: key };
+      } else if (provider === 'elevenlabs') {
+        patch.elevenlabs = { apiKey: key };
+      }
+      const raw = JSON.stringify({ messages: { tts: patch } });
+      await state.gateway.request("config.patch", { raw, baseHash: hash });
+      
+      // Update local state
+      if (provider === 'openai') state.ttsConfig.openaiKey = key;
+      else state.ttsConfig.elevenlabsKey = key;
+    } catch (err) { console.warn("Failed to save TTS key:", err); }
+  }
 }
 
 function applyDashSettings(settings) {
@@ -3622,13 +3748,20 @@ function closeDashboard() {
 
   // Settings change listeners
   document.getElementById('dash-darkmode')?.addEventListener('change', saveDashSettings);
-  document.getElementById('dash-voice-toggle')?.addEventListener('change', () => {
-    const keyRow = document.getElementById('dash-voice-key-row');
-    const checked = document.getElementById('dash-voice-toggle')?.checked;
-    if (keyRow) keyRow.style.display = checked ? '' : 'none';
+  
+  // STT toggle
+  document.getElementById('dash-stt-toggle')?.addEventListener('change', () => {
+    const sttConfig = document.getElementById('dash-stt-config');
+    const checked = document.getElementById('dash-stt-toggle')?.checked;
+    if (sttConfig) sttConfig.style.display = checked ? '' : 'none';
     saveDashSettings();
   });
   document.getElementById('dash-openai-key')?.addEventListener('change', saveDashSettings);
+  
+  // TTS controls
+  document.getElementById('dash-tts-mode')?.addEventListener('change', saveTTSMode);
+  document.getElementById('dash-tts-provider')?.addEventListener('change', saveTTSProvider);
+  document.getElementById('dash-tts-key')?.addEventListener('change', saveTTSKey);
 
   // Apply saved settings on load
   const saved = JSON.parse(localStorage.getItem('dashSettings') || '{}');
