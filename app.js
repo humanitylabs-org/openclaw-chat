@@ -493,10 +493,13 @@ async function loadDefaults() {
   if (!state.gateway?.connected) return;
   try {
     const result = await state.gateway.request("config.get", {});
-    console.log("config.get result:", JSON.stringify(result).slice(0, 2000));
     const cfg = result?.config || result || {};
-    const ad = cfg?.agents?.defaults || {};
-    console.log("agents.defaults:", JSON.stringify(ad).slice(0, 500));
+    // config.get returns raw JSON string, parse it
+    let parsed = cfg;
+    if (result?.raw && typeof result.raw === "string") {
+      try { parsed = JSON.parse(result.raw); } catch {}
+    }
+    const ad = parsed?.agents?.defaults || cfg?.agents?.defaults || {};
     const model = ad?.model?.primary || ad?.model || "";
     const thinking = ad?.thinkingDefault || "";
     const reasoning = ad?.reasoningDefault || "";
@@ -3255,20 +3258,20 @@ function updateDefaultsPanel() {
   const section = document.getElementById("hud-defaults-section");
   if (!el) return;
   const d = state.defaults;
-  const hasAny = d.model || d.thinking || d.reasoning || d.verbose;
-  if (section) section.style.display = hasAny ? "" : "none";
-  if (!hasAny) return;
+  if (section) section.style.display = d.model ? "" : "none";
+  if (!d.model) return;
   
-  const rows = [];
-  if (d.model) rows.push({ label: "Model", value: shortModelName(d.model) });
-  if (d.thinking) rows.push({ label: "Think", value: d.thinking });
-  if (d.reasoning) rows.push({ label: "Reason", value: d.reasoning });
-  if (d.verbose) rows.push({ label: "Verbose", value: d.verbose });
+  const rows = [
+    { label: "Model", value: shortModelName(d.model) },
+    { label: "Think", value: d.thinking || "not set" },
+    { label: "Reason", value: d.reasoning || "not set" },
+    { label: "Verbose", value: d.verbose || "not set" },
+  ];
   
   el.innerHTML = rows.map(r =>
     '<div class="hud-defaults-row">' +
       '<span class="hud-defaults-label">' + r.label + '</span>' +
-      '<span class="hud-defaults-value">' + r.value + '</span>' +
+      '<span class="hud-defaults-value' + (r.value === 'not set' ? ' hud-defaults-unset' : '') + '">' + r.value + '</span>' +
     '</div>'
   ).join('');
 }
