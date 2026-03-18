@@ -1268,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=24">
+  <link rel="stylesheet" href="/theme.css?v=25">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1371,7 +1371,10 @@
         <div class="hud-section">
           <div class="hud-section-label" style="padding:13px 0 8px">RECURRING TASKS</div>
           <div class="hud-timeline" id="hud-cron-list"></div>
-          <div id="hud-subagents-list" style="margin-top:4px"></div>
+          <div class="hud-subagents-subsection">
+            <div class="hud-subsection-label">Sub-agents</div>
+            <div id="hud-subagents-list"></div>
+          </div>
         </div>
 
         <!-- ═══ Bottom controls ═══ -->
@@ -1393,9 +1396,8 @@
             </div>
           </div>
           <div class="hud-server-section">
+            <span class="hud-server-ver" id="hud-version-val"></span>
             <div class="hud-server-row">
-              <span class="hud-server-ver" id="hud-version-val"></span>
-              <span class="hud-server-sep">·</span>
               <button class="hud-server-action" onclick="sendControlAction('Run openclaw doctor and show me the results. If there are any issues, explain what they mean in simple terms.')">diagnostics</button>
               <span class="hud-server-sep">·</span>
               <button class="hud-server-action" onclick="sendControlAction('Restart the OpenClaw gateway now. Confirm when it\\'s back up.')">restart</button>
@@ -1534,7 +1536,7 @@
 
   </div>
 
-  <script src="/app.js?v=41"></script>
+  <script src="/app.js?v=42"></script>
   <script>
     // Landing page logic
     (function() {
