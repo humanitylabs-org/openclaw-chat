@@ -493,8 +493,10 @@ async function loadDefaults() {
   if (!state.gateway?.connected) return;
   try {
     const result = await state.gateway.request("config.get", {});
+    console.log("config.get result:", JSON.stringify(result).slice(0, 2000));
     const cfg = result?.config || result || {};
     const ad = cfg?.agents?.defaults || {};
+    console.log("agents.defaults:", JSON.stringify(ad).slice(0, 500));
     const model = ad?.model?.primary || ad?.model || "";
     const thinking = ad?.thinkingDefault || "";
     const reasoning = ad?.reasoningDefault || "";
@@ -2754,6 +2756,7 @@ async function fetchServerInfo() {
     }
 
     // Check for update (compare versions)
+    const currentVersion = state.serverVersion;
     if (currentVersion) {
       try {
         const resp = await fetch('https://registry.npmjs.org/openclaw/latest', { signal: AbortSignal.timeout(5000) });
