@@ -3426,7 +3426,6 @@ function loadDashSettings() {
   const keyInput = document.getElementById('dash-openai-key');
   if (keyInput) keyInput.value = settings.openaiKey || '';
   
-  // TTS (Text-to-Speech) - load from state (populated by loadDefaults)
   loadTTSSettings();
 }
 
@@ -3435,39 +3434,90 @@ function loadTTSSettings() {
   const mode = tts.auto || 'off';
   const provider = tts.provider || 'edge';
   
-  // Highlight active mode chip
-  document.querySelectorAll('#dash-tts-modes .hud-tts-chip').forEach(chip => {
-    chip.classList.toggle('active', chip.dataset.tts === mode);
+  document.querySelectorAll('#dash-tts-modes .hud-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.tts === mode);
   });
   
-  // Show config body when not off
   const ttsConfig = document.getElementById('dash-tts-config');
   if (ttsConfig) ttsConfig.style.display = (mode !== 'off') ? '' : 'none';
   
-  // Highlight active provider chip
-  document.querySelectorAll('#dash-tts-providers .hud-tts-chip').forEach(chip => {
-    chip.classList.toggle('active', chip.dataset.provider === provider);
+  document.querySelectorAll('#dash-tts-providers .hud-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.provider === provider);
   });
   
   updateTTSProviderUI(provider);
+  updateTTSApplyBtn();
 }
 
 function updateTTSProviderUI(provider) {
   const ttsKeyRow = document.getElementById('dash-tts-key-row');
-  const ttsKeyLabel = document.getElementById('dash-tts-key-label');
   const ttsKey = document.getElementById('dash-tts-key');
-  const hint = document.getElementById('dash-tts-provider-hint');
   
   if (provider === 'edge') {
     if (ttsKeyRow) ttsKeyRow.style.display = 'none';
-    if (hint) { hint.style.display = ''; hint.textContent = 'Free, no API key needed'; }
   } else {
     if (ttsKeyRow) ttsKeyRow.style.display = '';
-    if (ttsKeyLabel) ttsKeyLabel.textContent = provider === 'openai' ? 'OpenAI API Key' : 'ElevenLabs API Key';
-    if (hint) hint.style.display = 'none';
     const tts = state.ttsConfig || {};
     const savedKey = provider === 'openai' ? (tts.openaiKey || '') : (tts.elevenlabsKey || '');
-    if (ttsKey) ttsKey.value = savedKey;
+    if (ttsKey) {
+      ttsKey.value = savedKey;
+      ttsKey.placeholder = (provider === 'openai' ? 'OpenAI' : 'ElevenLabs') + ' API key';
+    }
+  }
+}
+
+// Track pending TTS changes
+const pendingTTS = {};
+
+function markTTSPending(key, val) {
+  const tts = state.ttsConfig || {};
+  const original = key === 'auto' ? (tts.auto || 'off') :
+                   key === 'provider' ? (tts.provider || 'edge') : '';
+  if (val === original) { delete pendingTTS[key]; } 
+  else { pendingTTS[key] = val; }
+  updateTTSApplyBtn();
+}
+
+function updateTTSApplyBtn() {
+  const btn = document.getElementById('dash-tts-apply');
+  if (!btn) return;
+  const hasPending = Object.keys(pendingTTS).length > 0;
+  btn.style.display = hasPending ? '' : 'none';
+}
+
+async function applyTTSConfig() {
+  if (!state.gateway?.connected) return;
+  const btn = document.getElementById('dash-tts-apply');
+  if (btn) { btn.disabled = true; btn.textContent = 'applying...'; }
+  
+  try {
+    const getResult = await state.gateway.request("config.get", {});
+    const hash = getResult?.hash || "";
+    
+    const patch = {};
+    if ('auto' in pendingTTS) patch.auto = pendingTTS.auto;
+    if ('provider' in pendingTTS) patch.provider = pendingTTS.provider;
+    
+    // Also save API key if provider is not edge and key is entered
+    const provider = pendingTTS.provider || state.ttsConfig?.provider || 'edge';
+    const keyVal = document.getElementById('dash-tts-key')?.value || '';
+    if (provider !== 'edge' && keyVal && !keyVal.startsWith('•')) {
+      if (provider === 'openai') patch.openai = { apiKey: keyVal };
+      else if (provider === 'elevenlabs') patch.elevenlabs = { apiKey: keyVal };
+    }
+    
+    const raw = JSON.stringify({ messages: { tts: patch } });
+    await state.gateway.request("config.patch", { raw, baseHash: hash });
+    
+    // Update local state
+    if ('auto' in pendingTTS) state.ttsConfig.auto = pendingTTS.auto;
+    if ('provider' in pendingTTS) state.ttsConfig.provider = pendingTTS.provider;
+    
+    for (const k in pendingTTS) delete pendingTTS[k];
+    updateTTSApplyBtn();
+  } catch (err) {
+    console.warn("Failed to apply TTS config:", err);
+    if (btn) { btn.disabled = false; btn.textContent = 'restart to apply'; }
   }
 }
 
@@ -3489,72 +3539,26 @@ function saveDashSettings() {
   applyDashSettings(settings);
 }
 
-async function saveTTSMode(mode) {
-  // Update UI
-  document.querySelectorAll('#dash-tts-modes .hud-tts-chip').forEach(chip => {
-    chip.classList.toggle('active', chip.dataset.tts === mode);
+function selectTTSMode(mode) {
+  document.querySelectorAll('#dash-tts-modes .hud-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.tts === mode);
   });
   const ttsConfig = document.getElementById('dash-tts-config');
   if (ttsConfig) ttsConfig.style.display = (mode !== 'off') ? '' : 'none';
-  
-  state.ttsConfig = { ...(state.ttsConfig || {}), auto: mode };
-  
-  // Send /tts command for session-level change
-  if (state.gateway?.connected) {
-    try {
-      await state.gateway.request("chat.send", {
-        sessionKey: state.sessionKey,
-        message: '/tts ' + mode,
-        deliver: false,
-        idempotencyKey: "tts-" + Date.now(),
-      });
-    } catch (err) { console.warn("Failed to set TTS mode:", err); }
-  }
+  markTTSPending('auto', mode);
 }
 
-async function saveTTSProvider(provider) {
-  // Update UI
-  document.querySelectorAll('#dash-tts-providers .hud-tts-chip').forEach(chip => {
-    chip.classList.toggle('active', chip.dataset.provider === provider);
+function selectTTSProvider(provider) {
+  document.querySelectorAll('#dash-tts-providers .hud-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.provider === provider);
   });
   updateTTSProviderUI(provider);
-  
-  state.ttsConfig = { ...(state.ttsConfig || {}), provider };
-  
-  // Save provider to gateway config
-  if (state.gateway?.connected) {
-    try {
-      const getResult = await state.gateway.request("config.get", {});
-      const hash = getResult?.hash || "";
-      const raw = JSON.stringify({ messages: { tts: { provider: provider } } });
-      await state.gateway.request("config.patch", { raw, baseHash: hash });
-    } catch (err) { console.warn("Failed to save TTS provider:", err); }
-  }
+  markTTSPending('provider', provider);
 }
 
-async function saveTTSKey() {
-  const provider = document.getElementById('dash-tts-provider')?.value || 'edge';
-  const key = document.getElementById('dash-tts-key')?.value || '';
-  if (provider === 'edge' || !key) return;
-  
-  if (state.gateway?.connected) {
-    try {
-      const getResult = await state.gateway.request("config.get", {});
-      const hash = getResult?.hash || "";
-      const patch = {};
-      if (provider === 'openai') {
-        patch.openai = { apiKey: key };
-      } else if (provider === 'elevenlabs') {
-        patch.elevenlabs = { apiKey: key };
-      }
-      const raw = JSON.stringify({ messages: { tts: patch } });
-      await state.gateway.request("config.patch", { raw, baseHash: hash });
-      
-      // Update local state
-      if (provider === 'openai') state.ttsConfig.openaiKey = key;
-      else state.ttsConfig.elevenlabsKey = key;
-    } catch (err) { console.warn("Failed to save TTS key:", err); }
-  }
+function onTTSKeyChange() {
+  // Key change means there's something to apply
+  markTTSPending('apiKey', document.getElementById('dash-tts-key')?.value || '');
 }
 
 function applyDashSettings(settings) {
@@ -3771,14 +3775,14 @@ function closeDashboard() {
   document.getElementById('dash-openai-key')?.addEventListener('change', saveDashSettings);
   
   // TTS mode chips
-  document.querySelectorAll('#dash-tts-modes .hud-tts-chip').forEach(chip => {
-    chip.addEventListener('click', () => saveTTSMode(chip.dataset.tts));
+  document.querySelectorAll('#dash-tts-modes .hud-chip').forEach(chip => {
+    chip.addEventListener('click', () => selectTTSMode(chip.dataset.tts));
   });
   // TTS provider chips
-  document.querySelectorAll('#dash-tts-providers .hud-tts-chip').forEach(chip => {
-    chip.addEventListener('click', () => saveTTSProvider(chip.dataset.provider));
+  document.querySelectorAll('#dash-tts-providers .hud-chip').forEach(chip => {
+    chip.addEventListener('click', () => selectTTSProvider(chip.dataset.provider));
   });
-  document.getElementById('dash-tts-key')?.addEventListener('change', saveTTSKey);
+  document.getElementById('dash-tts-key')?.addEventListener('input', onTTSKeyChange);
 
   // Apply saved settings on load
   const saved = JSON.parse(localStorage.getItem('dashSettings') || '{}');

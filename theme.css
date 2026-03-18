@@ -955,77 +955,77 @@
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.hud-speech-section {
+.hud-audio-section {
   width: 100%;
-  padding: 10px 0;
+  padding: 8px 0;
   border-top: 1px solid rgba(255,255,255,0.04);
 }
-.hud-speech-header {
+.hud-audio-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
-.hud-speech-label {
+.hud-audio-label {
   font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
+  white-space: nowrap;
 }
-.hud-tts-modes {
-  display: flex;
-  gap: 4px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-.hud-tts-chip {
+.hud-audio-sublabel {
   font-family: var(--font-sans);
   font-size: 11px;
   color: var(--text-faint);
+  white-space: nowrap;
+}
+.hud-audio-input {
+  width: 100%;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-muted);
   background: rgba(128,128,128,0.06);
   border: 1px solid rgba(128,128,128,0.1);
-  border-radius: 6px;
-  padding: 4px 10px;
-  cursor: pointer;
-  transition: all 0.15s;
+  border-radius: 4px;
+  padding: 5px 8px;
+  margin-top: 6px;
+  outline: none;
+  transition: border-color 0.15s;
 }
-.hud-tts-chip:hover {
-  background: rgba(128,128,128,0.12);
-  color: var(--text-muted);
-}
-.hud-tts-chip.active {
-  color: var(--accent, #4a9eff);
-  background: rgba(74, 158, 255, 0.1);
-  border-color: rgba(74, 158, 255, 0.25);
-}
-.hud-speech-sublabel {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  color: var(--text-faint);
-}
-.hud-tts-provider-row {
+.hud-audio-input:focus { border-color: rgba(128,128,128,0.3); }
+.hud-chip-group {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
-.hud-tts-provider-hint {
+.hud-chip {
   font-family: var(--font-sans);
   font-size: 10px;
   color: var(--text-faint);
-  font-style: italic;
-  margin-top: 2px;
+  background: none;
+  border: 1px solid rgba(128,128,128,0.12);
+  border-radius: 4px;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
 }
-[data-theme="light"] .hud-tts-chip { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08); color: #888; }
-[data-theme="light"] .hud-tts-chip:hover { background: rgba(0,0,0,0.08); color: #555; }
-[data-theme="light"] .hud-tts-chip.active { color: #2563eb; background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.2); }
-.hud-speech-body {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.hud-chip:hover {
+  background: rgba(128,128,128,0.08);
+  color: var(--text-muted);
 }
-[data-theme="light"] .hud-speech-section { border-top-color: rgba(0,0,0,0.06); }
-[data-theme="light"] .hud-speech-label { color: #444; }
-[data-theme="light"] .hud-tts-provider-hint { color: #999; }
+.hud-chip.active {
+  color: var(--accent, #4a9eff);
+  background: rgba(74,158,255,0.1);
+  border-color: rgba(74,158,255,0.25);
+}
+[data-theme="light"] .hud-audio-section { border-top-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .hud-audio-label { color: #444; }
+[data-theme="light"] .hud-audio-sublabel { color: #888; }
+[data-theme="light"] .hud-audio-input { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.1); color: #333; }
+[data-theme="light"] .hud-audio-input:focus { border-color: rgba(0,0,0,0.2); }
+[data-theme="light"] .hud-chip { border-color: rgba(0,0,0,0.1); color: #888; }
+[data-theme="light"] .hud-chip:hover { background: rgba(0,0,0,0.05); color: #555; }
+[data-theme="light"] .hud-chip.active { color: #2563eb; background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.2); }
 
 .hud-section-toggle {
   display: flex;
