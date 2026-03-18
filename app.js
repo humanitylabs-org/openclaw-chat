@@ -1310,8 +1310,9 @@ const THINKING_CYCLE = ["", "off", "low", "medium", "high"];
 const REASONING_CYCLE = ["", "off", "on", "stream"];
 const VERBOSE_CYCLE = ["", "off", "on", "full"];
 
-function defaultLabel(defaultVal) {
-  return defaultVal ? "default (" + defaultVal + ")" : "default";
+function defaultLabel(defaultVal, key) {
+  const val = (key && key in pendingDefaults) ? pendingDefaults[key] : defaultVal;
+  return val ? "default (" + val + ")" : "default";
 }
 
 function updateBarControls() {
@@ -1320,17 +1321,17 @@ function updateBarControls() {
   const verboseEl = document.getElementById("bar-verbose");
 
   if (thinkEl) {
-    const v = state.thinkingLevel || defaultLabel(state.defaults.thinking);
+    const v = state.thinkingLevel || defaultLabel(state.defaults.thinking, "thinking");
     thinkEl.textContent = "think: " + v;
     thinkEl.classList.toggle("active", !!state.thinkingLevel);
   }
   if (reasonEl) {
-    const v = state.reasoningLevel || defaultLabel(state.defaults.reasoning);
+    const v = state.reasoningLevel || defaultLabel(state.defaults.reasoning, "reasoning");
     reasonEl.textContent = "reason: " + v;
     reasonEl.classList.toggle("active", !!state.reasoningLevel);
   }
   if (verboseEl) {
-    const v = state.verboseLevel || defaultLabel(state.defaults.verbose);
+    const v = state.verboseLevel || defaultLabel(state.defaults.verbose, "verbose");
     verboseEl.textContent = "verbose: " + v;
     verboseEl.classList.toggle("active", !!state.verboseLevel);
   }
@@ -3258,23 +3259,33 @@ function updateDefaultsPanel() {
   if (section) section.style.display = d.model ? "" : "none";
   if (!d.model) return;
   
-  el.innerHTML =
+  function renderVal(key, label) {
+    const isPending = key in pendingDefaults;
+    const val = isPending ? pendingDefaults[key] : d[key];
+    const display = val || "not set";
+    const classes = ['hud-defaults-value', 'hud-defaults-editable'];
+    if (!val) classes.push('hud-defaults-unset');
+    if (isPending) classes.push('hud-defaults-pending');
+    return '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">' + label + '</span>' +
+      '<span class="' + classes.join(' ') + '" data-default-key="' + key + '">' + display + '</span>' +
+    '</div>';
+  }
+  
+  let html =
     '<div class="hud-defaults-row">' +
       '<span class="hud-defaults-label">Model</span>' +
       '<span class="hud-defaults-value">' + shortModelName(d.model) + '</span>' +
     '</div>' +
-    '<div class="hud-defaults-row">' +
-      '<span class="hud-defaults-label">Think</span>' +
-      '<span class="hud-defaults-value hud-defaults-editable' + (!d.thinking ? ' hud-defaults-unset' : '') + '" data-default-key="thinking">' + (d.thinking || "not set") + '</span>' +
-    '</div>' +
-    '<div class="hud-defaults-row">' +
-      '<span class="hud-defaults-label">Reason</span>' +
-      '<span class="hud-defaults-value hud-defaults-editable' + (!d.reasoning ? ' hud-defaults-unset' : '') + '" data-default-key="reasoning">' + (d.reasoning || "not set") + '</span>' +
-    '</div>' +
-    '<div class="hud-defaults-row">' +
-      '<span class="hud-defaults-label">Verbose</span>' +
-      '<span class="hud-defaults-value hud-defaults-editable' + (!d.verbose ? ' hud-defaults-unset' : '') + '" data-default-key="verbose">' + (d.verbose || "not set") + '</span>' +
-    '</div>';
+    renderVal("thinking", "Think") +
+    renderVal("reasoning", "Reason") +
+    renderVal("verbose", "Verbose");
+  
+  if (hasPendingDefaults()) {
+    html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">restart to apply</button>';
+  }
+  
+  el.innerHTML = html;
   
   // Wire up click-to-cycle on editable values
   el.querySelectorAll('.hud-defaults-editable').forEach(valEl => {
@@ -3282,38 +3293,76 @@ function updateDefaultsPanel() {
   });
 }
 
-async function cycleDefault(valEl) {
+// Pending default changes (not yet applied)
+const pendingDefaults = {};
+
+function cycleDefault(valEl) {
   const key = valEl.dataset.defaultKey;
   const cycle = DEFAULT_CYCLES[key];
-  if (!cycle || !state.gateway?.connected) return;
+  if (!cycle) return;
   
-  const current = state.defaults[key] || "";
+  // Use pending value if exists, otherwise current
+  const current = (key in pendingDefaults) ? pendingDefaults[key] : (state.defaults[key] || "");
   const idx = cycle.indexOf(current);
   const next = cycle[(idx + 1) % cycle.length];
   
-  // Config key mapping
+  // If same as original, remove from pending
+  if (next === (state.defaults[key] || "")) {
+    delete pendingDefaults[key];
+  } else {
+    pendingDefaults[key] = next;
+  }
+  
+  updateDefaultsPanel();
+  updateBarControls();
+}
+
+function hasPendingDefaults() {
+  return Object.keys(pendingDefaults).length > 0;
+}
+
+async function applyPendingDefaults() {
+  if (!hasPendingDefaults() || !state.gateway?.connected) return;
+  
   const configKeys = {
     thinking: "thinkingDefault",
     reasoning: "reasoningDefault",
     verbose: "verboseDefault",
   };
   
-  // Get current config hash for safe patch
+  const applyBtn = document.getElementById("hud-defaults-apply");
+  if (applyBtn) {
+    applyBtn.disabled = true;
+    applyBtn.textContent = "applying...";
+  }
+  
   try {
     const getResult = await state.gateway.request("config.get", {});
     const hash = getResult?.hash || "";
     
-    const patchValue = next || null; // null = delete the key (reset to system default)
-    const raw = JSON.stringify({ agents: { defaults: { [configKeys[key]]: patchValue } } });
+    const patch = {};
+    for (const [key, val] of Object.entries(pendingDefaults)) {
+      patch[configKeys[key]] = val || null;
+    }
     
+    const raw = JSON.stringify({ agents: { defaults: patch } });
     await state.gateway.request("config.patch", { raw, baseHash: hash });
     
-    // Update local state immediately
-    state.defaults[key] = next;
+    // Update local state
+    for (const [key, val] of Object.entries(pendingDefaults)) {
+      state.defaults[key] = val;
+    }
+    // Clear pending
+    for (const key in pendingDefaults) delete pendingDefaults[key];
+    
     updateDefaultsPanel();
     updateBarControls();
   } catch (err) {
-    console.warn("Failed to update default:", err);
+    console.warn("Failed to apply defaults:", err);
+    if (applyBtn) {
+      applyBtn.disabled = false;
+      applyBtn.textContent = "restart to apply";
+    }
   }
 }
 

@@ -825,6 +825,33 @@
   color: var(--text-normal);
   font-style: normal;
 }
+.hud-defaults-pending {
+  color: var(--accent, #4a9eff) !important;
+  font-style: normal !important;
+}
+.hud-defaults-apply {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent, #4a9eff);
+  background: rgba(74, 158, 255, 0.08);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.hud-defaults-apply:hover {
+  background: rgba(74, 158, 255, 0.15);
+  border-color: rgba(74, 158, 255, 0.35);
+}
+.hud-defaults-apply:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .hud-empty-hint {
   font-family: var(--font-sans);
   font-size: 12px;
