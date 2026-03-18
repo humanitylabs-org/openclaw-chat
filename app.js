@@ -2715,7 +2715,7 @@ function updateDashboard() {
 
   // Show connect form or dashboard content
   const connectForm = document.getElementById('dash-connect-form');
-  const hudSections = document.querySelectorAll('#dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section:not(.hud-subagents-wrap)');
+  const hudSections = document.querySelectorAll('#dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section');
   if (!state.gatewayUrl || !state.token) {
     if (connectForm) connectForm.style.display = '';
     hudSections.forEach(s => s.style.display = 'none');
@@ -2758,7 +2758,7 @@ async function fetchServerInfo() {
       updateEl.textContent = 'v' + upd.latestVersion + ' available';
     }
 
-    // Check for update (compare versions)
+    // Check for update (compare versions) — show subtly near version
     const currentVersion = state.serverVersion;
     if (currentVersion) {
       try {
@@ -2767,27 +2767,18 @@ async function fetchServerInfo() {
           const pkg = await resp.json();
           const latest = pkg.version;
           if (latest && latest !== currentVersion) {
-            alerts.push({
-              type: 'warn',
-              text: 'Update available: v' + latest,
-              action: 'UPDATE',
-              cmd: 'Check if there\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.'
-            });
+            const updateRow = document.getElementById('hud-update-row');
+            const updateBadge = document.getElementById('hud-update-badge');
+            if (updateRow) updateRow.style.display = '';
+            if (updateBadge) updateBadge.textContent = 'v' + latest + ' available';
           }
         }
       } catch (e) { /* can't check, skip */ }
     }
 
-    // Render alerts
+    // Clear top alerts (no longer used)
     const alertsEl = document.getElementById('hud-alerts');
-    if (alertsEl) {
-      alertsEl.innerHTML = alerts.map(a =>
-        '<div class="hud-alert hud-alert-' + a.type + '" onclick="sendControlAction(\'' + a.cmd.replace(/'/g, "\\'") + '\')">' +
-        '<span class="hud-alert-text">' + a.text + '</span>' +
-        '<span class="hud-alert-action">' + a.action + '</span>' +
-        '</div>'
-      ).join('');
-    }
+    if (alertsEl) alertsEl.innerHTML = '';
 
   } catch (err) {
     console.warn('Failed to fetch server info:', err);
@@ -3253,6 +3244,12 @@ async function loadCronJobs() {
 
 // ─── Settings ─────────────────────────────────────────────────────
 
+const DEFAULT_CYCLES = {
+  thinking: ["", "off", "low", "medium", "high"],
+  reasoning: ["", "off", "on", "stream"],
+  verbose: ["", "off", "on", "full"],
+};
+
 function updateDefaultsPanel() {
   const el = document.getElementById("hud-defaults-panel");
   const section = document.getElementById("hud-defaults-section");
@@ -3261,19 +3258,63 @@ function updateDefaultsPanel() {
   if (section) section.style.display = d.model ? "" : "none";
   if (!d.model) return;
   
-  const rows = [
-    { label: "Model", value: shortModelName(d.model) },
-    { label: "Think", value: d.thinking || "not set" },
-    { label: "Reason", value: d.reasoning || "not set" },
-    { label: "Verbose", value: d.verbose || "not set" },
-  ];
-  
-  el.innerHTML = rows.map(r =>
+  el.innerHTML =
     '<div class="hud-defaults-row">' +
-      '<span class="hud-defaults-label">' + r.label + '</span>' +
-      '<span class="hud-defaults-value' + (r.value === 'not set' ? ' hud-defaults-unset' : '') + '">' + r.value + '</span>' +
-    '</div>'
-  ).join('');
+      '<span class="hud-defaults-label">Model</span>' +
+      '<span class="hud-defaults-value">' + shortModelName(d.model) + '</span>' +
+    '</div>' +
+    '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">Think</span>' +
+      '<span class="hud-defaults-value hud-defaults-editable' + (!d.thinking ? ' hud-defaults-unset' : '') + '" data-default-key="thinking">' + (d.thinking || "not set") + '</span>' +
+    '</div>' +
+    '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">Reason</span>' +
+      '<span class="hud-defaults-value hud-defaults-editable' + (!d.reasoning ? ' hud-defaults-unset' : '') + '" data-default-key="reasoning">' + (d.reasoning || "not set") + '</span>' +
+    '</div>' +
+    '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">Verbose</span>' +
+      '<span class="hud-defaults-value hud-defaults-editable' + (!d.verbose ? ' hud-defaults-unset' : '') + '" data-default-key="verbose">' + (d.verbose || "not set") + '</span>' +
+    '</div>';
+  
+  // Wire up click-to-cycle on editable values
+  el.querySelectorAll('.hud-defaults-editable').forEach(valEl => {
+    valEl.addEventListener('click', () => cycleDefault(valEl));
+  });
+}
+
+async function cycleDefault(valEl) {
+  const key = valEl.dataset.defaultKey;
+  const cycle = DEFAULT_CYCLES[key];
+  if (!cycle || !state.gateway?.connected) return;
+  
+  const current = state.defaults[key] || "";
+  const idx = cycle.indexOf(current);
+  const next = cycle[(idx + 1) % cycle.length];
+  
+  // Config key mapping
+  const configKeys = {
+    thinking: "thinkingDefault",
+    reasoning: "reasoningDefault",
+    verbose: "verboseDefault",
+  };
+  
+  // Get current config hash for safe patch
+  try {
+    const getResult = await state.gateway.request("config.get", {});
+    const hash = getResult?.hash || "";
+    
+    const patchValue = next || null; // null = delete the key (reset to system default)
+    const raw = JSON.stringify({ agents: { defaults: { [configKeys[key]]: patchValue } } });
+    
+    await state.gateway.request("config.patch", { raw, baseHash: hash });
+    
+    // Update local state immediately
+    state.defaults[key] = next;
+    updateDefaultsPanel();
+    updateBarControls();
+  } catch (err) {
+    console.warn("Failed to update default:", err);
+  }
 }
 
 function loadDashSettings() {
@@ -3341,11 +3382,9 @@ async function loadSubagents() {
     const subs = sessions.filter(s => s.key.includes(":subagent:"));
     
     if (subs.length === 0) {
-      section.classList.remove("has-subagents");
+      container.innerHTML = '<div class="hud-empty-hint">none running</div>';
       return;
     }
-    
-    section.classList.add("has-subagents");
     container.innerHTML = "";
     
     for (const sub of subs) {

@@ -1257,7 +1257,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=19">
+  <link rel="stylesheet" href="/theme.css?v=20">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1368,11 +1368,10 @@
         <div class="hud-section" id="hud-defaults-section">
           <div class="hud-section-label" style="padding:13px 0 8px">DEFAULTS</div>
           <div id="hud-defaults-panel" class="hud-defaults-panel"></div>
-          <button class="hud-link-btn" id="hud-change-defaults" onclick="sendControlAction('Show me my current agent defaults (model, thinking, reasoning, verbose) and let me change them. Use /config set commands to apply any changes I request.')">change defaults</button>
         </div>
 
         <!-- ═══ Sub-agents ═══ -->
-        <div class="hud-section hud-subagents-wrap" id="hud-subagents-section">
+        <div class="hud-section" id="hud-subagents-section">
           <div class="hud-section-label" style="padding:13px 0 8px">SUB-AGENTS</div>
           <div id="hud-subagents-list"></div>
         </div>
@@ -1530,7 +1529,7 @@
 
   </div>
 
-  <script src="/app.js?v=35"></script>
+  <script src="/app.js?v=36"></script>
   <script>
     // Landing page logic
     (function() {
