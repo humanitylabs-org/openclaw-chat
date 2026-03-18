@@ -280,7 +280,11 @@ const state = {
   verboseLevel: "",    // off|on|full
 
   // Agent defaults (from config)
-  defaults: { model: "", thinking: "", verbose: "" },
+  defaults: { model: "", thinking: "", reasoning: "", verbose: "" },
+  
+  // Dock channel
+  dockChannel: "",  // "" = webchat (here), "telegram", "discord", etc.
+  availableChannels: [],
 
   // Tabs
   tabSessions: [],
@@ -493,10 +497,14 @@ async function loadDefaults() {
     const ad = cfg?.agents?.defaults || {};
     const model = ad?.model?.primary || ad?.model || "";
     const thinking = ad?.thinkingDefault || "";
+    const reasoning = ad?.reasoningDefault || "";
     const verbose = ad?.verboseDefault || "";
-    state.defaults = { model: typeof model === "string" ? model : "", thinking, verbose };
+    state.defaults = { model: typeof model === "string" ? model : "", thinking, reasoning, verbose };
     updateDefaultsPanel();
     updateBarControls();
+    
+    // Load available channels for dock switcher
+    loadAvailableChannels();
   } catch (err) {
     console.warn("Failed to load defaults:", err);
   }
@@ -1269,6 +1277,9 @@ async function updateContextMeter() {
       }
       await renderTabs();
     }
+    
+    // Update subagents panel from same sessions data
+    loadSubagents();
   } catch { /* ignore */ }
 }
 
@@ -1309,7 +1320,7 @@ function updateBarControls() {
     thinkEl.classList.toggle("active", !!state.thinkingLevel);
   }
   if (reasonEl) {
-    const v = state.reasoningLevel || "default";
+    const v = state.reasoningLevel || defaultLabel(state.defaults.reasoning);
     reasonEl.textContent = "reason: " + v;
     reasonEl.classList.toggle("active", !!state.reasoningLevel);
   }
@@ -2699,7 +2710,7 @@ function updateDashboard() {
 
   // Show connect form or dashboard content
   const connectForm = document.getElementById('dash-connect-form');
-  const hudSections = document.querySelectorAll('#dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section');
+  const hudSections = document.querySelectorAll('#dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section:not(.hud-subagents-wrap)');
   if (!state.gatewayUrl || !state.token) {
     if (connectForm) connectForm.style.display = '';
     hudSections.forEach(s => s.style.display = 'none');
@@ -3238,24 +3249,25 @@ async function loadCronJobs() {
 
 function updateDefaultsPanel() {
   const el = document.getElementById("hud-defaults-panel");
+  const section = document.getElementById("hud-defaults-section");
   if (!el) return;
   const d = state.defaults;
-  const model = d.model ? shortModelName(d.model) : "—";
-  const think = d.thinking || "—";
-  const verbose = d.verbose || "—";
-  el.innerHTML =
+  const hasAny = d.model || d.thinking || d.reasoning || d.verbose;
+  if (section) section.style.display = hasAny ? "" : "none";
+  if (!hasAny) return;
+  
+  const rows = [];
+  if (d.model) rows.push({ label: "Model", value: shortModelName(d.model) });
+  if (d.thinking) rows.push({ label: "Think", value: d.thinking });
+  if (d.reasoning) rows.push({ label: "Reason", value: d.reasoning });
+  if (d.verbose) rows.push({ label: "Verbose", value: d.verbose });
+  
+  el.innerHTML = rows.map(r =>
     '<div class="hud-defaults-row">' +
-      '<span class="hud-defaults-label">Model</span>' +
-      '<span class="hud-defaults-value">' + model + '</span>' +
-    '</div>' +
-    '<div class="hud-defaults-row">' +
-      '<span class="hud-defaults-label">Think</span>' +
-      '<span class="hud-defaults-value">' + think + '</span>' +
-    '</div>' +
-    '<div class="hud-defaults-row">' +
-      '<span class="hud-defaults-label">Verbose</span>' +
-      '<span class="hud-defaults-value">' + verbose + '</span>' +
-    '</div>';
+      '<span class="hud-defaults-label">' + r.label + '</span>' +
+      '<span class="hud-defaults-value">' + r.value + '</span>' +
+    '</div>'
+  ).join('');
 }
 
 function loadDashSettings() {
@@ -3292,6 +3304,140 @@ function applyDashSettings(settings) {
     document.documentElement.removeAttribute('data-theme');
   }
 }
+
+// ─── Export Session ───────────────────────────────────────────────
+
+function exportCurrentSession() {
+  const sk = state.sessionKey || "main";
+  sendControlAction('/export-session');
+}
+
+// ─── Sub-agents Panel ────────────────────────────────────────────
+
+function updateSubagentsPanel() {
+  const section = document.getElementById("hud-subagents-section");
+  const container = document.getElementById("hud-subagents-list");
+  if (!section || !container) return;
+  
+  // We get subagent sessions from sessions.list - they contain ":subagent:" in key
+  // This runs during updateContextMeter which calls sessions.list
+}
+
+async function loadSubagents() {
+  const section = document.getElementById("hud-subagents-section");
+  const container = document.getElementById("hud-subagents-list");
+  if (!section || !container || !state.gateway?.connected) return;
+  
+  try {
+    const result = await state.gateway.request("sessions.list", {});
+    const sessions = result?.sessions || [];
+    const prefix = agentPrefix();
+    const subs = sessions.filter(s => s.key.includes(":subagent:"));
+    
+    if (subs.length === 0) {
+      section.classList.remove("has-subagents");
+      return;
+    }
+    
+    section.classList.add("has-subagents");
+    container.innerHTML = "";
+    
+    for (const sub of subs) {
+      const id = sub.key.split(":subagent:")[1] || sub.key;
+      const shortId = id.length > 8 ? id.slice(0, 8) : id;
+      const isActive = sub.active || sub.running || false;
+      const tokens = sub.totalTokens || 0;
+      const tokStr = tokens > 1000 ? Math.round(tokens / 1000) + "k" : tokens + "";
+      
+      const row = document.createElement("div");
+      row.className = "hud-subagent-row";
+      row.innerHTML =
+        '<span class="hud-status-dot ' + (isActive ? 'on' : 'off') + '"></span>' +
+        '<span class="hud-subagent-id">' + shortId + '</span>' +
+        '<span class="hud-subagent-tokens">' + tokStr + ' tok</span>' +
+        '<button class="hud-subagent-kill" title="Kill sub-agent" onclick="killSubagent(\'' + id.replace(/'/g, "\\'") + '\')">✕</button>';
+      container.appendChild(row);
+    }
+  } catch (err) {
+    console.warn("Failed to load subagents:", err);
+  }
+}
+
+function killSubagent(id) {
+  sendControlAction('/kill ' + id);
+  // Refresh after a short delay
+  setTimeout(() => loadSubagents(), 2000);
+}
+
+// ─── Dock / Channel Switcher ─────────────────────────────────────
+
+async function loadAvailableChannels() {
+  if (!state.gateway?.connected) return;
+  try {
+    const result = await state.gateway.request("channels.status", {});
+    const channels = result?.channels || result || {};
+    const entries = Object.entries(channels).filter(([, v]) => v && typeof v === "object");
+    const connected = entries
+      .filter(([, ch]) => ch.connected || ch.status === "connected" || ch.status === "ok")
+      .map(([key]) => key);
+    state.availableChannels = connected;
+    updateDockChip();
+  } catch (err) {
+    console.warn("Failed to load channels for dock:", err);
+  }
+}
+
+function updateDockChip() {
+  const el = document.getElementById("bar-dock");
+  const sep = document.getElementById("bar-dock-sep");
+  if (!el || !sep) return;
+  
+  // Only show dock if there are other channels available
+  if (state.availableChannels.length === 0) {
+    el.style.display = "none";
+    sep.style.display = "none";
+    return;
+  }
+  
+  el.style.display = "";
+  sep.style.display = "";
+  const current = state.dockChannel || "here";
+  el.textContent = "reply: " + current;
+  el.classList.toggle("active", !!state.dockChannel);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const dockEl = document.getElementById("bar-dock");
+  if (dockEl) {
+    dockEl.addEventListener("click", () => {
+      if (state.availableChannels.length === 0) return;
+      
+      // Cycle: here → channel1 → channel2 → ... → here
+      const options = ["", ...state.availableChannels];
+      const currentIdx = options.indexOf(state.dockChannel);
+      const nextIdx = (currentIdx + 1) % options.length;
+      const next = options[nextIdx];
+      
+      if (next) {
+        // Dock to that channel
+        state.dockChannel = next;
+        // Send dock command silently
+        if (state.gateway?.connected) {
+          const input = document.getElementById("message-input");
+          if (input) {
+            input.value = "/dock-" + next;
+            input.dispatchEvent(new Event("input"));
+            document.getElementById("send-btn")?.click();
+          }
+        }
+      } else {
+        // Back to "here" - no undock command exists, so we just track locally
+        state.dockChannel = "";
+      }
+      updateDockChip();
+    });
+  }
+});
 
 function sendControlAction(message) {
   // Close dashboard on mobile
