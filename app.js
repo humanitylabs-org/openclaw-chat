@@ -282,6 +282,9 @@ const state = {
   // Agent defaults (from config)
   defaults: { model: "", thinking: "", reasoning: "", verbose: "" },
   
+  // Pending default changes (not yet applied to config)
+  pendingDefaults: {},
+  
   // Dock channel
   dockChannel: "",  // "" = webchat (here), "telegram", "discord", etc.
   availableChannels: [],
@@ -1311,7 +1314,7 @@ const REASONING_CYCLE = ["", "off", "on", "stream"];
 const VERBOSE_CYCLE = ["", "off", "on", "full"];
 
 function defaultLabel(defaultVal, key) {
-  const val = (key && key in pendingDefaults) ? pendingDefaults[key] : defaultVal;
+  const val = (key && key in state.pendingDefaults) ? state.pendingDefaults[key] : defaultVal;
   return val ? "default (" + val + ")" : "default";
 }
 
@@ -3269,13 +3272,13 @@ function updateDefaultsPanel() {
   if (section) section.style.display = d.model ? "" : "none";
   if (!d.model) return;
   
-  const pendingModel = pendingDefaults.model;
+  const pendingModel = state.pendingDefaults.model;
   const modelDisplay = shortModelName(pendingModel || d.model);
   const modelPending = pendingModel && pendingModel !== d.model;
   
   function renderSelect(key, label) {
-    const isPending = key in pendingDefaults;
-    const current = isPending ? (pendingDefaults[key] || "") : (d[key] || "");
+    const isPending = key in state.pendingDefaults;
+    const current = isPending ? (state.pendingDefaults[key] || "") : (d[key] || "");
     const options = DEFAULT_OPTIONS[key];
     const optionsHtml = options.map(opt => {
       const val = opt === "not set" ? "" : opt;
@@ -3306,12 +3309,12 @@ function updateDefaultsPanel() {
   // Wire up model click
   document.getElementById("hud-default-model")?.addEventListener("click", () => {
     openModelPicker({
-      current: pendingDefaults.model || d.model,
+      current: state.pendingDefaults.model || d.model,
       onSelect: (fullId, modal) => {
         if (fullId === d.model) {
-          delete pendingDefaults.model;
+          delete state.pendingDefaults.model;
         } else {
-          pendingDefaults.model = fullId;
+          state.pendingDefaults.model = fullId;
         }
         updateDefaultsPanel();
         modal.remove();
@@ -3326,9 +3329,9 @@ function updateDefaultsPanel() {
       const val = sel.value;
   
       if (val === (state.defaults[key] || "")) {
-        delete pendingDefaults[key];
+        delete state.pendingDefaults[key];
       } else {
-        pendingDefaults[key] = val;
+        state.pendingDefaults[key] = val;
       }
       updateDefaultsPanel();
       updateBarControls();
@@ -3337,7 +3340,7 @@ function updateDefaultsPanel() {
 }
 
 function hasPendingDefaults() {
-  return Object.keys(pendingDefaults).length > 0;
+  return Object.keys(state.pendingDefaults).length > 0;
 }
 
 async function applyPendingDefaults() {
@@ -3360,23 +3363,23 @@ async function applyPendingDefaults() {
     const hash = getResult?.hash || "";
     
     const patch = {};
-    for (const [key, val] of Object.entries(pendingDefaults)) {
+    for (const [key, val] of Object.entries(state.pendingDefaults)) {
       if (configKeys[key]) patch[configKeys[key]] = val || null;
     }
     // Handle model change
-    if (pendingDefaults.model) {
-      patch.model = { primary: pendingDefaults.model };
+    if (state.pendingDefaults.model) {
+      patch.model = { primary: state.pendingDefaults.model };
     }
     
     const raw = JSON.stringify({ agents: { defaults: patch } });
     await state.gateway.request("config.patch", { raw, baseHash: hash });
     
     // Update local state
-    for (const [key, val] of Object.entries(pendingDefaults)) {
+    for (const [key, val] of Object.entries(state.pendingDefaults)) {
       state.defaults[key] = val;
     }
     // Clear pending
-    for (const key in pendingDefaults) delete pendingDefaults[key];
+    for (const key in state.pendingDefaults) delete state.pendingDefaults[key];
     
     updateDefaultsPanel();
     updateBarControls();
