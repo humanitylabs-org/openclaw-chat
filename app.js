@@ -3437,18 +3437,13 @@ function exportCurrentSession() {
 // ─── Sub-agents Panel ────────────────────────────────────────────
 
 function updateSubagentsPanel() {
-  const section = document.getElementById("hud-subagents-section");
   const container = document.getElementById("hud-subagents-list");
-  if (!section || !container) return;
-  
-  // We get subagent sessions from sessions.list - they contain ":subagent:" in key
-  // This runs during updateContextMeter which calls sessions.list
+  if (!container) return;
 }
 
 async function loadSubagents() {
-  const section = document.getElementById("hud-subagents-section");
   const container = document.getElementById("hud-subagents-list");
-  if (!section || !container || !state.gateway?.connected) return;
+  if (!container || !state.gateway?.connected) return;
   
   try {
     const result = await state.gateway.request("sessions.list", {});

@@ -1268,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=23">
+  <link rel="stylesheet" href="/theme.css?v=24">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1367,24 +1367,11 @@
         <!-- ═══ Files ═══ -->
         <div class="hud-files-row" id="hud-file-list"></div>
 
-        <!-- ═══ Session actions ═══ -->
-        <div class="hud-section hud-session-actions">
-          <button class="hud-link-btn" id="hud-export-btn" onclick="exportCurrentSession()">⤓ export session</button>
-        </div>
-
-        <!-- ═══ Schedule ═══ -->
-        <div class="hud-timeline" id="hud-cron-list"></div>
-
-        <!-- ═══ Defaults ═══ -->
-        <div class="hud-section" id="hud-defaults-section">
-          <div class="hud-section-label" style="padding:13px 0 8px">DEFAULTS</div>
-          <div id="hud-defaults-panel" class="hud-defaults-panel"></div>
-        </div>
-
-        <!-- ═══ Sub-agents ═══ -->
-        <div class="hud-section" id="hud-subagents-section">
-          <div class="hud-section-label" style="padding:13px 0 8px">SUB-AGENTS</div>
-          <div id="hud-subagents-list"></div>
+        <!-- ═══ Recurring Tasks ═══ -->
+        <div class="hud-section">
+          <div class="hud-section-label" style="padding:13px 0 8px">RECURRING TASKS</div>
+          <div class="hud-timeline" id="hud-cron-list"></div>
+          <div id="hud-subagents-list" style="margin-top:4px"></div>
         </div>
 
         <!-- ═══ Bottom controls ═══ -->
@@ -1416,10 +1403,17 @@
               <button class="hud-server-action" onclick="sendControlAction('Check if there\\'s a newer version of OpenClaw available. If there is, update it and restart the gateway. Tell me what version I was on and what I updated to.')">update</button>
               <span class="hud-server-sep">·</span>
               <button class="hud-server-action" onclick="sendControlAction('Run a security healthcheck on this system. Check firewall, SSH config, open ports, updates, and any security concerns. Give me a clear summary.')">healthcheck</button>
+              <span class="hud-server-sep">·</span>
+              <button class="hud-server-action" onclick="exportCurrentSession()">export</button>
             </div>
             <div class="hud-update-row" id="hud-update-row" style="display:none">
               <span class="hud-update-badge" id="hud-update-badge"></span>
             </div>
+          </div>
+          <!-- ═══ Defaults ═══ -->
+          <div class="hud-section" id="hud-defaults-section" style="padding-top:10px">
+            <div class="hud-section-label" style="padding:4px 0 8px">DEFAULTS</div>
+            <div id="hud-defaults-panel" class="hud-defaults-panel"></div>
           </div>
         </div>
 
@@ -1540,7 +1534,7 @@
 
   </div>
 
-  <script src="/app.js?v=40"></script>
+  <script src="/app.js?v=41"></script>
   <script>
     // Landing page logic
     (function() {
