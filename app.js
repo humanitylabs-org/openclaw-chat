@@ -3247,7 +3247,6 @@ async function loadCronJobs() {
 
 const DEFAULT_CYCLES = {
   thinking: ["", "off", "low", "medium", "high"],
-  reasoning: ["", "off", "on", "stream"],
   verbose: ["", "off", "on", "full"],
 };
 
@@ -3278,7 +3277,6 @@ function updateDefaultsPanel() {
       '<span class="hud-defaults-value">' + shortModelName(d.model) + '</span>' +
     '</div>' +
     renderVal("thinking", "Think") +
-    renderVal("reasoning", "Reason") +
     renderVal("verbose", "Verbose");
   
   if (hasPendingDefaults()) {
@@ -3324,9 +3322,9 @@ function hasPendingDefaults() {
 async function applyPendingDefaults() {
   if (!hasPendingDefaults() || !state.gateway?.connected) return;
   
+  // Only thinkingDefault and verboseDefault exist in config (reasoning has no default)
   const configKeys = {
     thinking: "thinkingDefault",
-    reasoning: "reasoningDefault",
     verbose: "verboseDefault",
   };
   
@@ -3342,7 +3340,7 @@ async function applyPendingDefaults() {
     
     const patch = {};
     for (const [key, val] of Object.entries(pendingDefaults)) {
-      patch[configKeys[key]] = val || null;
+      if (configKeys[key]) patch[configKeys[key]] = val || null;
     }
     
     const raw = JSON.stringify({ agents: { defaults: patch } });
