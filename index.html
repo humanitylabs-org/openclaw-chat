@@ -1268,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=30">
+  <link rel="stylesheet" href="/theme.css?v=31">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1288,7 +1288,7 @@
           Your OpenClaw bot is a personal AI that's on 24/7. It remembers everything, handles tasks on its own, and keeps working while you sleep. But in Telegram, all you see is messages. This app shows you the full picture.
         </p>
         <div class="landing-cta-row">
-          <button class="landing-cta-primary" id="landing-connect-btn">Connect to your OpenClaw →</button>
+          <button class="landing-cta-primary" id="landing-connect-btn">Connect to your OpenClaw <span class="cta-arrow">→</span></button>
           <a href="https://botsetupguide.com" target="_blank" rel="noopener" class="landing-cta-secondary">Don't have OpenClaw yet? Set it up →</a>
         </div>
       </main>
@@ -1302,6 +1302,54 @@
           <div class="landing-compare-item">
             <div class="landing-compare-label landing-compare-new">This app</div>
             <p>Chat in multiple tabs. Browse every file your OpenClaw bot has access to. Edit its personality, memory, and preferences. See what it's doing, not just what it says.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-preview-section">
+        <div class="landing-preview-label">What you'll see</div>
+        <div class="landing-preview-frame">
+          <div class="landing-preview-titlebar">
+            <span class="landing-preview-dot"></span>
+            <span class="landing-preview-dot"></span>
+            <span class="landing-preview-dot"></span>
+            <span class="landing-preview-url">usemyclaw.com</span>
+          </div>
+          <div class="landing-preview-body">
+            <div class="landing-preview-sidebar">
+              <div class="landing-preview-identity">
+                <div class="landing-preview-orb">🦾</div>
+                <div class="landing-preview-name">Oscar</div>
+                <div class="landing-preview-status">Online</div>
+              </div>
+              <div class="landing-preview-files">
+                <span class="landing-preview-file">SOUL.md</span>
+                <span class="landing-preview-file">USER.md</span>
+                <span class="landing-preview-file">MEMORY.md</span>
+              </div>
+              <div class="landing-preview-tasks">
+                <div class="landing-preview-task-label">Tasks</div>
+                <div class="landing-preview-task">
+                  <span class="landing-preview-task-dot"></span>
+                  <span>signal-check</span>
+                </div>
+                <div class="landing-preview-task">
+                  <span class="landing-preview-task-dot"></span>
+                  <span>inbox-processor</span>
+                </div>
+              </div>
+            </div>
+            <div class="landing-preview-chat">
+              <div class="landing-preview-msg landing-preview-msg-user">Check my calendar for tomorrow</div>
+              <div class="landing-preview-msg landing-preview-msg-bot">You have 2 meetings tomorrow: standup at 10am and a design review at 2pm. Want me to prep notes for either?</div>
+              <div class="landing-preview-msg landing-preview-msg-user">Yes, prep notes for the design review</div>
+              <div class="landing-preview-input">
+                <span class="landing-preview-input-text">Message...</span>
+                <span class="landing-preview-input-send">
+                  <svg viewBox="0 0 24 24" fill="#0B0B0D"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94l18.04-8.25a.75.75 0 000-1.39L3.478 2.405z"/></svg>
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -1324,7 +1372,7 @@
       </section>
 
       <section class="landing-bottom-cta">
-        <button class="landing-cta-primary" id="landing-connect-btn-2">Connect to your OpenClaw →</button>
+        <button class="landing-cta-primary" id="landing-connect-btn-2">Connect to your OpenClaw <span class="cta-arrow">→</span></button>
       </section>
 
       <footer class="landing-footer">

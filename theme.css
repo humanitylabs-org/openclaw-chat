@@ -1600,3 +1600,627 @@
 [data-theme="light"] .landing { background: #FAFAFA; color: #1A1A1A; }
 [data-theme="light"] .hud-session-actions { border-top-color: rgba(0, 0, 0, 0.06); }
 [data-theme="light"] .hud-subagent-kill:hover { background: rgba(239, 68, 68, 0.1); }
+
+/* ══════════════════════════════════════════════════════════════
+   Design Enhancement Layer — March 2026
+   Accent color system, animations, visual polish
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --accent: #00D4AA;
+  --accent-rgb: 0, 212, 170;
+}
+
+/* ── Landing Grid Background ──────────────────────────── */
+
+.landing::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: radial-gradient(ellipse 80% 50% at 50% 20%, black 10%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 50% at 50% 20%, black 10%, transparent 70%);
+}
+
+.landing-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Hero Glow ────────────────────────────────────────── */
+
+.landing-hero {
+  position: relative;
+}
+
+.landing-hero::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  height: 350px;
+  background: radial-gradient(ellipse, rgba(var(--accent-rgb), 0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── CTA Enhancements ─────────────────────────────────── */
+
+.landing-cta-primary {
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.3s;
+}
+
+.landing-cta-primary:hover {
+  box-shadow: 0 0 30px rgba(var(--accent-rgb), 0.12), 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.landing-cta-primary .cta-arrow {
+  display: inline-block;
+  transition: transform 0.25s ease;
+}
+
+.landing-cta-primary:hover .cta-arrow {
+  transform: translateX(4px);
+}
+
+/* ── Comparison Card Accent ───────────────────────────── */
+
+.landing-compare-new {
+  color: var(--accent);
+}
+
+.landing-compare-item:last-child {
+  border-left: 2px solid rgba(var(--accent-rgb), 0.25);
+}
+
+/* ── App Preview Mockup ───────────────────────────────── */
+
+.landing-preview-section {
+  padding: 48px 0;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+.landing-preview-label {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #444;
+  margin-bottom: 20px;
+}
+
+.landing-preview-frame {
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.015);
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02);
+}
+
+.landing-preview-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.025);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.landing-preview-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+
+.landing-preview-url {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: #3a3a3a;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 300;
+}
+
+.landing-preview-body {
+  display: flex;
+  min-height: 300px;
+}
+
+.landing-preview-sidebar {
+  width: 190px;
+  border-right: 1px solid rgba(255,255,255,0.04);
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .landing-preview-sidebar { display: none; }
+  .landing-preview-body { min-height: 220px; }
+}
+
+.landing-preview-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.landing-preview-orb {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  position: relative;
+}
+
+.landing-preview-orb::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.15) 0%, transparent 70%);
+  animation: orb-breathe 4s ease-in-out infinite;
+}
+
+.landing-preview-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #bbb;
+}
+
+.landing-preview-status {
+  font-size: 9px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  opacity: 0.7;
+}
+
+.landing-preview-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.landing-preview-file {
+  font-size: 9px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 300;
+  color: #555;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 10px;
+  padding: 2px 7px;
+}
+
+.landing-preview-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.landing-preview-task-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #3a3a3a;
+}
+
+.landing-preview-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #555;
+  font-weight: 300;
+}
+
+.landing-preview-task-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.landing-preview-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.landing-preview-msg {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 300;
+  animation: previewFadeIn 0.6s ease forwards;
+  opacity: 0;
+}
+
+.landing-preview-msg-user {
+  align-self: flex-end;
+  background: #F2F2F2;
+  color: #0B0B0D;
+  border-bottom-right-radius: 4px;
+  font-weight: 400;
+}
+
+.landing-preview-msg:nth-child(1) { animation-delay: 0.5s; }
+.landing-preview-msg:nth-child(2) { animation-delay: 1.0s; }
+.landing-preview-msg:nth-child(3) { animation-delay: 1.5s; }
+
+.landing-preview-msg-bot {
+  align-self: flex-start;
+  color: #999;
+  padding: 6px 4px;
+}
+
+.landing-preview-input {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.035);
+  border-radius: 16px;
+  padding: 6px 6px 6px 12px;
+  animation: previewFadeIn 0.6s ease forwards;
+  opacity: 0;
+  animation-delay: 2.0s;
+}
+
+.landing-preview-input-text {
+  flex: 1;
+  font-size: 12px;
+  color: #3a3a3a;
+  font-weight: 300;
+}
+
+.landing-preview-input-send {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #F2F2F2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.landing-preview-input-send svg {
+  width: 10px;
+  height: 10px;
+}
+
+@keyframes previewFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Staggered Step Animations ────────────────────────── */
+
+.landing-step {
+  animation: stepSlideIn 0.5s ease forwards;
+  opacity: 0;
+}
+
+.landing-step:nth-child(1) { animation-delay: 0.1s; }
+.landing-step:nth-child(2) { animation-delay: 0.25s; }
+.landing-step:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes stepSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.landing-step-num {
+  border-color: rgba(var(--accent-rgb), 0.2) !important;
+  color: var(--accent) !important;
+  opacity: 0.7;
+}
+
+/* ── Dashboard Orb Enhancements ──────────────────────── */
+
+.hud-orb::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  transition: all 0.8s ease;
+  pointer-events: none;
+}
+
+.hud-orb.online::after {
+  animation: orbRadar 3s ease-out infinite;
+}
+
+@keyframes orbRadar {
+  0% {
+    transform: scale(1);
+    border-color: rgba(var(--accent-rgb), 0.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    border-color: rgba(var(--accent-rgb), 0);
+    opacity: 0;
+  }
+}
+
+.hud-orb.online .hud-orb-glow {
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.12) 0%, rgba(var(--accent-rgb), 0.02) 50%, transparent 70%) !important;
+}
+
+.hud-status-line.online {
+  color: var(--accent) !important;
+  opacity: 0.8;
+}
+
+/* ── Dashboard Section Cards ──────────────────────────── */
+
+.hud-section {
+  border-top: none !important;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid rgba(255,255,255,0.04) !important;
+  border-radius: 10px;
+  padding: 4px 12px 8px !important;
+  margin-top: 8px;
+}
+
+.hud-section:first-of-type {
+  margin-top: 0;
+}
+
+/* ── File Chip Enhancements ──────────────────────────── */
+
+.hud-file-chip {
+  animation: chipIn 0.35s ease forwards;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.hud-file-chip:nth-child(1) { animation-delay: 0.05s; }
+.hud-file-chip:nth-child(2) { animation-delay: 0.10s; }
+.hud-file-chip:nth-child(3) { animation-delay: 0.15s; }
+.hud-file-chip:nth-child(4) { animation-delay: 0.20s; }
+.hud-file-chip:nth-child(5) { animation-delay: 0.25s; }
+.hud-file-chip:nth-child(6) { animation-delay: 0.30s; }
+.hud-file-chip:nth-child(7) { animation-delay: 0.35s; }
+.hud-file-chip:nth-child(8) { animation-delay: 0.40s; }
+
+@keyframes chipIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.hud-file-chip:hover {
+  background: rgba(var(--accent-rgb), 0.06) !important;
+  border-color: rgba(var(--accent-rgb), 0.18) !important;
+  color: var(--accent) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+}
+
+/* ── Cron Task Stagger ────────────────────────────────── */
+
+.hud-tl-item {
+  animation: cronSlideIn 0.35s ease forwards;
+  opacity: 0;
+}
+
+.hud-tl-item:nth-child(1) { animation-delay: 0.1s; }
+.hud-tl-item:nth-child(2) { animation-delay: 0.18s; }
+.hud-tl-item:nth-child(3) { animation-delay: 0.26s; }
+.hud-tl-item:nth-child(4) { animation-delay: 0.34s; }
+.hud-tl-item:nth-child(5) { animation-delay: 0.42s; }
+
+@keyframes cronSlideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Connection Status Dots ──────────────────────────── */
+
+.openclaw-status-dot.connected {
+  background: var(--accent) !important;
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.5);
+}
+
+.dash-dot.connected {
+  background: var(--accent) !important;
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.5);
+}
+
+/* ── Toggle Accent ────────────────────────────────────── */
+
+.hud-toggle input:checked + .hud-toggle-track {
+  background: rgba(var(--accent-rgb), 0.2) !important;
+}
+
+.hud-toggle input:checked + .hud-toggle-track::before {
+  background: var(--accent) !important;
+}
+
+/* ── Chip / Button Accent ─────────────────────────────── */
+
+.hud-chip.active {
+  color: var(--accent) !important;
+  background: rgba(var(--accent-rgb), 0.1) !important;
+  border-color: rgba(var(--accent-rgb), 0.25) !important;
+}
+
+.openclaw-model-bar .bar-chip-toggle.active {
+  color: var(--accent) !important;
+  background: rgba(var(--accent-rgb), 0.1) !important;
+  border-color: rgba(var(--accent-rgb), 0.25) !important;
+}
+
+.hud-defaults-apply {
+  color: var(--accent) !important;
+  background: rgba(var(--accent-rgb), 0.08) !important;
+  border-color: rgba(var(--accent-rgb), 0.2) !important;
+}
+
+.hud-defaults-apply:hover {
+  background: rgba(var(--accent-rgb), 0.15) !important;
+  border-color: rgba(var(--accent-rgb), 0.35) !important;
+}
+
+.hud-defaults-pending {
+  color: var(--accent) !important;
+}
+
+.hud-defaults-select.hud-defaults-pending {
+  color: var(--accent) !important;
+  border-color: rgba(var(--accent-rgb), 0.3) !important;
+}
+
+/* ── Model Bar Polish ─────────────────────────────────── */
+
+.openclaw-model-label {
+  font-family: 'IBM Plex Mono', monospace !important;
+  font-size: 11px !important;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+}
+
+.openclaw-model-bar .bar-chip {
+  font-family: 'IBM Plex Mono', monospace !important;
+  font-size: 11px !important;
+  font-weight: 300;
+}
+
+/* ── Alert / Badge / Status Accent ────────────────────── */
+
+.hud-alert-info {
+  background: rgba(var(--accent-rgb), 0.06) !important;
+  border-color: rgba(var(--accent-rgb), 0.12) !important;
+  color: var(--accent) !important;
+}
+
+.hud-update-badge {
+  color: var(--accent) !important;
+  background: rgba(var(--accent-rgb), 0.08) !important;
+  border-color: rgba(var(--accent-rgb), 0.15) !important;
+}
+
+.hud-tl-status.ok {
+  color: var(--accent) !important;
+}
+
+.hud-agent-dropdown-item .agent-dot {
+  background: rgba(var(--accent-rgb), 0.6) !important;
+}
+
+.hud-agent-dropdown-item.active .agent-dot {
+  background: var(--accent) !important;
+  box-shadow: 0 0 4px rgba(var(--accent-rgb), 0.5);
+}
+
+/* ── Dashboard Fade In ────────────────────────────────── */
+
+.dashboard-scroll {
+  animation: dashFadeIn 0.5s ease;
+}
+
+@keyframes dashFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Light Theme Accent Overrides ─────────────────────── */
+
+[data-theme="light"] {
+  --accent: #00B894;
+  --accent-rgb: 0, 184, 148;
+}
+
+[data-theme="light"] .landing::before {
+  background-image:
+    linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px);
+}
+
+[data-theme="light"] .hud-section {
+  background: rgba(0,0,0,0.015) !important;
+  border-color: rgba(0,0,0,0.06) !important;
+}
+
+[data-theme="light"] .landing-preview-frame {
+  border-color: rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.015);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.03);
+}
+
+[data-theme="light"] .landing-preview-titlebar {
+  background: rgba(0,0,0,0.03);
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .landing-preview-dot {
+  background: rgba(0,0,0,0.08);
+}
+
+[data-theme="light"] .landing-preview-url {
+  color: #aaa;
+}
+
+[data-theme="light"] .landing-preview-sidebar {
+  border-right-color: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .landing-preview-name {
+  color: #333;
+}
+
+[data-theme="light"] .landing-preview-file {
+  color: #888;
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .landing-preview-msg-user {
+  background: #1A1A1A;
+  color: #FAFAFA;
+}
+
+[data-theme="light"] .landing-preview-msg-bot {
+  color: #555;
+}
+
+[data-theme="light"] .landing-preview-input {
+  background: rgba(0,0,0,0.04);
+}
+
+[data-theme="light"] .hud-file-chip:hover {
+  background: rgba(var(--accent-rgb), 0.05) !important;
+  border-color: rgba(var(--accent-rgb), 0.15) !important;
+  color: var(--accent) !important;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
