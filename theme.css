@@ -2224,3 +2224,196 @@
   color: var(--accent) !important;
   box-shadow: 0 3px 10px rgba(0,0,0,0.08);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Dashboard Skeleton Loading State
+   ══════════════════════════════════════════════════════════════ */
+
+.dashboard {
+  position: relative;
+}
+
+.dashboard-skeleton {
+  position: absolute;
+  inset: 0;
+  background: #0d0d0f;
+  z-index: 10;
+  padding: 28px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  transition: opacity 0.4s ease;
+  overflow: hidden;
+}
+
+.dashboard.dash-loaded .dashboard-skeleton {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dashboard-scroll {
+  transition: opacity 0.4s ease 0.1s;
+}
+
+.dashboard.dash-loading .dashboard-scroll {
+  opacity: 0;
+}
+
+.dashboard.dash-loaded .dashboard-scroll {
+  opacity: 1;
+}
+
+/* Skeleton shimmer effect */
+.skel-circle, .skel-line, .skel-chip {
+  background: linear-gradient(90deg, rgba(255,255,255,0.025) 25%, rgba(255,255,255,0.055) 50%, rgba(255,255,255,0.025) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skel-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 16px;
+  width: 100%;
+}
+
+.skel-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+.skel-line {
+  height: 12px;
+  width: 100%;
+}
+
+.skel-line-short { width: 50%; margin: 0 auto; }
+.skel-line-tiny { width: 25%; margin: 0 auto; height: 8px; }
+.skel-line-med { width: 75%; }
+.skel-line-label { width: 35%; height: 8px; }
+
+.skel-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 0 0 12px;
+  width: 100%;
+}
+
+.skel-chip {
+  width: 72px;
+  height: 28px;
+  border-radius: 14px;
+}
+
+.skel-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 10px;
+}
+
+[data-theme="light"] .dashboard-skeleton {
+  background: #f5f5f7;
+}
+
+[data-theme="light"] .skel-circle,
+[data-theme="light"] .skel-line,
+[data-theme="light"] .skel-chip {
+  background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.07) 50%, rgba(0,0,0,0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+[data-theme="light"] .skel-section {
+  background: rgba(0,0,0,0.02);
+  border-color: rgba(0,0,0,0.06);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Agent Identity — Clickable Indicator
+   ══════════════════════════════════════════════════════════════ */
+
+.hud-agent-chevron {
+  font-size: 12px;
+  opacity: 0.3;
+  transition: opacity 0.2s, transform 0.2s;
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.hud-identity:hover .hud-agent-chevron {
+  opacity: 0.7;
+  transform: translateY(1px);
+}
+
+.hud-identity {
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+
+.hud-identity:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+[data-theme="light"] .hud-identity:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Sub-agents — Fixed Height
+   ══════════════════════════════════════════════════════════════ */
+
+#hud-subagents-list {
+  min-height: 22px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Text Size
+   ══════════════════════════════════════════════════════════════ */
+
+body.text-small .openclaw-msg { font-size: 12px; }
+body.text-small .openclaw-msg-assistant code { font-size: 10px; }
+body.text-small .openclaw-msg-assistant pre code { font-size: 10px; }
+body.text-small .openclaw-tool-item { font-size: 10px; }
+
+body.text-large .openclaw-msg { font-size: 16px; }
+body.text-large .openclaw-msg-assistant code { font-size: 14px; }
+body.text-large .openclaw-msg-assistant pre code { font-size: 14px; }
+body.text-large .openclaw-tool-item { font-size: 12px; }
+
+/* ══════════════════════════════════════════════════════════════
+   Connection Info — Truncated Values
+   ══════════════════════════════════════════════════════════════ */
+
+.hud-text-truncate {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+.hud-conn-status-on {
+  color: var(--accent) !important;
+}
+
+.hud-conn-status-off {
+  color: var(--text-faint) !important;
+}

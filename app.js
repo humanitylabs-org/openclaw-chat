@@ -2745,15 +2745,57 @@ function updateDashboard() {
 
 
 
+  // Connection info
+  const connStatus = document.getElementById('hud-conn-status');
+  const connUrl = document.getElementById('hud-conn-url');
+  const connDevice = document.getElementById('hud-conn-device');
+  if (connStatus) {
+    if (connected) {
+      connStatus.textContent = 'Connected';
+      connStatus.className = 'hud-defaults-value hud-conn-status-on';
+    } else if (state.gatewayUrl) {
+      connStatus.textContent = 'Disconnected';
+      connStatus.className = 'hud-defaults-value hud-conn-status-off';
+    } else {
+      connStatus.textContent = '—';
+      connStatus.className = 'hud-defaults-value';
+    }
+  }
+  if (connUrl && state.gatewayUrl) {
+    const url = state.gatewayUrl.replace(/^wss?:\/\//, '').replace(/\/+$/, '');
+    connUrl.textContent = url;
+    connUrl.title = state.gatewayUrl;
+  }
+  if (connDevice) {
+    const stored = localStorage.getItem('deviceIdentity');
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        connDevice.textContent = (data.deviceId || '').slice(0, 10) + '…';
+        connDevice.title = data.deviceId || '';
+      } catch {}
+    }
+  }
+
   // Show connect form or dashboard content
   const connectForm = document.getElementById('dash-connect-form');
+  const dashboard = document.getElementById('dashboard');
   const hudSections = document.querySelectorAll('#dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section');
   if (!state.gatewayUrl || !state.token) {
     if (connectForm) connectForm.style.display = '';
     hudSections.forEach(s => s.style.display = 'none');
+    // No credentials — skip skeleton, show connect form directly
+    if (dashboard) {
+      dashboard.classList.remove('dash-loading');
+      dashboard.classList.add('dash-loaded');
+    }
   } else {
     if (connectForm) connectForm.style.display = 'none';
     hudSections.forEach(s => s.style.display = '');
+    // Show skeleton while loading
+    if (dashboard && !dashboard.classList.contains('dash-loaded')) {
+      dashboard.classList.add('dash-loading');
+    }
   }
 
   // Load settings
@@ -2812,8 +2854,21 @@ async function fetchServerInfo() {
     const alertsEl = document.getElementById('hud-alerts');
     if (alertsEl) alertsEl.innerHTML = '';
 
+    // Mark dashboard as loaded (fade in content, hide skeleton)
+    const dash = document.getElementById('dashboard');
+    if (dash) {
+      dash.classList.remove('dash-loading');
+      dash.classList.add('dash-loaded');
+    }
+
   } catch (err) {
     console.warn('Failed to fetch server info:', err);
+    // Still mark loaded on error to show what we have
+    const dash = document.getElementById('dashboard');
+    if (dash) {
+      dash.classList.remove('dash-loading');
+      dash.classList.add('dash-loaded');
+    }
   }
 }
 
@@ -2850,7 +2905,7 @@ function toggleSection(sectionId) {
 }
 
 function restoreCollapsibleState() {
-  const openSections = JSON.parse(localStorage.getItem('openSections') || '{"cron":true,"bot-files":true}');
+  const openSections = JSON.parse(localStorage.getItem('openSections') || '{"cron":true,"bot-files":true,"app-settings":true,"server-settings":true}');
   for (const [id, isOpen] of Object.entries(openSections)) {
     if (isOpen) {
       const el = document.querySelector(`.hud-collapsible[data-section="${id}"]`);
@@ -3286,6 +3341,7 @@ function updateDefaultsPanel() {
   const section = document.getElementById("hud-defaults-section");
   if (!el) return;
   const d = state.defaults;
+  // Hide defaults subsection when no model info available
   if (section) section.style.display = d.model ? "" : "none";
   if (!d.model) return;
   
@@ -3561,6 +3617,20 @@ function onTTSKeyChange() {
   markTTSPending('apiKey', document.getElementById('dash-tts-key')?.value || '');
 }
 
+function setTextSize(size) {
+  document.body.classList.remove('text-small', 'text-large');
+  if (size === 'small') document.body.classList.add('text-small');
+  else if (size === 'large') document.body.classList.add('text-large');
+  // Update chips
+  document.querySelectorAll('#dash-text-size .hud-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.textsize === size);
+  });
+  // Save
+  const settings = JSON.parse(localStorage.getItem('dashSettings') || '{}');
+  settings.textSize = size;
+  localStorage.setItem('dashSettings', JSON.stringify(settings));
+}
+
 function setTheme(theme) {
   if (theme === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
@@ -3584,6 +3654,10 @@ function applyDashSettings(settings) {
     document.getElementById('dash-theme-dark')?.classList.add('active');
     document.getElementById('dash-theme-light')?.classList.remove('active');
   }
+  // Restore text size
+  if (settings.textSize) {
+    setTextSize(settings.textSize);
+  }
 }
 
 // ─── Export Session ───────────────────────────────────────────────
@@ -3598,6 +3672,10 @@ function exportCurrentSession() {
 function updateSubagentsPanel() {
   const container = document.getElementById("hud-subagents-list");
   if (!container) return;
+  // Set placeholder so layout doesn't shift when "none running" loads
+  if (!container.innerHTML.trim()) {
+    container.innerHTML = '<div class="hud-empty-hint" style="visibility:hidden;">none running</div>';
+  }
 }
 
 async function loadSubagents() {
