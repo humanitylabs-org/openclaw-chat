@@ -2732,9 +2732,19 @@ function updateDashboard() {
   const name = state.activeAgent?.name || 'Agent';
   if (emojiEl) emojiEl.textContent = state.activeAgent?.emoji || '🤖';
 
-  // Agent name
+  // Agent name (preserve chevron indicator)
   const nameEl = document.getElementById('hud-agent-name');
-  if (nameEl) nameEl.textContent = name;
+  if (nameEl) {
+    const chevron = nameEl.querySelector('.hud-agent-chevron');
+    nameEl.textContent = name + ' ';
+    if (chevron) nameEl.appendChild(chevron);
+    else {
+      const ch = document.createElement('span');
+      ch.className = 'hud-agent-chevron';
+      ch.textContent = '▾';
+      nameEl.appendChild(ch);
+    }
+  }
 
   // Status line
   const statusLine = document.getElementById('hud-status-line');
