@@ -1574,7 +1574,7 @@
   border-right-color: rgba(0, 0, 0, 0.06);
 }
 
-[data-theme="light"] .hud-section { border-top-color: rgba(0, 0, 0, 0.06); }
+[data-theme="light"] .hud-section { border-top-color: rgba(0, 0, 0, 0.08); }
 [data-theme="light"] .hud-agent-dropdown { background: #fff; border-color: rgba(0,0,0,0.1); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
 [data-theme="light"] .hud-agent-dropdown-item { color: #666; }
 [data-theme="light"] .hud-agent-dropdown-item:hover { background: rgba(0,0,0,0.04); color: #1a1a1a; }
@@ -2008,8 +2008,8 @@
 
 .hud-section {
   border-top: none !important;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.05) !important;
+  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.08) !important;
   border-radius: 8px;
   padding: 0 12px !important;
   margin-top: 6px;
@@ -2020,8 +2020,8 @@
 }
 
 .hud-section.hud-collapsible.hud-open {
-  background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.07) !important;
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.10) !important;
 }
 
 .hud-section.hud-collapsible.hud-open .hud-section-body {
@@ -2203,8 +2203,15 @@
 }
 
 [data-theme="light"] .hud-section {
-  background: rgba(0,0,0,0.015) !important;
-  border-color: rgba(0,0,0,0.06) !important;
+  background: rgba(255,255,255,0.7) !important;
+  border-color: rgba(0,0,0,0.08) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+[data-theme="light"] .hud-section.hud-collapsible.hud-open {
+  background: rgba(255,255,255,0.85) !important;
+  border-color: rgba(0,0,0,0.10) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
 [data-theme="light"] .landing-preview-frame {
