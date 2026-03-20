@@ -2229,8 +2229,13 @@
    Dashboard Skeleton Loading State
    ══════════════════════════════════════════════════════════════ */
 
-.dashboard {
-  position: relative;
+/* Desktop only: position:relative for skeleton overlay.
+   On mobile, dashboard is position:fixed (from @media ≤768px),
+   which already creates a containing block for the skeleton. */
+@media (min-width: 769px) {
+  .dashboard {
+    position: relative;
+  }
 }
 
 .dashboard-skeleton {
