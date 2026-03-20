@@ -4078,12 +4078,9 @@ function closeDashboard() {
     }
   });
 
-  // Restore state
-  setTimeout(() => {
-    for (const cfg of Object.values(panels)) {
-      if (localStorage.getItem(cfg.storageKey) === 'true') toggle(cfg);
-    }
-  }, 500);
+  // Clear old panel state from previous version (class names changed)
+  localStorage.removeItem('browserPanelOpen');
+  localStorage.removeItem('terminalPanelOpen');
 })();
 
 // ─── Initialize ──────────────────────────────────────────────────────

@@ -991,8 +991,14 @@
   cursor: pointer;
   color: var(--text-muted);
   transition: color 0.15s;
+  outline: none;
 }
 .hud-section-toggle:hover { color: var(--text-normal); }
+.hud-section-toggle:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.3);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
 
 .hud-section-chevron {
   font-size: 14px;
@@ -2456,9 +2462,10 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 }
 
 .hud-section-actions {
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: 2px;
+  flex-shrink: 0;
 }
 
 .hud-embed-action {
@@ -2486,9 +2493,14 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 .hud-embed-panel.hud-fullscreen .hud-when-open { display: inline-flex; }
 .hud-embed-panel.hud-fullscreen .hud-when-expanded { display: inline-flex !important; }
 
+/* Ensure chevron is always visible in embed panels */
+.hud-embed-panel .hud-section-chevron {
+  display: inline-block !important;
+}
+
 /* Hide chevron when expanded/fullscreen */
 .hud-embed-panel.hud-expanded .hud-section-chevron,
-.hud-embed-panel.hud-fullscreen .hud-section-chevron { display: none; }
+.hud-embed-panel.hud-fullscreen .hud-section-chevron { display: none !important; }
 
 /* Embed body (iframe container) */
 .hud-embed-body {
