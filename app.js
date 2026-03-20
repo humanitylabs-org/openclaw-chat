@@ -4012,16 +4012,50 @@ function closeDashboard() {
     document.getElementById(cfg.dotId)?.classList.toggle('connected', connected);
   }
 
+  function showLoading(cfg) {
+    const body = document.getElementById(cfg.bodyId);
+    if (!body || body.querySelector('.hud-embed-loading')) return;
+    const el = document.createElement('div');
+    el.className = 'hud-embed-loading';
+    el.innerHTML = '<div class="hud-embed-spinner"></div><span class="hud-embed-loading-text">Connecting…</span>';
+    body.style.position = 'relative';
+    body.appendChild(el);
+  }
+
+  function hideLoading(cfg) {
+    const body = document.getElementById(cfg.bodyId);
+    const el = body?.querySelector('.hud-embed-loading');
+    if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }
+  }
+
   function createIframe(cfg) {
     if (cfg.iframe) return cfg.iframe;
     const url = cfg.getUrl();
     if (!url) return null;
+
+    showLoading(cfg);
+
     const iframe = document.createElement('iframe');
     iframe.src = url;
+    iframe.style.opacity = '0';
+    iframe.style.transition = 'opacity 0.3s';
     if (cfg === panels.browser) iframe.setAttribute('allow', 'clipboard-read; clipboard-write');
+
     let loaded = false;
-    iframe.addEventListener('load', () => { loaded = true; updateDots(cfg, true); });
-    setTimeout(() => { if (!loaded) updateDots(cfg, false); }, 6000);
+    iframe.addEventListener('load', () => {
+      loaded = true;
+      updateDots(cfg, true);
+      hideLoading(cfg);
+      iframe.style.opacity = '1';
+    });
+    setTimeout(() => {
+      if (!loaded) {
+        updateDots(cfg, false);
+        const txt = document.getElementById(cfg.bodyId)?.querySelector('.hud-embed-loading-text');
+        if (txt) txt.textContent = 'Taking longer than usual…';
+      }
+    }, 6000);
+
     cfg.iframe = iframe;
     return iframe;
   }
