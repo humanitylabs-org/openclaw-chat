@@ -2871,6 +2871,9 @@ async function fetchServerInfo() {
       dash.classList.add('dash-loaded');
     }
 
+    // Preload browser + terminal iframes in background
+    if (typeof preloadAllEmbeds === 'function') preloadAllEmbeds();
+
   } catch (err) {
     console.warn('Failed to fetch server info:', err);
     // Still mark loaded on error to show what we have
@@ -4015,28 +4018,24 @@ function closeDashboard() {
     document.getElementById(cfg.dotId)?.classList.toggle('connected', connected);
   }
 
-  function showLoading(cfg) {
-    const body = document.getElementById(cfg.bodyId);
-    if (!body || body.querySelector('.hud-embed-loading')) return;
-    const el = document.createElement('div');
-    el.className = 'hud-embed-loading';
-    el.innerHTML = '<div class="hud-embed-spinner"></div><span class="hud-embed-loading-text">Connecting…</span>';
-    body.style.position = 'relative';
-    body.appendChild(el);
-  }
-
-  function hideLoading(cfg) {
-    const body = document.getElementById(cfg.bodyId);
-    const el = body?.querySelector('.hud-embed-loading');
-    if (el) { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }
-  }
-
-  function createIframe(cfg) {
-    if (cfg.iframe) return cfg.iframe;
+  // Preload iframes on connect — they load in the background so they're
+  // instant when the user opens the panel. Iframes are never destroyed,
+  // just hidden/shown via the section collapse.
+  function preloadIframe(cfg) {
+    if (cfg.iframe) return;
     const url = cfg.getUrl();
-    if (!url) return null;
+    if (!url) return;
 
-    showLoading(cfg);
+    const body = document.getElementById(cfg.bodyId);
+    if (!body) return;
+
+    // Show loading spinner
+    if (!body.querySelector('.hud-embed-loading')) {
+      const el = document.createElement('div');
+      el.className = 'hud-embed-loading';
+      el.innerHTML = '<div class="hud-embed-spinner"></div><span class="hud-embed-loading-text">Connecting…</span>';
+      body.appendChild(el);
+    }
 
     const iframe = document.createElement('iframe');
     iframe.src = url;
@@ -4047,26 +4046,30 @@ function closeDashboard() {
     let loaded = false;
     iframe.addEventListener('load', () => {
       loaded = true;
+      cfg.ready = true;
       updateDots(cfg, true);
-      hideLoading(cfg);
+      const loader = body.querySelector('.hud-embed-loading');
+      if (loader) { loader.style.opacity = '0'; loader.style.transition = 'opacity 0.3s'; setTimeout(() => loader.remove(), 300); }
       iframe.style.opacity = '1';
     });
     setTimeout(() => {
       if (!loaded) {
         updateDots(cfg, false);
-        const txt = document.getElementById(cfg.bodyId)?.querySelector('.hud-embed-loading-text');
+        const txt = body.querySelector('.hud-embed-loading-text');
         if (txt) txt.textContent = 'Taking longer than usual…';
       }
-    }, 6000);
+    }, 8000);
 
     cfg.iframe = iframe;
-    return iframe;
+    body.appendChild(iframe);
   }
 
-  function destroyIframe(cfg) {
-    if (cfg.iframe) { cfg.iframe.remove(); cfg.iframe = null; }
-    updateDots(cfg, false);
+  function preloadAll() {
+    for (const cfg of Object.values(panels)) preloadIframe(cfg);
   }
+
+  // Expose globally so dashboard init can trigger preload on connect
+  window.preloadAllEmbeds = preloadAll;
 
   function toggle(cfg) {
     const st = getState(cfg);
@@ -4075,29 +4078,16 @@ function closeDashboard() {
       document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
         if (other.id !== cfg.id) {
           other.classList.remove('hud-open');
-          const otherSection = other.dataset.section;
-          // Close other embed panels too
-          for (const [k, c] of Object.entries(panels)) {
-            if (c.id === other.id && c !== cfg) {
-              setState(c, 'closed');
-              destroyIframe(c);
-              localStorage.removeItem(c.storageKey);
-            }
-          }
+          // No need to destroy iframes — they stay preloaded
         }
       });
 
       setState(cfg, 'open');
-      const body = document.getElementById(cfg.bodyId);
-      if (body && !cfg.iframe) {
-        const iframe = createIframe(cfg);
-        if (iframe) body.appendChild(iframe);
-      }
+      // If iframe wasn't preloaded yet (edge case), do it now
+      if (!cfg.iframe) preloadIframe(cfg);
       localStorage.setItem('openSection', cfg.id === 'browser-panel' ? 'agent-browser' : 'agent-terminal');
     } else {
-      // Close fully
       setState(cfg, 'closed');
-      destroyIframe(cfg);
       localStorage.setItem('openSection', '');
     }
   }
@@ -4107,7 +4097,6 @@ function closeDashboard() {
     for (const cfg of Object.values(panels)) {
       if (e.detail === (cfg.id === 'browser-panel' ? 'agent-browser' : 'agent-terminal')) {
         setState(cfg, 'closed');
-        destroyIframe(cfg);
       }
     }
   });
@@ -4162,7 +4151,7 @@ function closeDashboard() {
     }
   });
 
-  // Panel restore is handled by restoreCollapsibleState() via openSection key
+  // Iframes preloaded on connect — panel restore handled by restoreCollapsibleState()
 })();
 
 // ─── Initialize ──────────────────────────────────────────────────────
