@@ -3916,7 +3916,7 @@ function closeDashboard() {
     try {
       const conn = JSON.parse(localStorage.getItem('connection') || '{}');
       const url = new URL(conn.gatewayUrl || '');
-      return 'https://' + url.hostname + ':6080/vnc_lite.html?scale=true';
+      return 'https://' + url.hostname + ':6080/embed.html';
     } catch { return null; }
   }
 
