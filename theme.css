@@ -2424,96 +2424,44 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Agent Browser Panel — bottom of dashboard
+   Embed Panels (Browser + Terminal) — unified with hud-section
    ══════════════════════════════════════════════════════════════ */
 
-.browser-panel {
-  flex-shrink: 0;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  display: flex;
-  flex-direction: column;
-  background: #080809;
-  transition: height 0.25s ease;
-  overflow: hidden;
-}
-
-/* Collapsed: just the header bar */
-.browser-panel:not(.browser-open) {
-  height: auto;
-}
-
-.browser-panel:not(.browser-open) .browser-panel-body {
-  display: none;
-}
-
-.browser-panel:not(.browser-open) .browser-panel-when-open {
-  display: none;
-}
-
-/* Open: bottom third of dashboard */
-.browser-panel.browser-open {
-  height: 33%;
-  min-height: 180px;
-  max-height: 320px;
-}
-
-.browser-panel.browser-open .browser-panel-chevron {
-  transform: rotate(90deg);
-}
-
-.browser-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  flex-shrink: 0;
-  cursor: pointer;
-  transition: background 0.15s;
-  user-select: none;
-}
-
-.browser-panel-header:hover {
-  background: rgba(255,255,255,0.02);
-}
-
-.browser-panel-title-row {
+.hud-section-label-row {
   display: flex;
   align-items: center;
   gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  text-transform: uppercase;
 }
 
-.browser-panel-dot {
+.hud-embed-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--text-faint);
   flex-shrink: 0;
   transition: background 0.3s, box-shadow 0.3s;
+  opacity: 0.5;
 }
 
-.browser-panel-dot.connected {
+.hud-embed-dot.connected {
   background: var(--accent);
   box-shadow: 0 0 4px rgba(var(--accent-rgb), 0.5);
+  opacity: 1;
 }
 
-.browser-panel-title {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-faint);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.browser-panel-actions {
+.hud-section-actions {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.browser-panel-action {
-  background: none;
-  border: none;
+.hud-embed-action {
   color: var(--text-faint);
   cursor: pointer;
   padding: 4px 6px;
@@ -2521,103 +2469,152 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   font-size: 14px;
   line-height: 1;
   transition: color 0.15s, background 0.15s;
+  user-select: none;
 }
 
-.browser-panel-action:hover {
+.hud-embed-action:hover {
   color: var(--text-normal);
   background: rgba(128,128,128,0.15);
 }
 
-.browser-panel-chevron {
-  font-size: 14px;
-  font-weight: 300;
-  color: var(--text-faint);
-  opacity: 0.4;
-  transition: transform 0.25s ease, opacity 0.25s;
-  display: inline-block;
-}
+/* Hide actions based on state */
+.hud-when-open { display: none; }
+.hud-when-expanded { display: none !important; }
+.hud-embed-panel.hud-open .hud-when-open { display: inline-flex; }
+.hud-embed-panel.hud-expanded .hud-when-open { display: inline-flex; }
+.hud-embed-panel.hud-expanded .hud-when-expanded { display: inline-flex !important; }
+.hud-embed-panel.hud-fullscreen .hud-when-open { display: inline-flex; }
+.hud-embed-panel.hud-fullscreen .hud-when-expanded { display: inline-flex !important; }
 
-.browser-panel.browser-open .browser-panel-chevron {
-  opacity: 0.6;
-}
+/* Hide chevron when expanded/fullscreen */
+.hud-embed-panel.hud-expanded .hud-section-chevron,
+.hud-embed-panel.hud-fullscreen .hud-section-chevron { display: none; }
 
-.browser-panel-body {
-  flex: 1;
-  position: relative;
+/* Embed body (iframe container) */
+.hud-embed-body {
   overflow: hidden;
   background: #000;
-  min-height: 0;
+  border-radius: 0 0 8px 8px;
 }
 
-.browser-panel-body iframe {
+.hud-embed-body iframe {
   width: 100%;
   height: 100%;
   border: none;
   display: block;
 }
 
-/* Buttons only visible when maximized */
-.browser-panel-when-max {
-  display: none !important;
+/* Open in dashboard: fixed height for iframe */
+.hud-embed-panel.hud-open .hud-embed-body {
+  height: 200px;
 }
 
-/* ── Maximized (full-screen) state ────────────────────── */
+/* ── Medium expand (floating window) ──────────────────── */
 
-.browser-panel.browser-maximized {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
+.hud-embed-panel.hud-expanded {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 960px) !important;
+  height: min(70vh, 640px) !important;
+  max-height: none !important;
+  z-index: 1600;
+  border-radius: 14px !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  background: #0d0d0f;
+}
+
+.hud-embed-panel.hud-expanded .hud-section-toggle {
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px 14px 0 0;
+  background: rgba(255,255,255,0.02);
+}
+
+.hud-embed-panel.hud-expanded .hud-embed-body {
+  flex: 1;
+  height: auto;
+  border-radius: 0 0 14px 14px;
+}
+
+/* ── Full-screen expand ───────────────────────────────── */
+
+.hud-embed-panel.hud-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  transform: none;
+  width: 100% !important;
   height: 100% !important;
   max-height: none !important;
-  min-height: 0 !important;
-  border-radius: 0;
-  border-top: none;
-}
-
-.browser-panel.browser-maximized .browser-panel-when-max {
-  display: inline-flex !important;
-}
-
-.browser-panel.browser-maximized .browser-panel-chevron {
-  display: none;
-}
-
-.browser-panel.browser-maximized .browser-panel-header {
+  z-index: 2000;
+  border-radius: 0 !important;
+  box-shadow: none;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
   background: #0d0d0f;
+}
+
+.hud-embed-panel.hud-fullscreen .hud-section-toggle {
+  flex-shrink: 0;
   border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-radius: 0;
+  background: rgba(255,255,255,0.02);
 }
 
-/* ── Terminal Panel tweaks ─────────────────────────────── */
-
-.terminal-panel .browser-panel-body {
-  background: #1a1a2e;
+.hud-embed-panel.hud-fullscreen .hud-embed-body {
+  flex: 1;
+  height: auto;
+  border-radius: 0;
 }
 
-.terminal-panel .browser-panel-body iframe {
-  background: #1a1a2e;
+/* ── Backdrop ─────────────────────────────────────────── */
+
+.hud-embed-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 1500;
+  animation: backdropFadeIn 0.2s ease;
 }
 
-/* When both panels are open, split space */
-.browser-panel.browser-open + .terminal-panel.browser-open {
-  border-top: 1px solid rgba(255,255,255,0.04);
+.hud-embed-backdrop.visible { display: block; }
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* ── Light Theme ─────────────────────────────────────── */
+/* Terminal embed */
+#terminal-panel .hud-embed-body { background: #1a1a2e; }
 
-[data-theme="light"] .browser-panel {
-  background: #eee;
-  border-top-color: rgba(0,0,0,0.08);
+/* Mobile: medium = full */
+@media (max-width: 768px) {
+  .hud-embed-panel.hud-expanded {
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
 }
 
-[data-theme="light"] .browser-panel-header:hover {
-  background: rgba(0,0,0,0.02);
-}
+/* Light theme */
+[data-theme="light"] .hud-embed-body { background: #e0e0e0; }
+[data-theme="light"] #terminal-panel .hud-embed-body { background: #1a1a2e; }
+[data-theme="light"] .hud-embed-panel.hud-expanded { background: #f5f5f7; box-shadow: 0 24px 80px rgba(0,0,0,0.15); }
+[data-theme="light"] .hud-embed-panel.hud-fullscreen { background: #f5f5f7; }
+[data-theme="light"] .hud-embed-panel.hud-expanded .hud-section-toggle { background: rgba(0,0,0,0.02); border-bottom-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .hud-embed-backdrop { background: rgba(0,0,0,0.3); }
 
-[data-theme="light"] .browser-panel-body {
-  background: #ddd;
-}
-
-[data-theme="light"] .browser-panel.browser-maximized .browser-panel-header {
-  background: #f5f5f7;
-  border-bottom-color: rgba(0,0,0,0.08);
-}

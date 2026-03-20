@@ -2915,7 +2915,7 @@ function toggleSection(sectionId) {
 }
 
 function restoreCollapsibleState() {
-  const openSections = JSON.parse(localStorage.getItem('openSections') || '{"cron":true,"bot-files":true,"app-settings":true,"server-settings":true}');
+  const openSections = JSON.parse(localStorage.getItem('openSections') || '{"tasks":true,"bot-files":true,"app-settings":true,"server-settings":true}');
   for (const [id, isOpen] of Object.entries(openSections)) {
     if (isOpen) {
       const el = document.querySelector(`.hud-collapsible[data-section="${id}"]`);
@@ -3907,277 +3907,183 @@ function closeDashboard() {
   updateDashLayout();
 })();
 
-// ─── Agent Browser Panel ─────────────────────────────────────────────
+// ─── Embed Panels (Browser + Terminal) ───────────────────────────────
 
-(function initBrowserPanel() {
-  let browserIframe = null;
-
-  function getBrowserVncUrl() {
-    try {
-      const conn = JSON.parse(localStorage.getItem('connection') || '{}');
-      const url = new URL(conn.gatewayUrl || '');
-      return 'https://' + url.hostname + ':6080/embed.html';
-    } catch { return null; }
-  }
-
-  function updateDots(connected) {
-    document.querySelectorAll('.browser-panel-dot').forEach(d => {
-      d.classList.toggle('connected', connected);
-    });
-  }
-
-  function createIframe() {
-    if (browserIframe) return browserIframe;
-    const url = getBrowserVncUrl();
-    if (!url) return null;
-
-    const iframe = document.createElement('iframe');
-    iframe.src = url;
-    iframe.setAttribute('allow', 'clipboard-read; clipboard-write');
-
-    let loaded = false;
-    iframe.addEventListener('load', () => { loaded = true; updateDots(true); });
-    setTimeout(() => { if (!loaded) updateDots(false); }, 6000);
-
-    browserIframe = iframe;
-    return iframe;
-  }
-
-  function destroyIframe() {
-    if (browserIframe) { browserIframe.remove(); browserIframe = null; }
-    updateDots(false);
-  }
-
-  function getPanel() { return document.getElementById('browser-panel'); }
-
-  function isOpen() { return getPanel()?.classList.contains('browser-open'); }
-  function isMaximized() { return getPanel()?.classList.contains('browser-maximized'); }
-
-  // Toggle panel open/closed (called from header click)
-  window.toggleBrowserPanel = function() {
-    const panel = getPanel();
-    if (!panel) return;
-
-    if (isMaximized()) {
-      // If maximized, clicking header minimizes to panel
-      panel.classList.remove('browser-maximized');
-      updateExpandBtn(false);
-      return;
-    }
-
-    if (!isOpen()) {
-      // Open panel
-      panel.classList.add('browser-open');
-      const body = document.getElementById('browser-panel-body');
-      if (body && !browserIframe) {
-        const iframe = createIframe();
-        if (iframe) body.appendChild(iframe);
+(function initEmbedPanels() {
+  const panels = {
+    browser: {
+      id: 'browser-panel',
+      bodyId: 'browser-panel-body',
+      headerId: 'browser-panel-header',
+      dotId: 'browser-dot',
+      expandId: 'browser-expand-btn',
+      refreshId: 'browser-refresh-btn',
+      closeId: 'browser-close-max-btn',
+      storageKey: 'browserPanelOpen',
+      iframe: null,
+      getUrl() {
+        try {
+          const conn = JSON.parse(localStorage.getItem('connection') || '{}');
+          const url = new URL(conn.gatewayUrl || '');
+          return 'https://' + url.hostname + ':6080/embed.html';
+        } catch { return null; }
       }
-      localStorage.setItem('browserPanelOpen', 'true');
-    } else {
-      // Close panel
-      panel.classList.remove('browser-open');
-      panel.classList.remove('browser-maximized');
-      destroyIframe();
-      localStorage.setItem('browserPanelOpen', 'false');
+    },
+    terminal: {
+      id: 'terminal-panel',
+      bodyId: 'terminal-panel-body',
+      headerId: 'terminal-panel-header',
+      dotId: 'terminal-dot',
+      expandId: 'terminal-expand-btn',
+      refreshId: 'terminal-refresh-btn',
+      closeId: 'terminal-close-max-btn',
+      storageKey: 'terminalPanelOpen',
+      iframe: null,
+      getUrl() {
+        try {
+          const conn = JSON.parse(localStorage.getItem('connection') || '{}');
+          const url = new URL(conn.gatewayUrl || '');
+          return 'https://' + url.hostname + ':7681';
+        } catch { return null; }
+      }
     }
   };
 
-  function updateExpandBtn(maximized) {
-    const btn = document.getElementById('browser-expand-btn');
+  const backdrop = document.getElementById('embed-backdrop');
+
+  function getState(cfg) {
+    const el = document.getElementById(cfg.id);
+    if (!el) return 'closed';
+    if (el.classList.contains('hud-fullscreen')) return 'full';
+    if (el.classList.contains('hud-expanded')) return 'medium';
+    if (el.classList.contains('hud-open')) return 'open';
+    return 'closed';
+  }
+
+  function setState(cfg, state) {
+    const el = document.getElementById(cfg.id);
+    if (!el) return;
+    el.classList.remove('hud-open', 'hud-expanded', 'hud-fullscreen');
+    if (state !== 'closed') el.classList.add('hud-open');
+    if (state === 'medium') el.classList.add('hud-expanded');
+    if (state === 'full') el.classList.add('hud-fullscreen');
+    updateExpandBtn(cfg);
+    updateBackdrop();
+  }
+
+  function updateExpandBtn(cfg) {
+    const btn = document.getElementById(cfg.expandId);
     if (!btn) return;
-    btn.textContent = maximized ? '⤓' : '⤢';
-    btn.title = maximized ? 'Minimize' : 'Expand';
+    const st = getState(cfg);
+    if (st === 'full') { btn.textContent = '⤓'; btn.title = 'Minimize'; }
+    else if (st === 'medium') { btn.textContent = '⛶'; btn.title = 'Full screen'; }
+    else { btn.textContent = '⤢'; btn.title = 'Expand'; }
   }
 
-  function toggleExpand(e) {
-    if (e) { e.stopPropagation(); e.preventDefault(); }
-    const panel = getPanel();
-    if (!panel) return;
-
-    if (isMaximized()) {
-      panel.classList.remove('browser-maximized');
-      updateExpandBtn(false);
-    } else {
-      panel.classList.add('browser-maximized');
-      updateExpandBtn(true);
-    }
+  function updateBackdrop() {
+    const anyExpanded = Object.values(panels).some(c =>
+      getState(c) === 'medium' || getState(c) === 'full'
+    );
+    backdrop?.classList.toggle('visible', anyExpanded);
   }
 
-  function closeBrowser(e) {
-    if (e) { e.stopPropagation(); e.preventDefault(); }
-    const panel = getPanel();
-    if (panel) {
-      panel.classList.remove('browser-open');
-      panel.classList.remove('browser-maximized');
-    }
-    destroyIframe();
-    updateExpandBtn(false);
-    localStorage.setItem('browserPanelOpen', 'false');
+  function updateDots(cfg, connected) {
+    document.getElementById(cfg.dotId)?.classList.toggle('connected', connected);
   }
 
-  function refreshBrowser(e) {
-    if (e) { e.stopPropagation(); e.preventDefault(); }
-    if (browserIframe) {
-      updateDots(false);
-      browserIframe.src = browserIframe.src;
-    }
-  }
-
-  // Header click = toggle open/close
-  document.getElementById('browser-panel-header')?.addEventListener('click', (e) => {
-    if (e.target.closest('.browser-panel-action')) return;
-    toggleBrowserPanel();
-  });
-
-  // Panel buttons
-  document.getElementById('browser-expand-btn')?.addEventListener('click', toggleExpand);
-  document.getElementById('browser-refresh-btn')?.addEventListener('click', refreshBrowser);
-  document.getElementById('browser-close-max-btn')?.addEventListener('click', closeBrowser);
-
-  // Escape key closes maximized view
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isMaximized()) {
-      getPanel()?.classList.remove('browser-maximized');
-      updateExpandBtn(false);
-    }
-  });
-
-  // Restore state on load
-  if (localStorage.getItem('browserPanelOpen') === 'true') {
-    setTimeout(() => toggleBrowserPanel(), 500);
-  }
-})();
-
-// ─── Terminal Panel ──────────────────────────────────────────────────
-
-(function initTerminalPanel() {
-  let termIframe = null;
-
-  function getTerminalUrl() {
-    try {
-      const conn = JSON.parse(localStorage.getItem('connection') || '{}');
-      const url = new URL(conn.gatewayUrl || '');
-      return 'https://' + url.hostname + ':7681';
-    } catch { return null; }
-  }
-
-  function updateDots(connected) {
-    document.querySelectorAll('#terminal-dot').forEach(d => {
-      d.classList.toggle('connected', connected);
-    });
-  }
-
-  function createIframe() {
-    if (termIframe) return termIframe;
-    const url = getTerminalUrl();
+  function createIframe(cfg) {
+    if (cfg.iframe) return cfg.iframe;
+    const url = cfg.getUrl();
     if (!url) return null;
-
     const iframe = document.createElement('iframe');
     iframe.src = url;
-
+    if (cfg === panels.browser) iframe.setAttribute('allow', 'clipboard-read; clipboard-write');
     let loaded = false;
-    iframe.addEventListener('load', () => { loaded = true; updateDots(true); });
-    setTimeout(() => { if (!loaded) updateDots(false); }, 6000);
-
-    termIframe = iframe;
+    iframe.addEventListener('load', () => { loaded = true; updateDots(cfg, true); });
+    setTimeout(() => { if (!loaded) updateDots(cfg, false); }, 6000);
+    cfg.iframe = iframe;
     return iframe;
   }
 
-  function destroyIframe() {
-    if (termIframe) { termIframe.remove(); termIframe = null; }
-    updateDots(false);
+  function destroyIframe(cfg) {
+    if (cfg.iframe) { cfg.iframe.remove(); cfg.iframe = null; }
+    updateDots(cfg, false);
   }
 
-  function getPanel() { return document.getElementById('terminal-panel'); }
-  function isOpen() { return getPanel()?.classList.contains('browser-open'); }
-  function isMaximized() { return getPanel()?.classList.contains('browser-maximized'); }
-
-  window.toggleTerminalPanel = function() {
-    const panel = getPanel();
-    if (!panel) return;
-
-    if (isMaximized()) {
-      panel.classList.remove('browser-maximized');
-      updateExpandBtn(false);
-      return;
-    }
-
-    if (!isOpen()) {
-      panel.classList.add('browser-open');
-      const body = document.getElementById('terminal-panel-body');
-      if (body && !termIframe) {
-        const iframe = createIframe();
+  function toggle(cfg) {
+    const st = getState(cfg);
+    if (st === 'closed') {
+      setState(cfg, 'open');
+      const body = document.getElementById(cfg.bodyId);
+      if (body && !cfg.iframe) {
+        const iframe = createIframe(cfg);
         if (iframe) body.appendChild(iframe);
       }
-      localStorage.setItem('terminalPanelOpen', 'true');
+      localStorage.setItem(cfg.storageKey, 'true');
     } else {
-      panel.classList.remove('browser-open');
-      panel.classList.remove('browser-maximized');
-      destroyIframe();
-      localStorage.setItem('terminalPanelOpen', 'false');
+      // Close fully
+      setState(cfg, 'closed');
+      destroyIframe(cfg);
+      localStorage.setItem(cfg.storageKey, 'false');
     }
-  };
-
-  function updateExpandBtn(maximized) {
-    const btn = document.getElementById('terminal-expand-btn');
-    if (!btn) return;
-    btn.textContent = maximized ? '⤓' : '⤢';
-    btn.title = maximized ? 'Minimize' : 'Expand';
   }
 
-  function toggleExpand(e) {
+  function cycleExpand(cfg, e) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
-    const panel = getPanel();
-    if (!panel) return;
-    if (isMaximized()) {
-      panel.classList.remove('browser-maximized');
-      updateExpandBtn(false);
-    } else {
-      panel.classList.add('browser-maximized');
-      updateExpandBtn(true);
-    }
+    const st = getState(cfg);
+    if (st === 'open') setState(cfg, 'medium');
+    else if (st === 'medium') setState(cfg, 'full');
+    else if (st === 'full') setState(cfg, 'open');
   }
 
-  function closeTerminal(e) {
+  function closePanel(cfg, e) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
-    const panel = getPanel();
-    if (panel) {
-      panel.classList.remove('browser-open');
-      panel.classList.remove('browser-maximized');
-    }
-    destroyIframe();
-    updateExpandBtn(false);
-    localStorage.setItem('terminalPanelOpen', 'false');
+    setState(cfg, 'closed');
+    destroyIframe(cfg);
+    localStorage.setItem(cfg.storageKey, 'false');
   }
 
-  function refreshTerminal(e) {
+  function refresh(cfg, e) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
-    if (termIframe) {
-      updateDots(false);
-      termIframe.src = termIframe.src;
-    }
+    if (cfg.iframe) { updateDots(cfg, false); cfg.iframe.src = cfg.iframe.src; }
   }
 
-  document.getElementById('terminal-panel-header')?.addEventListener('click', (e) => {
-    if (e.target.closest('.browser-panel-action')) return;
-    toggleTerminalPanel();
+  // Wire up each panel
+  for (const [key, cfg] of Object.entries(panels)) {
+    // Header click = toggle section (uses existing toggleSection for open/close)
+    document.getElementById(cfg.headerId)?.addEventListener('click', (e) => {
+      if (e.target.closest('.hud-embed-action')) return;
+      toggle(cfg);
+    });
+    document.getElementById(cfg.expandId)?.addEventListener('click', (e) => cycleExpand(cfg, e));
+    document.getElementById(cfg.refreshId)?.addEventListener('click', (e) => refresh(cfg, e));
+    document.getElementById(cfg.closeId)?.addEventListener('click', (e) => closePanel(cfg, e));
+  }
+
+  // Backdrop click = minimize to panel
+  backdrop?.addEventListener('click', () => {
+    for (const cfg of Object.values(panels)) {
+      const st = getState(cfg);
+      if (st === 'medium' || st === 'full') setState(cfg, 'open');
+    }
   });
 
-  document.getElementById('terminal-expand-btn')?.addEventListener('click', toggleExpand);
-  document.getElementById('terminal-refresh-btn')?.addEventListener('click', refreshTerminal);
-  document.getElementById('terminal-close-max-btn')?.addEventListener('click', closeTerminal);
-
+  // Escape = minimize expanded panels
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isMaximized()) {
-      getPanel()?.classList.remove('browser-maximized');
-      updateExpandBtn(false);
+    if (e.key !== 'Escape') return;
+    for (const cfg of Object.values(panels)) {
+      const st = getState(cfg);
+      if (st === 'full') { setState(cfg, 'medium'); return; }
+      if (st === 'medium') { setState(cfg, 'open'); return; }
     }
   });
 
-  if (localStorage.getItem('terminalPanelOpen') === 'true') {
-    setTimeout(() => toggleTerminalPanel(), 600);
-  }
+  // Restore state
+  setTimeout(() => {
+    for (const cfg of Object.values(panels)) {
+      if (localStorage.getItem(cfg.storageKey) === 'true') toggle(cfg);
+    }
+  }, 500);
 })();
 
 // ─── Initialize ──────────────────────────────────────────────────────
