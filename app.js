@@ -3703,15 +3703,18 @@ function exportCurrentSession() {
 function updateSubagentsPanel() {
   const container = document.getElementById("hud-subagents-list");
   if (!container) return;
-  // Set placeholder so layout doesn't shift when "none running" loads
   if (!container.innerHTML.trim()) {
-    container.innerHTML = '<div class="hud-empty-hint" style="visibility:hidden;">none running</div>';
+    container.innerHTML = '<div class="hud-empty-hint hud-searching">checking…</div>';
   }
 }
 
 async function loadSubagents() {
   const container = document.getElementById("hud-subagents-list");
   if (!container || !state.gateway?.connected) return;
+  
+  // Show searching state
+  const current = container.querySelector('.hud-subagent-row');
+  if (!current) container.innerHTML = '<div class="hud-empty-hint hud-searching">checking…</div>';
   
   try {
     const result = await state.gateway.request("sessions.list", {});

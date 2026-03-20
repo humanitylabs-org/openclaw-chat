@@ -885,6 +885,13 @@
   font-style: italic;
   padding: 2px 0;
 }
+.hud-empty-hint.hud-searching {
+  animation: hintPulse 1.5s ease-in-out infinite;
+}
+@keyframes hintPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
 
 .hud-link-btn {
   background: none;
