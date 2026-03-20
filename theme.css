@@ -2422,3 +2422,187 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 .hud-conn-status-off {
   color: var(--text-faint) !important;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Agent Browser Panel — bottom of dashboard
+   ══════════════════════════════════════════════════════════════ */
+
+.browser-panel {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  background: #080809;
+  transition: height 0.25s ease;
+  overflow: hidden;
+}
+
+/* Collapsed: just the header bar */
+.browser-panel:not(.browser-open) {
+  height: auto;
+}
+
+.browser-panel:not(.browser-open) .browser-panel-body {
+  display: none;
+}
+
+.browser-panel:not(.browser-open) .browser-panel-when-open {
+  display: none;
+}
+
+/* Open: bottom third of dashboard */
+.browser-panel.browser-open {
+  height: 33%;
+  min-height: 180px;
+  max-height: 320px;
+}
+
+.browser-panel.browser-open .browser-panel-chevron {
+  transform: rotate(90deg);
+}
+
+.browser-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.browser-panel-header:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.browser-panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.browser-panel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.browser-panel-dot.connected {
+  background: var(--accent);
+  box-shadow: 0 0 4px rgba(var(--accent-rgb), 0.5);
+}
+
+.browser-panel-title {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.browser-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.browser-panel-action {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.browser-panel-action:hover {
+  color: var(--text-normal);
+  background: rgba(128,128,128,0.15);
+}
+
+.browser-panel-chevron {
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--text-faint);
+  opacity: 0.4;
+  transition: transform 0.25s ease, opacity 0.25s;
+  display: inline-block;
+}
+
+.browser-panel.browser-open .browser-panel-chevron {
+  opacity: 0.6;
+}
+
+.browser-panel-body {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  min-height: 0;
+}
+
+.browser-panel-body iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* Buttons only visible when maximized */
+.browser-panel-when-max {
+  display: none !important;
+}
+
+/* ── Maximized (full-screen) state ────────────────────── */
+
+.browser-panel.browser-maximized {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  border-radius: 0;
+  border-top: none;
+}
+
+.browser-panel.browser-maximized .browser-panel-when-max {
+  display: inline-flex !important;
+}
+
+.browser-panel.browser-maximized .browser-panel-chevron {
+  display: none;
+}
+
+.browser-panel.browser-maximized .browser-panel-header {
+  background: #0d0d0f;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+/* ── Light Theme ─────────────────────────────────────── */
+
+[data-theme="light"] .browser-panel {
+  background: #eee;
+  border-top-color: rgba(0,0,0,0.08);
+}
+
+[data-theme="light"] .browser-panel-header:hover {
+  background: rgba(0,0,0,0.02);
+}
+
+[data-theme="light"] .browser-panel-body {
+  background: #ddd;
+}
+
+[data-theme="light"] .browser-panel.browser-maximized .browser-panel-header {
+  background: #f5f5f7;
+  border-bottom-color: rgba(0,0,0,0.08);
+}

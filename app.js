@@ -3907,6 +3907,148 @@ function closeDashboard() {
   updateDashLayout();
 })();
 
+// ─── Agent Browser Panel ─────────────────────────────────────────────
+
+(function initBrowserPanel() {
+  let browserIframe = null;
+
+  function getBrowserVncUrl() {
+    try {
+      const conn = JSON.parse(localStorage.getItem('connection') || '{}');
+      const url = new URL(conn.gatewayUrl || '');
+      return 'https://' + url.hostname + ':6080/vnc_lite.html?scale=true';
+    } catch { return null; }
+  }
+
+  function updateDots(connected) {
+    document.querySelectorAll('.browser-panel-dot').forEach(d => {
+      d.classList.toggle('connected', connected);
+    });
+  }
+
+  function createIframe() {
+    if (browserIframe) return browserIframe;
+    const url = getBrowserVncUrl();
+    if (!url) return null;
+
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.setAttribute('allow', 'clipboard-read; clipboard-write');
+
+    let loaded = false;
+    iframe.addEventListener('load', () => { loaded = true; updateDots(true); });
+    setTimeout(() => { if (!loaded) updateDots(false); }, 6000);
+
+    browserIframe = iframe;
+    return iframe;
+  }
+
+  function destroyIframe() {
+    if (browserIframe) { browserIframe.remove(); browserIframe = null; }
+    updateDots(false);
+  }
+
+  function getPanel() { return document.getElementById('browser-panel'); }
+
+  function isOpen() { return getPanel()?.classList.contains('browser-open'); }
+  function isMaximized() { return getPanel()?.classList.contains('browser-maximized'); }
+
+  // Toggle panel open/closed (called from header click)
+  window.toggleBrowserPanel = function() {
+    const panel = getPanel();
+    if (!panel) return;
+
+    if (isMaximized()) {
+      // If maximized, clicking header minimizes to panel
+      panel.classList.remove('browser-maximized');
+      updateExpandBtn(false);
+      return;
+    }
+
+    if (!isOpen()) {
+      // Open panel
+      panel.classList.add('browser-open');
+      const body = document.getElementById('browser-panel-body');
+      if (body && !browserIframe) {
+        const iframe = createIframe();
+        if (iframe) body.appendChild(iframe);
+      }
+      localStorage.setItem('browserPanelOpen', 'true');
+    } else {
+      // Close panel
+      panel.classList.remove('browser-open');
+      panel.classList.remove('browser-maximized');
+      destroyIframe();
+      localStorage.setItem('browserPanelOpen', 'false');
+    }
+  };
+
+  function updateExpandBtn(maximized) {
+    const btn = document.getElementById('browser-expand-btn');
+    if (!btn) return;
+    btn.textContent = maximized ? '⤓' : '⤢';
+    btn.title = maximized ? 'Minimize' : 'Expand';
+  }
+
+  function toggleExpand(e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    const panel = getPanel();
+    if (!panel) return;
+
+    if (isMaximized()) {
+      panel.classList.remove('browser-maximized');
+      updateExpandBtn(false);
+    } else {
+      panel.classList.add('browser-maximized');
+      updateExpandBtn(true);
+    }
+  }
+
+  function closeBrowser(e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    const panel = getPanel();
+    if (panel) {
+      panel.classList.remove('browser-open');
+      panel.classList.remove('browser-maximized');
+    }
+    destroyIframe();
+    updateExpandBtn(false);
+    localStorage.setItem('browserPanelOpen', 'false');
+  }
+
+  function refreshBrowser(e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    if (browserIframe) {
+      updateDots(false);
+      browserIframe.src = browserIframe.src;
+    }
+  }
+
+  // Header click = toggle open/close
+  document.getElementById('browser-panel-header')?.addEventListener('click', (e) => {
+    if (e.target.closest('.browser-panel-action')) return;
+    toggleBrowserPanel();
+  });
+
+  // Panel buttons
+  document.getElementById('browser-expand-btn')?.addEventListener('click', toggleExpand);
+  document.getElementById('browser-refresh-btn')?.addEventListener('click', refreshBrowser);
+  document.getElementById('browser-close-max-btn')?.addEventListener('click', closeBrowser);
+
+  // Escape key closes maximized view
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isMaximized()) {
+      getPanel()?.classList.remove('browser-maximized');
+      updateExpandBtn(false);
+    }
+  });
+
+  // Restore state on load
+  if (localStorage.getItem('browserPanelOpen') === 'true') {
+    setTimeout(() => toggleBrowserPanel(), 500);
+  }
+})();
+
 // ─── Initialize ──────────────────────────────────────────────────────
 
 initApp();

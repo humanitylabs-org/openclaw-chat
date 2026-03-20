@@ -1268,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=33">
+  <link rel="stylesheet" href="/theme.css?v=34">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1592,6 +1592,23 @@
         </div>
 
       </div>
+
+      <!-- Agent Browser Panel (bottom of dashboard) -->
+      <div class="browser-panel" id="browser-panel">
+        <div class="browser-panel-header" id="browser-panel-header">
+          <div class="browser-panel-title-row">
+            <span class="browser-panel-dot" id="browser-dot"></span>
+            <span class="browser-panel-title">Agent Browser</span>
+          </div>
+          <div class="browser-panel-actions">
+            <button class="browser-panel-action browser-panel-when-open" id="browser-refresh-btn" title="Refresh">↻</button>
+            <button class="browser-panel-action browser-panel-when-open" id="browser-expand-btn" title="Expand">⤢</button>
+            <button class="browser-panel-action browser-panel-when-max" id="browser-close-max-btn" title="Close">×</button>
+            <span class="browser-panel-chevron" id="browser-chevron">›</span>
+          </div>
+        </div>
+        <div class="browser-panel-body" id="browser-panel-body"></div>
+      </div>
     </div>
 
     <!-- Dashboard overlay for mobile (click to close) -->
@@ -1688,7 +1705,7 @@
 
   </div>
 
-  <script src="/app.js?v=49"></script>
+  <script src="/app.js?v=50"></script>
   <script>
     // Landing page logic
     (function() {
@@ -1742,5 +1759,7 @@
       </div>
     </div>
   </div>
+
+
 </body>
 </html>
