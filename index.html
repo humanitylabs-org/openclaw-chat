@@ -1268,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=42">
+  <link rel="stylesheet" href="/theme.css?v=43">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1459,6 +1459,34 @@
           </div>
         </div>
 
+        <!-- ═══ Browser (collapsible + expandable) ═══ -->
+        <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-browser" id="browser-panel">
+          <button class="hud-section-toggle" id="browser-panel-header">
+            <span class="hud-section-label-row"><span class="hud-embed-dot" id="browser-dot"></span>BROWSER</span>
+            <span class="hud-section-actions">
+              <span class="hud-embed-action hud-when-open" id="browser-refresh-btn" title="Refresh">↻</span>
+              <span class="hud-embed-action hud-when-open" id="browser-expand-btn" title="Expand">⤢</span>
+              <span class="hud-embed-action hud-when-expanded" id="browser-close-max-btn" title="Close">×</span>
+              <span class="hud-section-chevron">›</span>
+            </span>
+          </button>
+          <div class="hud-section-body hud-embed-body" id="browser-panel-body"></div>
+        </div>
+
+        <!-- ═══ Terminal (collapsible + expandable) ═══ -->
+        <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-terminal" id="terminal-panel">
+          <button class="hud-section-toggle" id="terminal-panel-header">
+            <span class="hud-section-label-row"><span class="hud-embed-dot" id="terminal-dot"></span>TERMINAL</span>
+            <span class="hud-section-actions">
+              <span class="hud-embed-action hud-when-open" id="terminal-refresh-btn" title="Refresh">↻</span>
+              <span class="hud-embed-action hud-when-open" id="terminal-expand-btn" title="Expand">⤢</span>
+              <span class="hud-embed-action hud-when-expanded" id="terminal-close-max-btn" title="Close">×</span>
+              <span class="hud-section-chevron">›</span>
+            </span>
+          </button>
+          <div class="hud-section-body hud-embed-body" id="terminal-panel-body"></div>
+        </div>
+
         <!-- ═══ App Settings ═══ -->
         <div class="hud-section hud-collapsible" data-section="app-settings">
           <button class="hud-section-toggle" onclick="toggleSection('app-settings')">
@@ -1522,10 +1550,10 @@
           </div>
         </div>
 
-        <!-- ═══ Server ═══ -->
+        <!-- ═══ Server Settings ═══ -->
         <div class="hud-section hud-collapsible" data-section="server-settings">
           <button class="hud-section-toggle" onclick="toggleSection('server-settings')">
-            <span class="hud-section-label">SERVER</span>
+            <span class="hud-section-label">SERVER SETTINGS</span>
             <span class="hud-section-chevron">›</span>
           </button>
           <div class="hud-section-body">
@@ -1566,34 +1594,6 @@
               <div id="hud-defaults-panel" class="hud-defaults-panel"></div>
             </div>
           </div>
-        </div>
-
-        <!-- ═══ Browser (collapsible + expandable) ═══ -->
-        <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-browser" id="browser-panel">
-          <button class="hud-section-toggle" id="browser-panel-header">
-            <span class="hud-section-label-row"><span class="hud-embed-dot" id="browser-dot"></span>BROWSER</span>
-            <span class="hud-section-actions">
-              <span class="hud-embed-action hud-when-open" id="browser-refresh-btn" title="Refresh">↻</span>
-              <span class="hud-embed-action hud-when-open" id="browser-expand-btn" title="Expand">⤢</span>
-              <span class="hud-embed-action hud-when-expanded" id="browser-close-max-btn" title="Close">×</span>
-              <span class="hud-section-chevron">›</span>
-            </span>
-          </button>
-          <div class="hud-section-body hud-embed-body" id="browser-panel-body"></div>
-        </div>
-
-        <!-- ═══ Terminal (collapsible + expandable) ═══ -->
-        <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-terminal" id="terminal-panel">
-          <button class="hud-section-toggle" id="terminal-panel-header">
-            <span class="hud-section-label-row"><span class="hud-embed-dot" id="terminal-dot"></span>TERMINAL</span>
-            <span class="hud-section-actions">
-              <span class="hud-embed-action hud-when-open" id="terminal-refresh-btn" title="Refresh">↻</span>
-              <span class="hud-embed-action hud-when-open" id="terminal-expand-btn" title="Expand">⤢</span>
-              <span class="hud-embed-action hud-when-expanded" id="terminal-close-max-btn" title="Close">×</span>
-              <span class="hud-section-chevron">›</span>
-            </span>
-          </button>
-          <div class="hud-section-body hud-embed-body" id="terminal-panel-body"></div>
         </div>
 
         <!-- Hidden disconnect -->
@@ -1714,7 +1714,7 @@
 
   </div>
 
-  <script src="/app.js?v=57"></script>
+  <script src="/app.js?v=58"></script>
   <script>
     // Landing page logic
     (function() {
