@@ -2907,20 +2907,41 @@ function friendlyFile(name) {
 function toggleSection(sectionId) {
   const el = document.querySelector(`.hud-collapsible[data-section="${sectionId}"]`);
   if (!el) return;
-  const isOpen = el.classList.toggle('hud-open');
-  // Remember state
-  const openSections = JSON.parse(localStorage.getItem('openSections') || '{}');
-  openSections[sectionId] = isOpen;
-  localStorage.setItem('openSections', JSON.stringify(openSections));
+  const wasOpen = el.classList.contains('hud-open');
+
+  // Accordion: close all other sections first
+  document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
+    if (other !== el) {
+      other.classList.remove('hud-open');
+      // If it's an embed panel, also destroy its iframe
+      const otherSection = other.dataset.section;
+      if (otherSection === 'agent-browser' || otherSection === 'agent-terminal') {
+        const evt = new CustomEvent('panel-close', { detail: otherSection });
+        document.dispatchEvent(evt);
+      }
+    }
+  });
+
+  // Toggle the clicked section
+  const isOpen = wasOpen ? false : true;
+  if (isOpen) el.classList.add('hud-open');
+  else el.classList.remove('hud-open');
+
+  // Remember which section is open (only one at a time)
+  localStorage.setItem('openSection', isOpen ? sectionId : '');
 }
 
 function restoreCollapsibleState() {
-  const openSections = JSON.parse(localStorage.getItem('openSections') || '{"tasks":true,"bot-files":true,"app-settings":true,"server-settings":true}');
-  for (const [id, isOpen] of Object.entries(openSections)) {
-    if (isOpen) {
-      const el = document.querySelector(`.hud-collapsible[data-section="${id}"]`);
-      if (el) el.classList.add('hud-open');
-    }
+  // Migrate from old multi-open format
+  const legacy = localStorage.getItem('openSections');
+  if (legacy) localStorage.removeItem('openSections');
+  localStorage.removeItem('browserPanelOpen');
+  localStorage.removeItem('terminalPanelOpen');
+
+  const openId = localStorage.getItem('openSection') || 'tasks';
+  if (openId) {
+    const el = document.querySelector(`.hud-collapsible[data-section="${openId}"]`);
+    if (el) el.classList.add('hud-open');
   }
 }
 
@@ -4013,20 +4034,46 @@ function closeDashboard() {
   function toggle(cfg) {
     const st = getState(cfg);
     if (st === 'closed') {
+      // Accordion: close all other sections first
+      document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
+        if (other.id !== cfg.id) {
+          other.classList.remove('hud-open');
+          const otherSection = other.dataset.section;
+          // Close other embed panels too
+          for (const [k, c] of Object.entries(panels)) {
+            if (c.id === other.id && c !== cfg) {
+              setState(c, 'closed');
+              destroyIframe(c);
+              localStorage.removeItem(c.storageKey);
+            }
+          }
+        }
+      });
+
       setState(cfg, 'open');
       const body = document.getElementById(cfg.bodyId);
       if (body && !cfg.iframe) {
         const iframe = createIframe(cfg);
         if (iframe) body.appendChild(iframe);
       }
-      localStorage.setItem(cfg.storageKey, 'true');
+      localStorage.setItem('openSection', cfg.id === 'browser-panel' ? 'agent-browser' : 'agent-terminal');
     } else {
       // Close fully
       setState(cfg, 'closed');
       destroyIframe(cfg);
-      localStorage.setItem(cfg.storageKey, 'false');
+      localStorage.setItem('openSection', '');
     }
   }
+
+  // Listen for accordion closes from toggleSection()
+  document.addEventListener('panel-close', (e) => {
+    for (const cfg of Object.values(panels)) {
+      if (e.detail === (cfg.id === 'browser-panel' ? 'agent-browser' : 'agent-terminal')) {
+        setState(cfg, 'closed');
+        destroyIframe(cfg);
+      }
+    }
+  });
 
   function cycleExpand(cfg, e) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
@@ -4078,9 +4125,7 @@ function closeDashboard() {
     }
   });
 
-  // Clear old panel state from previous version (class names changed)
-  localStorage.removeItem('browserPanelOpen');
-  localStorage.removeItem('terminalPanelOpen');
+  // Panel restore is handled by restoreCollapsibleState() via openSection key
 })();
 
 // ─── Initialize ──────────────────────────────────────────────────────
