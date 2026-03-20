@@ -4049,6 +4049,137 @@ function closeDashboard() {
   }
 })();
 
+// ─── Terminal Panel ──────────────────────────────────────────────────
+
+(function initTerminalPanel() {
+  let termIframe = null;
+
+  function getTerminalUrl() {
+    try {
+      const conn = JSON.parse(localStorage.getItem('connection') || '{}');
+      const url = new URL(conn.gatewayUrl || '');
+      return 'https://' + url.hostname + ':7681';
+    } catch { return null; }
+  }
+
+  function updateDots(connected) {
+    document.querySelectorAll('#terminal-dot').forEach(d => {
+      d.classList.toggle('connected', connected);
+    });
+  }
+
+  function createIframe() {
+    if (termIframe) return termIframe;
+    const url = getTerminalUrl();
+    if (!url) return null;
+
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+
+    let loaded = false;
+    iframe.addEventListener('load', () => { loaded = true; updateDots(true); });
+    setTimeout(() => { if (!loaded) updateDots(false); }, 6000);
+
+    termIframe = iframe;
+    return iframe;
+  }
+
+  function destroyIframe() {
+    if (termIframe) { termIframe.remove(); termIframe = null; }
+    updateDots(false);
+  }
+
+  function getPanel() { return document.getElementById('terminal-panel'); }
+  function isOpen() { return getPanel()?.classList.contains('browser-open'); }
+  function isMaximized() { return getPanel()?.classList.contains('browser-maximized'); }
+
+  window.toggleTerminalPanel = function() {
+    const panel = getPanel();
+    if (!panel) return;
+
+    if (isMaximized()) {
+      panel.classList.remove('browser-maximized');
+      updateExpandBtn(false);
+      return;
+    }
+
+    if (!isOpen()) {
+      panel.classList.add('browser-open');
+      const body = document.getElementById('terminal-panel-body');
+      if (body && !termIframe) {
+        const iframe = createIframe();
+        if (iframe) body.appendChild(iframe);
+      }
+      localStorage.setItem('terminalPanelOpen', 'true');
+    } else {
+      panel.classList.remove('browser-open');
+      panel.classList.remove('browser-maximized');
+      destroyIframe();
+      localStorage.setItem('terminalPanelOpen', 'false');
+    }
+  };
+
+  function updateExpandBtn(maximized) {
+    const btn = document.getElementById('terminal-expand-btn');
+    if (!btn) return;
+    btn.textContent = maximized ? '⤓' : '⤢';
+    btn.title = maximized ? 'Minimize' : 'Expand';
+  }
+
+  function toggleExpand(e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    const panel = getPanel();
+    if (!panel) return;
+    if (isMaximized()) {
+      panel.classList.remove('browser-maximized');
+      updateExpandBtn(false);
+    } else {
+      panel.classList.add('browser-maximized');
+      updateExpandBtn(true);
+    }
+  }
+
+  function closeTerminal(e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    const panel = getPanel();
+    if (panel) {
+      panel.classList.remove('browser-open');
+      panel.classList.remove('browser-maximized');
+    }
+    destroyIframe();
+    updateExpandBtn(false);
+    localStorage.setItem('terminalPanelOpen', 'false');
+  }
+
+  function refreshTerminal(e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    if (termIframe) {
+      updateDots(false);
+      termIframe.src = termIframe.src;
+    }
+  }
+
+  document.getElementById('terminal-panel-header')?.addEventListener('click', (e) => {
+    if (e.target.closest('.browser-panel-action')) return;
+    toggleTerminalPanel();
+  });
+
+  document.getElementById('terminal-expand-btn')?.addEventListener('click', toggleExpand);
+  document.getElementById('terminal-refresh-btn')?.addEventListener('click', refreshTerminal);
+  document.getElementById('terminal-close-max-btn')?.addEventListener('click', closeTerminal);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isMaximized()) {
+      getPanel()?.classList.remove('browser-maximized');
+      updateExpandBtn(false);
+    }
+  });
+
+  if (localStorage.getItem('terminalPanelOpen') === 'true') {
+    setTimeout(() => toggleTerminalPanel(), 600);
+  }
+})();
+
 // ─── Initialize ──────────────────────────────────────────────────────
 
 initApp();

@@ -1268,7 +1268,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=34">
+  <link rel="stylesheet" href="/theme.css?v=35">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1609,6 +1609,23 @@
         </div>
         <div class="browser-panel-body" id="browser-panel-body"></div>
       </div>
+
+      <!-- Terminal Panel (below browser panel) -->
+      <div class="browser-panel terminal-panel" id="terminal-panel">
+        <div class="browser-panel-header" id="terminal-panel-header">
+          <div class="browser-panel-title-row">
+            <span class="browser-panel-dot" id="terminal-dot"></span>
+            <span class="browser-panel-title">Terminal</span>
+          </div>
+          <div class="browser-panel-actions">
+            <button class="browser-panel-action browser-panel-when-open" id="terminal-refresh-btn" title="Refresh">↻</button>
+            <button class="browser-panel-action browser-panel-when-open" id="terminal-expand-btn" title="Expand">⤢</button>
+            <button class="browser-panel-action browser-panel-when-max" id="terminal-close-max-btn" title="Close">×</button>
+            <span class="browser-panel-chevron" id="terminal-chevron">›</span>
+          </div>
+        </div>
+        <div class="browser-panel-body" id="terminal-panel-body"></div>
+      </div>
     </div>
 
     <!-- Dashboard overlay for mobile (click to close) -->
@@ -1705,7 +1722,7 @@
 
   </div>
 
-  <script src="/app.js?v=51"></script>
+  <script src="/app.js?v=52"></script>
   <script>
     // Landing page logic
     (function() {

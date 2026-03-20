@@ -2587,6 +2587,21 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
+/* ── Terminal Panel tweaks ─────────────────────────────── */
+
+.terminal-panel .browser-panel-body {
+  background: #1a1a2e;
+}
+
+.terminal-panel .browser-panel-body iframe {
+  background: #1a1a2e;
+}
+
+/* When both panels are open, split space */
+.browser-panel.browser-open + .terminal-panel.browser-open {
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
 /* ── Light Theme ─────────────────────────────────────── */
 
 [data-theme="light"] .browser-panel {
