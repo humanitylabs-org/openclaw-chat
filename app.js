@@ -296,6 +296,9 @@ const state = {
   tabSessions: [],
   renderingTabs: false,
   tabDeleteInProgress: false,
+  tabCache: {},  // { [sessionKey]: { messages: [...], timestamp: number } }
+  tabDrafts: JSON.parse(localStorage.getItem('tabDrafts') || '{}'),
+  messageQueue: JSON.parse(localStorage.getItem('messageQueue') || '{}'),  // { [sessionKey]: [{ text, images, timestamp }] }
 
   // Stream state (per-session)
   streams: new Map(),
@@ -474,6 +477,9 @@ async function startChat() {
   await loadChatHistory();
   await renderTabs();
   updateModelLabel();
+  prefetchAllTabs(); // pre-load other tabs in background
+  restoreDraft();
+  renderQueuedMessages();
 
   setInterval(() => updateContextMeter(), 15000);
 }
@@ -584,6 +590,7 @@ async function switchAgent(agent) {
   showLoading("Loading…");
   await loadChatHistory();
   await renderTabs();
+  prefetchAllTabs();
 }
 
 function toggleAgentDropdown() {
@@ -973,7 +980,14 @@ async function _renderTabsInner() {
     try {
       const result = await state.gateway.request("sessions.list", {});
       sessions = result?.sessions || [];
-    } catch { /* use empty */ }
+      state._cachedSessions = sessions;
+      state._cachedSessionsAt = Date.now();
+    } catch {
+      // Use cached sessions if gateway call fails
+      sessions = state._cachedSessions || [];
+    }
+  } else {
+    sessions = state._cachedSessions || [];
   }
 
   const prefix = agentPrefix();
@@ -1124,7 +1138,102 @@ async function _renderTabsInner() {
   updateTabMode();
 }
 
+// ─── Drafts & Message Queue ──────────────────────────────────────────
+
+function saveDraft() {
+  const input = document.getElementById('message-input');
+  if (!input || !state.sessionKey) return;
+  const text = input.value.trim();
+  if (text) {
+    state.tabDrafts[state.sessionKey] = text;
+  } else {
+    delete state.tabDrafts[state.sessionKey];
+  }
+  localStorage.setItem('tabDrafts', JSON.stringify(state.tabDrafts));
+}
+
+function restoreDraft() {
+  const input = document.getElementById('message-input');
+  if (!input || !state.sessionKey) return;
+  const draft = state.tabDrafts[state.sessionKey] || '';
+  input.value = draft;
+  input.dispatchEvent(new Event('input')); // trigger auto-resize
+}
+
+function clearDraft(key) {
+  delete state.tabDrafts[key || state.sessionKey];
+  localStorage.setItem('tabDrafts', JSON.stringify(state.tabDrafts));
+}
+
+function queueMessage(text) {
+  const key = state.sessionKey;
+  if (!key) return;
+  if (!state.messageQueue[key]) state.messageQueue[key] = [];
+  state.messageQueue[key].push({ text, timestamp: Date.now() });
+  localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
+  renderQueuedMessages();
+}
+
+function removeQueuedMessage(key, index) {
+  if (!state.messageQueue[key]) return;
+  state.messageQueue[key].splice(index, 1);
+  if (state.messageQueue[key].length === 0) delete state.messageQueue[key];
+  localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
+  renderQueuedMessages();
+}
+
+function renderQueuedMessages() {
+  let container = document.getElementById('message-queue');
+  if (!container) {
+    // Create queue container above the input area
+    container = document.createElement('div');
+    container.id = 'message-queue';
+    container.className = 'oc-message-queue';
+    const inputArea = document.querySelector('.openclaw-input-area-inner');
+    if (inputArea) inputArea.prepend(container);
+    else return;
+  }
+
+  const queue = state.messageQueue[state.sessionKey] || [];
+  if (queue.length === 0) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = '';
+  container.innerHTML = queue.map((msg, i) => {
+    const preview = msg.text.length > 80 ? msg.text.slice(0, 80) + '…' : msg.text;
+    const esc = preview.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<div class="oc-queue-item">
+      <span class="oc-queue-badge">${i + 1}</span>
+      <span class="oc-queue-text">${esc}</span>
+      <button class="oc-queue-remove" onclick="removeQueuedMessage('${state.sessionKey}', ${i})" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function processQueue() {
+  const key = state.sessionKey;
+  const queue = state.messageQueue[key];
+  if (!queue || queue.length === 0) return;
+  const next = queue.shift();
+  if (queue.length === 0) delete state.messageQueue[key];
+  localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
+  renderQueuedMessages();
+  // Send the queued message
+  const input = document.getElementById('message-input');
+  if (input) {
+    input.value = next.text;
+    input.dispatchEvent(new Event('input'));
+    document.getElementById('send-btn')?.click();
+  }
+}
+
 async function switchTab(tab) {
+  // Save draft from current tab before switching
+  saveDraft();
+
   state.streamEl = null;
   ui.typingIndicator.classList.add("oc-hidden");
   setSendButtonStopMode(false);
@@ -1132,18 +1241,32 @@ async function switchTab(tab) {
 
   state.sessionKey = tab.key;
   localStorage.setItem("sessionKey", tab.key);
-  state.messages = [];
-  ui.messagesContainer.innerHTML = "";
-  showLoading("Loading…");
-  await loadChatHistory();
+
+  // Serve from cache instantly if available
+  const cached = state.tabCache[tab.key];
+  if (cached) {
+    state.messages = [...cached.messages];
+    renderMessages();
+    // Background refresh (don't await)
+    loadChatHistory({ background: true });
+  } else {
+    state.messages = [];
+    ui.messagesContainer.innerHTML = "";
+    await loadChatHistory();
+  }
 
   restoreStreamUI();
-  await updateContextMeter();
+  restoreDraft();
+  renderQueuedMessages();
+
+  // Re-render tabs and context meter in background (don't block UI)
   renderTabs();
+  updateContextMeter();
 }
 
 async function resetTab(tab) {
   if (!state.gateway?.connected) return;
+  delete state.tabCache[tab.key];
   const isHome = tab.key === "main";
   const title = isHome ? "Reset Home?" : `Reset "${tab.label}"?`;
   const msg = "This will clear the conversation.";
@@ -1174,6 +1297,7 @@ async function closeTab(tab, currentKey) {
   if (!state.gateway?.connected || state.tabDeleteInProgress) return;
   const ok = await confirmClose("Close tab?", `Close "${tab.label}"? Chat history will be lost.`);
   if (!ok) return;
+  delete state.tabCache[tab.key];
   state.tabDeleteInProgress = true;
   try {
     await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tab.key}`);
@@ -1545,17 +1669,19 @@ function hideLoading() {
 
 // ─── Chat Functions ──────────────────────────────────────────────────
 
-async function loadChatHistory() {
+async function loadChatHistory(opts) {
+  const background = opts?.background || false;
+  const targetKey = opts?.sessionKey || state.sessionKey;
   if (!state.gateway?.connected) return;
-  showLoading("Loading…");
+  if (!background) showLoading("Loading…");
   try {
     const result = await state.gateway.request("chat.history", {
-      sessionKey: state.sessionKey,
+      sessionKey: targetKey,
       limit: 200,
     });
 
     const messages = result?.messages || [];
-    state.messages = messages
+    let parsed = messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => {
         const { text, images } = extractContent(m.content);
@@ -1569,15 +1695,32 @@ async function loadChatHistory() {
       })
       .filter(m => (m.text.trim() || m.images.length > 0) && !m.text.startsWith("HEARTBEAT"));
 
-    if (state.messages.length > 0 && state.messages[0].role === "user") {
-      state.messages = state.messages.slice(1);
+    if (parsed.length > 0 && parsed[0].role === "user") {
+      parsed = parsed.slice(1);
     }
 
-    hideLoading();
-    renderMessages();
+    // Cache the result
+    state.tabCache[targetKey] = { messages: parsed, timestamp: Date.now() };
+
+    // Only update UI if this is still the active tab
+    if (targetKey === state.sessionKey) {
+      state.messages = parsed;
+      if (!background) hideLoading();
+      renderMessages();
+    }
   } catch (err) {
-    hideLoading();
+    if (!background && targetKey === state.sessionKey) hideLoading();
     console.error("Failed to load chat history:", err);
+  }
+}
+
+// Pre-fetch history for all tabs in background
+async function prefetchAllTabs() {
+  if (!state.gateway?.connected) return;
+  for (const tab of state.tabSessions) {
+    if (tab.key === state.sessionKey) continue; // skip active tab
+    if (state.tabCache[tab.key]) continue; // already cached
+    loadChatHistory({ background: true, sessionKey: tab.key });
   }
 }
 
@@ -1652,6 +1795,10 @@ function buildVoiceUrl(voicePath) {
 }
 
 function renderMessages() {
+  // Sync cache with current messages
+  if (state.sessionKey && state.messages.length > 0) {
+    state.tabCache[state.sessionKey] = { messages: [...state.messages], timestamp: Date.now() };
+  }
   ui.messagesContainer.innerHTML = "";
   for (const msg of state.messages) {
     if (msg.role === "assistant") {
@@ -2019,6 +2166,8 @@ function finishStream(sessionKey) {
     ui.typingIndicator.classList.add("oc-hidden");
     const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
     if (typingText) typingText.textContent = "Thinking";
+    // Auto-send next queued message after a brief pause
+    setTimeout(() => processQueue(), 500);
   }
 }
 
@@ -2471,7 +2620,7 @@ const voiceState = {
   transcribing: false,
 };
 
-const SEND_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94l18.04-8.25a.75.75 0 000-1.39L3.478 2.405z"/></svg>';
+const SEND_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
 const MIC_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>';
 
 function isSTTConfigured() {
@@ -2587,7 +2736,7 @@ function autoResize() {
 
 // ─── Input Handlers ──────────────────────────────────────────────────
 
-ui.sendBtn.addEventListener("click", () => {
+function handleSendOrQueue() {
   if (ui.sendBtn.classList.contains("stop-mode")) {
     abortMessage();
     return;
@@ -2596,16 +2745,30 @@ ui.sendBtn.addEventListener("click", () => {
     handleMicClick();
     return;
   }
-  if (ui.messageInput.value.trim() || state.pendingAttachments.length > 0) {
-    sendMessage(ui.messageInput.value);
+  const text = ui.messageInput.value.trim();
+  if (!text && state.pendingAttachments.length === 0) return;
+
+  // If agent is currently streaming, queue instead of send
+  const isStreaming = state.streams.has(state.sessionKey);
+  if (isStreaming && text && state.pendingAttachments.length === 0) {
+    queueMessage(text);
+    ui.messageInput.value = '';
+    ui.messageInput.dispatchEvent(new Event('input'));
+    clearDraft(state.sessionKey);
+    return;
   }
-});
+
+  clearDraft(state.sessionKey);
+  sendMessage(ui.messageInput.value);
+}
+
+ui.sendBtn.addEventListener("click", handleSendOrQueue);
 
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
 ui.messageInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey && !isMobile) {
     e.preventDefault();
-    sendMessage(ui.messageInput.value);
+    handleSendOrQueue();
   }
 });
 
@@ -2758,7 +2921,6 @@ function updateDashboard() {
   // Connection info
   const connStatus = document.getElementById('hud-conn-status');
   const connUrl = document.getElementById('hud-conn-url');
-  const connDevice = document.getElementById('hud-conn-device');
   if (connStatus) {
     if (connected) {
       connStatus.textContent = 'Connected';
@@ -2772,18 +2934,13 @@ function updateDashboard() {
     }
   }
   if (connUrl && state.gatewayUrl) {
-    const url = state.gatewayUrl.replace(/^wss?:\/\//, '').replace(/\/+$/, '');
-    connUrl.textContent = url;
-    connUrl.title = state.gatewayUrl;
-  }
-  if (connDevice) {
-    const stored = localStorage.getItem('deviceIdentity');
-    if (stored) {
-      try {
-        const data = JSON.parse(stored);
-        connDevice.textContent = (data.deviceId || '').slice(0, 10) + '…';
-        connDevice.title = data.deviceId || '';
-      } catch {}
+    try {
+      const hostname = new URL(state.gatewayUrl.replace(/^ws/, 'http')).hostname;
+      const short = hostname.split('.')[0];
+      connUrl.textContent = short;
+      connUrl.title = hostname;
+    } catch {
+      connUrl.textContent = state.gatewayUrl.replace(/^wss?:\/\//, '').replace(/\/+$/, '');
     }
   }
 
@@ -2941,7 +3098,7 @@ function restoreCollapsibleState() {
   localStorage.removeItem('browserPanelOpen');
   localStorage.removeItem('terminalPanelOpen');
 
-  const openId = localStorage.getItem('openSection') || 'tasks';
+  const openId = localStorage.getItem('openSection') || 'agent-browser';
   if (openId) {
     const el = document.querySelector(`.hud-collapsible[data-section="${openId}"]`);
     if (el) el.classList.add('hud-open');
@@ -3328,39 +3485,91 @@ async function loadCronJobs() {
           ? humanizeCron(job.schedule.expr || '')
           : '';
 
-      // Status: only show if last run failed
-      const statusHtml = lastStatus === 'error'
-        ? '<span class="hud-tl-status err">failed</span>'
-        : '';
+      const statusDot = lastStatus === 'error'
+        ? '<span class="hud-tl-dot hud-tl-dot-err"></span>'
+        : '<span class="hud-tl-dot hud-tl-dot-ok"></span>';
 
       item.innerHTML = `
+        ${statusDot}
         <div class="hud-tl-body">
           <span class="hud-tl-name">${cronFriendlyName(job.name)}</span>
           <span class="hud-tl-when">${next}</span>
         </div>
-        ${statusHtml}
-        <button class="hud-tl-run" title="Run now" onclick="cronRunNow('${job.id}', this)">run</button>
+        <button class="hud-tl-run" title="Run now" onclick="cronRunNow('${job.id}', this)">▶</button>
       `;
 
-      // Expandable detail on click
-      const detail = document.createElement('div');
-      detail.className = 'hud-tl-detail';
-      const parts = [];
-      if (schedule) parts.push(schedule);
-      if (lastRan) parts.push('ran ' + lastRan);
-      if (job.model) parts.push(job.model.split('/').pop());
-      detail.innerHTML = parts.join(' · ');
-      detail.style.display = 'none';
+      // Click to show task detail popup
       item.querySelector('.hud-tl-body').addEventListener('click', () => {
-        detail.style.display = detail.style.display === 'none' ? '' : 'none';
+        showTaskDetail(job, { schedule, lastRan, lastStatus });
       });
-      item.appendChild(detail);
       container.appendChild(item);
     }
   } catch (err) {
     console.warn('cron.list failed:', err);
     container.innerHTML = '';
   }
+}
+
+function showTaskDetail(job, info) {
+  const existing = document.getElementById('task-detail-overlay');
+  if (existing) existing.remove();
+
+  const name = cronFriendlyName(job.name);
+  const desc = job.description || '';
+  const model = (job.payload?.model || job.model || 'default').split('/').pop();
+  const enabled = job.enabled !== false;
+  const prompt = job.payload?.message || job.task || job.prompt || '';
+  const promptPreview = prompt.length > 400 ? prompt.slice(0, 400) + '…' : prompt;
+
+  // Delivery info
+  const deliveryMode = job.delivery?.mode || 'none';
+  const deliveryChannel = job.delivery?.channel || '';
+  let deliverStr = '';
+  if (deliveryMode !== 'none' && deliveryChannel) {
+    deliverStr = deliveryChannel;
+    if (job.delivery?.to) deliverStr += ' → ' + job.delivery.to;
+  }
+
+  const esc = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'task-detail-overlay';
+  overlay.className = 'oc-task-overlay';
+  overlay.innerHTML = `
+    <div class="oc-task-panel">
+      <div class="oc-task-header">
+        <span class="oc-task-title">${esc(name)}</span>
+        <button class="oc-task-close" id="task-close-btn">&times;</button>
+      </div>
+      <div class="oc-task-body">
+        ${desc ? `<div class="oc-task-desc">${esc(desc)}</div>` : ''}
+        <div class="oc-task-row">
+          <span class="oc-task-label">Status</span>
+          <span class="oc-task-value">${enabled ? '<span style="color:var(--accent)">active</span>' : '<span style="color:var(--text-faint)">paused</span>'}</span>
+        </div>
+        <div class="oc-task-row">
+          <span class="oc-task-label">Schedule</span>
+          <span class="oc-task-value">${info.schedule || '—'}</span>
+        </div>
+        <div class="oc-task-row">
+          <span class="oc-task-label">Last run</span>
+          <span class="oc-task-value">${info.lastRan ? info.lastRan + (info.lastStatus === 'error' ? ' <span style="color:#ef4444">failed</span>' : ' <span style="color:var(--accent)">ok</span>') : 'never'}</span>
+        </div>
+        <div class="oc-task-row">
+          <span class="oc-task-label">Model</span>
+          <span class="oc-task-value">${esc(model)}</span>
+        </div>
+        ${deliverStr ? `<div class="oc-task-row"><span class="oc-task-label">Delivers to</span><span class="oc-task-value">${esc(deliverStr)}</span></div>` : ''}
+        ${promptPreview ? `<div class="oc-task-prompt-section"><span class="oc-task-label">Prompt</span><div class="oc-task-prompt">${esc(promptPreview)}</div></div>` : ''}
+      </div>
+      <div class="oc-task-footer">
+        <button class="oc-task-action" onclick="cronRunNow('${job.id}', this); document.getElementById('task-detail-overlay')?.remove();">▶ Run now</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.getElementById('task-close-btn').addEventListener('click', () => overlay.remove());
 }
 
 // ─── Settings ─────────────────────────────────────────────────────
@@ -3839,6 +4048,29 @@ function sendControlAction(message) {
     input.dispatchEvent(new Event('input'));
     document.getElementById('send-btn')?.click();
   }
+}
+
+function openTerminalPanel() {
+  const panel = document.getElementById('terminal-panel');
+  if (!panel) return;
+  // Open the terminal section if not already open
+  if (!panel.classList.contains('hud-open')) {
+    const toggle = panel.querySelector('.hud-section-toggle');
+    if (toggle) toggle.click();
+  }
+  // Expand to medium view for usability
+  if (!panel.classList.contains('hud-expanded') && !panel.classList.contains('hud-fullscreen')) {
+    const expandBtn = document.getElementById('terminal-expand-btn');
+    if (expandBtn) expandBtn.click();
+  }
+}
+
+function openTerminalWithCmd(cmd) {
+  // Open terminal panel expanded, then the user can run the command
+  // (We can't inject into the ttyd iframe due to cross-origin, but we can
+  // open it and send the command through the agent instead)
+  openTerminalPanel();
+  sendControlAction('Run this command and show me the output: ' + cmd);
 }
 
 function openDashboard() {
