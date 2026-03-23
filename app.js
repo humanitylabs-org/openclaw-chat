@@ -4798,13 +4798,41 @@ function closeDashboard() {
     return 'closed';
   }
 
-  function setState(cfg, state) {
+  const mobilePortal = document.getElementById('mobile-panel-portal');
+
+  function setState(cfg, newState) {
     const el = document.getElementById(cfg.id);
     if (!el) return;
+    const isMobile = window.innerWidth <= 768;
+    const wasExpanded = el.classList.contains('hud-expanded') || el.classList.contains('hud-fullscreen');
+    const willExpand = newState === 'medium' || newState === 'full';
+
     el.classList.remove('hud-open', 'hud-expanded', 'hud-fullscreen');
-    if (state !== 'closed') el.classList.add('hud-open');
-    if (state === 'medium') el.classList.add('hud-expanded');
-    if (state === 'full') el.classList.add('hud-fullscreen');
+    if (newState !== 'closed') el.classList.add('hud-open');
+    if (newState === 'medium') el.classList.add('hud-expanded');
+    if (newState === 'full') el.classList.add('hud-fullscreen');
+
+    // Mobile: move panel to/from portal to escape dashboard's transform
+    if (isMobile && mobilePortal) {
+      if (willExpand && !wasExpanded) {
+        // Save original parent so we can move it back
+        cfg._originalParent = el.parentNode;
+        cfg._originalNext = el.nextSibling;
+        mobilePortal.appendChild(el);
+      } else if (!willExpand && wasExpanded) {
+        // Move back to dashboard
+        if (cfg._originalParent) {
+          if (cfg._originalNext) {
+            cfg._originalParent.insertBefore(el, cfg._originalNext);
+          } else {
+            cfg._originalParent.appendChild(el);
+          }
+        }
+        cfg._originalParent = null;
+        cfg._originalNext = null;
+      }
+    }
+
     updateExpandBtn(cfg);
     updateBackdrop();
   }
@@ -5044,38 +5072,54 @@ function closeDashboard() {
   });
 
   // Expand: open MindFeed as floating overlay
+  let mfOriginalParent = null, mfOriginalNext = null;
+
+  function mfCollapse() {
+    const widget = document.getElementById('mindfeed-widget');
+    if (!widget) return;
+    widget.classList.remove('hud-mindfeed-expanded');
+    if (mfExpand) { mfExpand.textContent = '⤢'; mfExpand.title = 'Expand'; }
+    backdrop?.classList.remove('visible');
+    // Move back from portal on mobile
+    if (mfOriginalParent && mobilePortal?.contains(widget)) {
+      if (mfOriginalNext) mfOriginalParent.insertBefore(widget, mfOriginalNext);
+      else mfOriginalParent.appendChild(widget);
+    }
+    mfOriginalParent = null;
+    mfOriginalNext = null;
+  }
+
   mfExpand?.addEventListener('click', (e) => {
     e.stopPropagation();
     const widget = document.getElementById('mindfeed-widget');
     if (!widget) return;
     const isExpanded = widget.classList.contains('hud-mindfeed-expanded');
     if (isExpanded) {
-      widget.classList.remove('hud-mindfeed-expanded');
-      mfExpand.textContent = '⤢';
-      mfExpand.title = 'Expand';
-      backdrop?.classList.remove('visible');
+      mfCollapse();
     } else {
-      widget.classList.add('hud-mindfeed-expanded');
-      mfExpand.textContent = '⤓';
-      mfExpand.title = 'Minimize';
-      backdrop?.classList.add('visible');
-      // Close mobile dashboard drawer
-      if (state.isMobile) {
+      // Move to portal on mobile to escape dashboard transform
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile && mobilePortal) {
+        mfOriginalParent = widget.parentNode;
+        mfOriginalNext = widget.nextSibling;
+        mobilePortal.appendChild(widget);
+        // Close dashboard drawer
         const dash = document.querySelector('.dashboard');
         const overlay = document.getElementById('dashboard-overlay');
         dash?.classList.remove('open');
         overlay?.classList.remove('open');
       }
+      widget.classList.add('hud-mindfeed-expanded');
+      mfExpand.textContent = '⤓';
+      mfExpand.title = 'Minimize';
+      backdrop?.classList.add('visible');
     }
   });
 
   // Close button minimizes expanded mindfeed
   document.getElementById('mindfeed-close-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    const widget = document.getElementById('mindfeed-widget');
-    if (widget) widget.classList.remove('hud-mindfeed-expanded');
-    if (mfExpand) { mfExpand.textContent = '⤢'; mfExpand.title = 'Expand'; }
-    backdrop?.classList.remove('visible');
+    mfCollapse();
   });
 
   // Backdrop click minimizes expanded mindfeed too
@@ -5083,8 +5127,7 @@ function closeDashboard() {
   backdrop?.addEventListener('click', () => {
     const widget = document.getElementById('mindfeed-widget');
     if (widget?.classList.contains('hud-mindfeed-expanded')) {
-      widget.classList.remove('hud-mindfeed-expanded');
-      if (mfExpand) { mfExpand.textContent = '⤢'; mfExpand.title = 'Expand'; }
+      mfCollapse();
     }
   });
 })();

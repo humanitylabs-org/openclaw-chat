@@ -1640,6 +1640,9 @@
     <!-- Backdrop for expanded embed panels -->
     <div class="hud-embed-backdrop" id="embed-backdrop"></div>
 
+    <!-- Portal for mobile fullscreen panels (outside dashboard to avoid transform containment) -->
+    <div id="mobile-panel-portal"></div>
+
     <!-- Chat container -->
     <div id="chat-container" class="openclaw-chat-container" style="flex:1;min-width:0;">
       <!-- Top bar: tabs + agent switcher -->
@@ -1729,7 +1732,7 @@
 
   </div>
 
-  <script src="/app.js?v=90"></script>
+  <script src="/app.js?v=91"></script>
   <script>
     // Landing page logic
     (function() {
