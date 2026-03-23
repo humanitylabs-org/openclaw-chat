@@ -1226,11 +1226,15 @@ function clearDraft(key) {
   localStorage.setItem('tabDrafts', JSON.stringify(state.tabDrafts));
 }
 
-function queueMessage(text) {
+function queueMessage(text, attachments) {
   const key = state.sessionKey;
   if (!key) return;
   // Only allow 1 queued message per tab
-  state.messageQueue[key] = [{ text, timestamp: Date.now() }];
+  const entry = { text, timestamp: Date.now() };
+  if (attachments && attachments.length > 0) {
+    entry.attachments = attachments.map(a => ({ name: a.name, mimeType: a.mimeType, base64: a.base64, content: a.content }));
+  }
+  state.messageQueue[key] = [entry];
   localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
   renderQueuedMessages();
 }
@@ -1264,7 +1268,12 @@ function renderQueuedMessages() {
 
   container.style.display = '';
   container.innerHTML = queue.map((msg, i) => {
-    const preview = msg.text.length > 80 ? msg.text.slice(0, 80) + '…' : msg.text;
+    let preview = msg.text || '';
+    if (msg.attachments && msg.attachments.length > 0) {
+      const names = msg.attachments.map(a => a.name).join(', ');
+      preview = preview ? `📎 ${names} — ${preview}` : `📎 ${names}`;
+    }
+    if (preview.length > 80) preview = preview.slice(0, 80) + '…';
     const esc = preview.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     return `<div class="oc-queue-item">
       <span class="oc-queue-badge">${i + 1}</span>
@@ -1282,10 +1291,18 @@ function processQueue() {
   if (queue.length === 0) delete state.messageQueue[key];
   localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
   renderQueuedMessages();
+  // Restore attachments if any
+  if (next.attachments && next.attachments.length > 0) {
+    state.pendingAttachments = next.attachments;
+    ui.attachPreview.classList.remove('oc-hidden');
+    ui.attachPreview.innerHTML = next.attachments.map(a =>
+      `<div class="oc-attach-item"><span class="oc-attach-name">${a.name}</span></div>`
+    ).join('');
+  }
   // Send the queued message
   const input = document.getElementById('message-input');
   if (input) {
-    input.value = next.text;
+    input.value = next.text || '';
     input.dispatchEvent(new Event('input'));
     document.getElementById('send-btn')?.click();
   }
@@ -2820,11 +2837,17 @@ function handleSendOrQueue() {
 
   if (!text && state.pendingAttachments.length === 0) return;
 
-  // If agent is currently streaming, queue the message client-side
-  if (isStreaming && text) {
-    queueMessage(text);
+  // If agent is currently streaming, queue the message (with any attachments)
+  if (isStreaming && (text || state.pendingAttachments.length > 0)) {
+    queueMessage(text, state.pendingAttachments.length > 0 ? [...state.pendingAttachments] : null);
     ui.messageInput.value = '';
     ui.messageInput.dispatchEvent(new Event('input'));
+    // Clear attachments from UI
+    if (state.pendingAttachments.length > 0) {
+      state.pendingAttachments = [];
+      ui.attachPreview.classList.add('oc-hidden');
+      ui.attachPreview.innerHTML = '';
+    }
     clearDraft(state.sessionKey);
     return;
   }
