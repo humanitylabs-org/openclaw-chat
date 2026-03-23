@@ -43,12 +43,19 @@
       color: var(--text-normal);
       height: 100vh;
       height: 100dvh;
+      height: -webkit-fill-available;
       overflow: hidden;
+      /* Prevent iOS standalone from adding extra bottom space */
+      position: fixed;
+      width: 100%;
+      top: 0;
+      left: 0;
     }
 
     .app {
       height: 100vh;
       height: 100dvh;
+      height: -webkit-fill-available;
       display: flex;
       flex-direction: row;
       overflow: hidden;
@@ -1258,7 +1265,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=58">
+  <link rel="stylesheet" href="/theme.css?v=59">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1700,7 +1707,7 @@
 
   </div>
 
-  <script src="/app.js?v=78"></script>
+  <script src="/app.js?v=79"></script>
   <script>
     // Landing page logic
     (function() {
