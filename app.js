@@ -4545,13 +4545,12 @@ function closeDashboard() {
 
   // Iframes preloaded on connect — panel restore handled by restoreCollapsibleState()
 
-  // ─── MindFeed Right Sidebar (independent of accordion) ─────────────
+  // ─── MindFeed Widget (always visible, above accordion) ──────────────
 
   const mfBody = document.getElementById('mindfeed-panel-body');
   const mfDot = document.getElementById('mindfeed-dot');
   const mfRefresh = document.getElementById('mindfeed-refresh-btn');
   const mfExpand = document.getElementById('mindfeed-expand-btn');
-  const mfClose = document.getElementById('mindfeed-close-max-btn');
   let mfIframe = null;
 
   function mfGetUrl() {
@@ -4567,7 +4566,6 @@ function closeDashboard() {
     const url = mfGetUrl();
     if (!url) return;
 
-    // Loading spinner
     if (!mfBody.querySelector('.hud-embed-loading')) {
       const el = document.createElement('div');
       el.className = 'hud-embed-loading';
@@ -4600,7 +4598,6 @@ function closeDashboard() {
     mfBody.appendChild(iframe);
   }
 
-  // Expose for preloadAll
   const origPreloadAll = window.preloadAllEmbeds;
   window.preloadAllEmbeds = function() {
     origPreloadAll?.();
@@ -4612,34 +4609,33 @@ function closeDashboard() {
     if (mfIframe) { mfDot?.classList.remove('connected'); mfIframe.src = mfIframe.src; }
   });
 
+  // Expand: open MindFeed as floating overlay
   mfExpand?.addEventListener('click', (e) => {
     e.stopPropagation();
-    const sidebar = document.getElementById('sidebar-right');
-    if (!sidebar) return;
-    const isExpanded = sidebar.classList.contains('sidebar-right-expanded');
+    const widget = document.getElementById('mindfeed-widget');
+    if (!widget) return;
+    const isExpanded = widget.classList.contains('hud-mindfeed-expanded');
     if (isExpanded) {
-      sidebar.classList.remove('sidebar-right-expanded');
+      widget.classList.remove('hud-mindfeed-expanded');
       mfExpand.textContent = '⤢';
       mfExpand.title = 'Expand';
-      if (mfClose) mfClose.style.display = 'none';
       backdrop?.classList.remove('visible');
     } else {
-      sidebar.classList.add('sidebar-right-expanded');
+      widget.classList.add('hud-mindfeed-expanded');
       mfExpand.textContent = '⤓';
       mfExpand.title = 'Minimize';
-      if (mfClose) mfClose.style.display = '';
       backdrop?.classList.add('visible');
     }
   });
 
-  mfClose?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const sidebar = document.getElementById('sidebar-right');
-    if (sidebar) sidebar.classList.remove('sidebar-right-expanded');
-    mfExpand.textContent = '⤢';
-    mfExpand.title = 'Expand';
-    mfClose.style.display = 'none';
-    backdrop?.classList.remove('visible');
+  // Backdrop click minimizes expanded mindfeed too
+  const origBackdropClick = backdrop?.onclick;
+  backdrop?.addEventListener('click', () => {
+    const widget = document.getElementById('mindfeed-widget');
+    if (widget?.classList.contains('hud-mindfeed-expanded')) {
+      widget.classList.remove('hud-mindfeed-expanded');
+      if (mfExpand) { mfExpand.textContent = '⤢'; mfExpand.title = 'Expand'; }
+    }
   });
 })();
 

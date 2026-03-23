@@ -1455,6 +1455,18 @@
         <!-- ═══ Files ═══ -->
         <div class="hud-files-row" id="hud-file-list"></div>
 
+        <!-- ═══ MindFeed Widget (always visible, cropped) ═══ -->
+        <div class="hud-section hud-mindfeed-widget" id="mindfeed-widget">
+          <div class="hud-mindfeed-widget-header">
+            <span class="hud-section-label-row"><span class="hud-embed-dot" id="mindfeed-dot"></span>MINDFEED</span>
+            <span class="hud-mindfeed-widget-actions">
+              <span class="hud-embed-action" id="mindfeed-refresh-btn" title="Refresh">↻</span>
+              <span class="hud-embed-action" id="mindfeed-expand-btn" title="Expand">⤢</span>
+            </span>
+          </div>
+          <div class="hud-mindfeed-widget-body" id="mindfeed-panel-body"></div>
+        </div>
+
         <!-- ═══ Browser (collapsible + expandable) ═══ -->
         <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-browser" id="browser-panel">
           <button class="hud-section-toggle" id="browser-panel-header">
@@ -1720,19 +1732,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- ═══ Right Sidebar: MindFeed ═══ -->
-    <div class="sidebar-right" id="sidebar-right">
-      <div class="sidebar-right-header">
-        <span class="hud-section-label-row"><span class="hud-embed-dot" id="mindfeed-dot"></span>MINDFEED</span>
-        <span class="sidebar-right-actions">
-          <span class="hud-embed-action" id="mindfeed-refresh-btn" title="Refresh">↻</span>
-          <span class="hud-embed-action" id="mindfeed-expand-btn" title="Expand">⤢</span>
-          <span class="hud-embed-action" id="mindfeed-close-max-btn" title="Close" style="display:none">×</span>
-        </span>
-      </div>
-      <div class="sidebar-right-body" id="mindfeed-panel-body"></div>
     </div>
 
   </div>

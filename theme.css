@@ -2636,42 +2636,42 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 #terminal-panel .hud-embed-spinner { border-color: rgba(255,255,255,0.06); border-top-color: rgba(255,255,255,0.25); }
 
 /* ══════════════════════════════════════════════════════════════
-   Right Sidebar — MindFeed
+   MindFeed Widget — compact, always-visible, above accordion
    ══════════════════════════════════════════════════════════════ */
 
-.sidebar-right {
-  width: 320px;
+.hud-mindfeed-widget {
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  margin-top: 6px;
   flex-shrink: 0;
-  background: #0a0a0f;
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
-.sidebar-right-header {
+.hud-mindfeed-widget-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px 12px;
 }
 
-.sidebar-right-actions {
+.hud-mindfeed-widget-actions {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.sidebar-right-body {
-  flex: 1;
+.hud-mindfeed-widget-body {
+  height: 120px;
   overflow: hidden;
   position: relative;
   background: #0a0a0f;
+  border-radius: 0 0 8px 8px;
 }
 
-.sidebar-right-body iframe {
+.hud-mindfeed-widget-body iframe {
   width: 142.86%;
   height: 142.86%;
   border: none;
@@ -2680,43 +2680,56 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   transform-origin: top left;
 }
 
-.sidebar-right-body .hud-embed-loading {
+.hud-mindfeed-widget-body .hud-embed-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   background: #0a0a0f;
 }
 
-/* Right sidebar expanded (floating phone) */
-.sidebar-right.sidebar-right-expanded {
+/* Expanded: floating phone-like overlay */
+.hud-mindfeed-widget.hud-mindfeed-expanded {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(400px, 92vw);
-  height: min(85vh, 800px);
+  width: min(380px, 90vw);
+  height: min(75vh, 700px);
   z-index: 1600;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  background: #0a0a0f;
 }
 
-/* Hide right sidebar on narrow screens */
-@media (max-width: 1100px) {
-  .sidebar-right { display: none; }
+.hud-mindfeed-widget.hud-mindfeed-expanded .hud-mindfeed-widget-body {
+  height: auto;
+  flex: 1;
 }
 
-[data-theme="light"] .sidebar-right {
+[data-theme="light"] .hud-mindfeed-widget.hud-mindfeed-expanded {
   background: #fafafa;
-  border-left-color: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
 
-[data-theme="light"] .sidebar-right-header {
-  border-bottom-color: rgba(0, 0, 0, 0.06);
+[data-theme="light"] .hud-mindfeed-widget {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.08) !important;
 }
 
-[data-theme="light"] .sidebar-right-body {
+[data-theme="light"] .hud-mindfeed-widget-body {
   background: #fafafa;
 }
 
-[data-theme="light"] .sidebar-right-body .hud-embed-loading {
+[data-theme="light"] .hud-mindfeed-widget-body .hud-embed-loading {
   background: #fafafa;
 }
 
