@@ -1413,6 +1413,47 @@
   .dash-menu-btn {
     display: flex;
   }
+
+  /* Mobile: make dashboard scrollable */
+  .dashboard-scroll {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dashboard-scroll::-webkit-scrollbar { width: 3px; }
+  .dashboard-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+
+  /* MindFeed widget: slightly shorter on mobile */
+  .hud-mindfeed-widget-body {
+    height: 70px;
+  }
+
+  /* MindFeed expanded: full screen on mobile */
+  .hud-mindfeed-widget.hud-mindfeed-expanded {
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    max-width: none;
+  }
+
+  /* Scale down MindFeed iframe less aggressively on mobile drawer */
+  .hud-mindfeed-widget-body iframe {
+    width: 133.33%;
+    height: 133.33%;
+    transform: scale(0.75);
+  }
+
+  /* Settings: tighter on mobile */
+  .hud-settings-label { font-size: 11px; }
+  .hud-settings-value { font-size: 10px; }
+
+  /* Identity row: ensure it fits */
+  .hud-identity-row { padding: 10px 2px; }
+  .hud-agent-name { font-size: 13px; }
 }
 
 /* ── Hide dash-menu-btn when hamburger bar is visible ───── */
