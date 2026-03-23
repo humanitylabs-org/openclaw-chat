@@ -2779,6 +2779,10 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   background: #0a0a0f;
 }
 
+/* Close button: hidden unless expanded */
+.hud-mf-close-btn { display: none !important; }
+.hud-mindfeed-expanded .hud-mf-close-btn { display: inline-flex !important; }
+
 /* Expanded: floating phone-like overlay */
 .hud-mindfeed-widget.hud-mindfeed-expanded {
   position: fixed;

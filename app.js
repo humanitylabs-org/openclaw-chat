@@ -4644,6 +4644,15 @@ function closeDashboard() {
     }
   });
 
+  // Close button minimizes expanded mindfeed
+  document.getElementById('mindfeed-close-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const widget = document.getElementById('mindfeed-widget');
+    if (widget) widget.classList.remove('hud-mindfeed-expanded');
+    if (mfExpand) { mfExpand.textContent = '⤢'; mfExpand.title = 'Expand'; }
+    backdrop?.classList.remove('visible');
+  });
+
   // Backdrop click minimizes expanded mindfeed too
   const origBackdropClick = backdrop?.onclick;
   backdrop?.addEventListener('click', () => {
