@@ -616,6 +616,16 @@
     }
     .openclaw-messages.oc-loading::after { content: none; }
 
+    /* Swipe transition pane */
+    .oc-swipe-incoming {
+      z-index: 1;
+      will-change: transform;
+      background: var(--background-primary, #1a1a1e);
+    }
+    .oc-swipe-incoming .openclaw-msg {
+      opacity: 0.5;
+    }
+
     /* Loading indicator */
     .openclaw-loading {
       display: flex;
@@ -1668,7 +1678,7 @@
 
   </div>
 
-  <script src="/app.js?v=76"></script>
+  <script src="/app.js?v=77"></script>
   <script>
     // Landing page logic
     (function() {

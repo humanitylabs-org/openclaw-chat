@@ -2906,43 +2906,217 @@ ui.tabBar.addEventListener("wheel", (e) => {
 // ─── Touch Gestures (pull-to-refresh + swipe between tabs) ──────────
 
 (function initTouchGestures() {
-  let touchStartX = 0, touchStartY = 0, touchStartTime = 0, pulling = false;
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+  let pulling = false, swiping = false, swipeLocked = false;
+  let currentDeltaX = 0, rafId = 0;
+  let incomingPane = null;
+
   const pullIndicator = document.getElementById("pull-indicator");
-  const SWIPE_MIN_DIST = 60;     // px — must travel far enough (deliberate)
-  const SWIPE_MAX_TIME = 500;    // ms — must be fast (not a slow scroll)
-  const SWIPE_RATIO = 1.8;       // horizontal must dominate vertical by this much
+  const SWIPE_THRESHOLD = 0.25;  // fraction of screen width to commit
+  const SWIPE_VELOCITY = 0.3;    // px/ms — fast flick commits even if short
+  const LOCK_DISTANCE = 12;      // px before we decide swipe vs scroll
+  const RESISTANCE = 0.3;        // rubber-band factor at edges
+
+  function getContainerWidth() {
+    return ui.messagesContainer?.offsetWidth || window.innerWidth;
+  }
+
+  function getSwipeTarget(deltaX) {
+    const currentIdx = state.tabSessions.findIndex(t => t.key === state.sessionKey);
+    if (currentIdx < 0) return null;
+    const nextIdx = deltaX < 0 ? currentIdx + 1 : currentIdx - 1;
+    if (nextIdx < 0 || nextIdx >= state.tabSessions.length) return null;
+    return { idx: nextIdx, tab: state.tabSessions[nextIdx] };
+  }
+
+  function createIncomingPane(tab, fromRight) {
+    removeIncomingPane();
+    const pane = document.createElement("div");
+    pane.className = "oc-swipe-incoming";
+    pane.style.cssText = `
+      position: absolute; top: 0; bottom: 0; width: 100%;
+      ${fromRight ? "left: 100%;" : "right: 100%;"}
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 16px max(16px, calc(50% - 410px));
+      overflow: hidden; pointer-events: none;
+      background: var(--background-primary, #1a1a1e);
+    `;
+    // Render cached messages or a tab label
+    const cached = state.tabCache[tab.key];
+    if (cached && cached.messages.length > 0) {
+      // Show last few messages as preview
+      const msgs = cached.messages.slice(-8);
+      for (const msg of msgs) {
+        const bubble = document.createElement("div");
+        bubble.className = `openclaw-msg openclaw-msg-${msg.role}`;
+        const textDiv = document.createElement("div");
+        textDiv.className = "openclaw-msg-text";
+        textDiv.innerHTML = formatMarkdown(msg.text.slice(0, 300));
+        bubble.appendChild(textDiv);
+        pane.appendChild(bubble);
+      }
+    } else {
+      const label = document.createElement("div");
+      label.style.cssText = "color: var(--text-faint); text-align: center; padding: 40px 16px; font-size: 13px;";
+      label.textContent = tab.label || "Untitled";
+      pane.appendChild(label);
+    }
+    return pane;
+  }
+
+  function removeIncomingPane() {
+    if (incomingPane && incomingPane.parentNode) {
+      incomingPane.parentNode.removeChild(incomingPane);
+    }
+    incomingPane = null;
+  }
+
+  function applySwipeTransform(deltaX) {
+    const w = getContainerWidth();
+    const target = getSwipeTarget(deltaX);
+    let clampedDelta = deltaX;
+
+    // Rubber-band if no target tab in this direction
+    if (!target) {
+      clampedDelta = deltaX * RESISTANCE;
+    }
+
+    // Move messages container
+    ui.messagesContainer.style.transform = `translateX(${clampedDelta}px)`;
+
+    // Move incoming pane with it (it's absolutely positioned inside container's parent)
+    if (incomingPane) {
+      incomingPane.style.transform = `translateX(${clampedDelta}px)`;
+    }
+
+    // Fade tab switcher label
+    const progress = Math.min(1, Math.abs(clampedDelta) / (w * 0.5));
+    const switcherLabel = document.getElementById("tab-switcher-label");
+    if (switcherLabel) {
+      switcherLabel.style.opacity = 1 - progress * 0.6;
+      switcherLabel.style.transform = `translateX(${clampedDelta * 0.3}px)`;
+    }
+  }
+
+  function resetSwipeStyles() {
+    ui.messagesContainer.style.transform = "";
+    ui.messagesContainer.style.transition = "";
+    ui.messagesContainer.style.willChange = "";
+    const switcherLabel = document.getElementById("tab-switcher-label");
+    if (switcherLabel) {
+      switcherLabel.style.opacity = "";
+      switcherLabel.style.transform = "";
+      switcherLabel.style.transition = "";
+    }
+    removeIncomingPane();
+  }
+
+  function animateSwipe(commit, deltaX, targetTab) {
+    const w = getContainerWidth();
+    const duration = commit ? "250ms" : "200ms";
+    const easing = commit ? "cubic-bezier(0.2, 0.9, 0.3, 1)" : "cubic-bezier(0.4, 0, 0.2, 1)";
+    const destX = commit ? (deltaX < 0 ? -w : w) : 0;
+
+    ui.messagesContainer.style.transition = `transform ${duration} ${easing}`;
+    ui.messagesContainer.style.transform = `translateX(${destX}px)`;
+
+    if (incomingPane) {
+      incomingPane.style.transition = `transform ${duration} ${easing}`;
+      incomingPane.style.transform = `translateX(${destX}px)`;
+    }
+
+    const switcherLabel = document.getElementById("tab-switcher-label");
+    if (switcherLabel) {
+      switcherLabel.style.transition = `opacity ${duration} ${easing}, transform ${duration} ${easing}`;
+      switcherLabel.style.opacity = commit ? "0" : "1";
+      switcherLabel.style.transform = commit ? `translateX(${destX * 0.3}px)` : "";
+    }
+
+    const onEnd = () => {
+      ui.messagesContainer.removeEventListener("transitionend", onEnd);
+      resetSwipeStyles();
+      if (commit && targetTab) {
+        switchTab(targetTab);
+      }
+    };
+    ui.messagesContainer.addEventListener("transitionend", onEnd);
+    // Safety timeout in case transitionend doesn't fire
+    setTimeout(onEnd, commit ? 300 : 250);
+  }
 
   if (ui.messagesContainer) {
+    // Container needs relative positioning for the incoming pane
+    const chatArea = ui.messagesContainer.parentElement;
+
     ui.messagesContainer.addEventListener("touchstart", (e) => {
       if (!state.isMobile) return;
-      if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+      if (e.target.closest("textarea, input, a, button, .openclaw-tool-item")) return;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
       pulling = false;
+      swiping = false;
+      swipeLocked = false;
+      currentDeltaX = 0;
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      // Prepare for potential swipe
+      ui.messagesContainer.style.willChange = "transform";
     }, { passive: true });
 
     ui.messagesContainer.addEventListener("touchmove", (e) => {
       if (!state.isMobile) return;
-      if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+      if (e.target.closest("textarea, input")) return;
 
-      const deltaY = e.touches[0].clientY - touchStartY;
-      if (ui.messagesContainer.scrollTop <= 0 && deltaY > 0) {
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      const deltaX = currentX - touchStartX;
+      const deltaY = currentY - touchStartY;
+
+      // Pull-to-refresh (only when scrolled to top, pulling down)
+      if (!swiping && !swipeLocked && ui.messagesContainer.scrollTop <= 0 && deltaY > 0 && Math.abs(deltaY) > Math.abs(deltaX)) {
         if (deltaY > 60) {
           pulling = true;
           if (pullIndicator) pullIndicator.classList.add("oc-pulling");
         }
+        return;
       }
+
+      // Decide direction lock
+      if (!swipeLocked && !swiping) {
+        if (Math.abs(deltaX) < LOCK_DISTANCE && Math.abs(deltaY) < LOCK_DISTANCE) return;
+        if (Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+          swiping = true;
+          swipeLocked = true;
+          // Create incoming pane
+          const target = getSwipeTarget(deltaX);
+          if (target) {
+            incomingPane = createIncomingPane(target.tab, deltaX < 0);
+            chatArea.style.position = "relative";
+            chatArea.style.overflow = "hidden";
+            chatArea.appendChild(incomingPane);
+          }
+        } else {
+          swipeLocked = true;
+          swiping = false;
+          return;
+        }
+      }
+
+      if (!swiping) return;
+
+      currentDeltaX = deltaX;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        applySwipeTransform(currentDeltaX);
+        rafId = 0;
+      });
     }, { passive: true });
 
     ui.messagesContainer.addEventListener("touchend", (e) => {
       if (!state.isMobile) return;
-      if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
 
-      const deltaX = e.changedTouches[0].clientX - touchStartX;
-      const deltaY = e.changedTouches[0].clientY - touchStartY;
-      const elapsed = Date.now() - touchStartTime;
-
+      // Pull-to-refresh
       if (pulling) {
         pulling = false;
         if (pullIndicator) pullIndicator.classList.remove("oc-pulling");
@@ -2952,16 +3126,34 @@ ui.tabBar.addEventListener("wheel", (e) => {
         return;
       }
 
-      // Swipe between tabs: must be fast, far, and predominantly horizontal
-      if (Math.abs(deltaX) > SWIPE_MIN_DIST &&
-          Math.abs(deltaX) > Math.abs(deltaY) * SWIPE_RATIO &&
-          elapsed < SWIPE_MAX_TIME) {
-        const currentIdx = state.tabSessions.findIndex(t => t.key === state.sessionKey);
-        if (currentIdx < 0) return;
-        const nextIdx = deltaX < 0 ? currentIdx + 1 : currentIdx - 1;
-        if (nextIdx >= 0 && nextIdx < state.tabSessions.length) {
-          switchTab(state.tabSessions[nextIdx]);
-        }
+      if (!swiping) {
+        ui.messagesContainer.style.willChange = "";
+        return;
+      }
+
+      swiping = false;
+      swipeLocked = false;
+
+      const deltaX = e.changedTouches[0].clientX - touchStartX;
+      const elapsed = Date.now() - touchStartTime;
+      const velocity = Math.abs(deltaX) / Math.max(1, elapsed);
+      const w = getContainerWidth();
+      const progress = Math.abs(deltaX) / w;
+
+      const target = getSwipeTarget(deltaX);
+      const commit = target && (progress > SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY);
+
+      animateSwipe(commit, deltaX, commit ? target.tab : null);
+    }, { passive: true });
+
+    // Cancel swipe on touch cancel
+    ui.messagesContainer.addEventListener("touchcancel", () => {
+      if (swiping || pulling) {
+        swiping = false;
+        swipeLocked = false;
+        pulling = false;
+        if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+        resetSwipeStyles();
       }
     }, { passive: true });
   }
