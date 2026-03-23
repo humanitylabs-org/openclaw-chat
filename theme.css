@@ -2664,7 +2664,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 }
 
 .hud-mindfeed-widget-body {
-  height: 120px;
+  height: 80px;
   overflow: hidden;
   position: relative;
   background: #0a0a0f;
