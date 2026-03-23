@@ -812,6 +812,9 @@
   color: var(--text-faint);
   text-transform: uppercase;
   padding: 10px 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .hud-label-normal {
   text-transform: none !important;
@@ -1450,10 +1453,6 @@
   .hud-settings-label { font-size: 11px; }
   .hud-settings-value { font-size: 10px; }
 
-  /* Hide top-bar agent switcher on mobile (use control panel one instead) */
-  .openclaw-agent-btn { display: none !important; }
-  .openclaw-agent-dropdown { display: none !important; }
-
   /* Identity row: bigger touch targets */
   .hud-identity-row { padding: 14px 4px 8px; }
   .hud-identity { min-height: 44px; padding: 6px 0; }
@@ -1466,6 +1465,84 @@
     margin-left: 4px;
     border-radius: 4px;
     background: rgba(128,128,128,0.06);
+  }
+
+  /* Theme toggle: bigger on mobile */
+  .hud-theme-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Section toggles: 44px touch target */
+  .hud-section .hud-section-toggle {
+    min-height: 44px;
+    padding: 10px 0;
+  }
+
+  /* Embed action buttons (refresh, expand, close): 44px */
+  .hud-embed-action {
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* MindFeed widget header actions */
+  .hud-mindfeed-widget-header {
+    min-height: 44px;
+  }
+
+  /* Hamburger buttons: 44px */
+  .oc-hamburger-dash-btn,
+  .oc-hamburger-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Dashboard menu button */
+  .dash-menu-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Hamburger dropdown items: 44px per row */
+  .oc-hamburger-dropdown-item {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  /* Action buttons in dropdown */
+  .oc-dd-action-btn {
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Send button */
+  .openclaw-send-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Attach button */
+  .openclaw-attach-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Server action buttons in settings */
+  .hud-server-action {
+    min-height: 36px;
+    padding: 6px 10px;
+  }
+
+  /* Export button */
+  .oc-topbar-action {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 

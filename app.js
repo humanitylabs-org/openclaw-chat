@@ -626,12 +626,7 @@ async function loadAgents() {
 }
 
 function updateAgentButton() {
-  if (state.agents.length <= 1) {
-    ui.agentBtn.classList.add("oc-hidden");
-    return;
-  }
-  ui.agentBtn.classList.remove("oc-hidden");
-  ui.agentBtn.querySelector(".openclaw-agent-emoji-btn").textContent = state.activeAgent.emoji || "🤖";
+  // Top-bar agent switcher removed; control panel handles switching
 }
 
 async function switchAgent(agent) {
@@ -658,37 +653,7 @@ async function switchAgent(agent) {
   prefetchAllTabs();
 }
 
-function toggleAgentDropdown() {
-  const dd = ui.agentDropdown;
-  if (!dd.classList.contains("oc-hidden")) {
-    dd.classList.add("oc-hidden");
-    return;
-  }
-  dd.innerHTML = "";
-  for (const agent of state.agents) {
-    const isActive = agent.id === state.activeAgent.id;
-    const item = document.createElement("div");
-    item.className = `openclaw-agent-item${isActive ? " active" : ""}`;
-    item.innerHTML = `
-      <span class="openclaw-agent-item-emoji">${agent.emoji || "🤖"}</span>
-      <div class="openclaw-agent-item-info">
-        <div class="openclaw-agent-item-name">${agent.name}</div>
-        ${agent.creature ? `<div class="openclaw-agent-item-sub">${agent.creature}</div>` : ""}
-      </div>
-    `;
-    if (!isActive) {
-      item.addEventListener("click", () => {
-        dd.classList.add("oc-hidden");
-        switchAgent(agent);
-      });
-    }
-    dd.appendChild(item);
-  }
-  dd.classList.remove("oc-hidden");
-}
-
-ui.agentBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleAgentDropdown(); });
-document.addEventListener("click", () => ui.agentDropdown.classList.add("oc-hidden"));
+// Top-bar agent dropdown removed — control panel handles switching
 
 // ─── Tab Management ──────────────────────────────────────────────────
 

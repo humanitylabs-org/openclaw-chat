@@ -97,60 +97,7 @@
       height: 100%;
     }
 
-    /* Agent switcher button */
-    .openclaw-agent-btn {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      cursor: pointer;
-      border-radius: 50%;
-      margin: 0 3px 4px 2px;
-      transition: background 0.15s;
-      background: rgba(128,128,128,0.08);
-    }
-    .openclaw-agent-btn:hover { background: rgba(128,128,128,0.2); }
-    .openclaw-agent-emoji-btn { font-size: 13px; line-height: 1; }
-
-    /* Agent switcher dropdown */
-    .openclaw-agent-dropdown {
-      position: absolute;
-      top: 36px;
-      right: 4px;
-      z-index: 1000;
-      min-width: 160px;
-      max-width: 220px;
-      background: var(--background-primary);
-      border: 1px solid var(--background-modifier-border);
-      border-radius: 8px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-      padding: 3px;
-      font-size: 12px;
-    }
-    .openclaw-agent-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 8px;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: background 0.12s;
-    }
-    .openclaw-agent-item:hover { background: rgba(128,128,128,0.12); }
-    .openclaw-agent-item.active { background: rgba(128,128,128,0.1); cursor: default; }
-    .openclaw-agent-item-emoji { font-size: 14px; flex-shrink: 0; }
-    .openclaw-agent-item-info { min-width: 0; }
-    .openclaw-agent-item-name {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-normal);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .openclaw-agent-item-sub { font-size: 11px; color: var(--text-muted); }
+    /* (agent switcher removed — use control panel) */
 
     /* ─── Tab Bar ────────────────────────────────────────────────── */
     .openclaw-tab-bar {
@@ -1479,7 +1426,7 @@
         <!-- ═══ Browser (collapsible + expandable) ═══ -->
         <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-browser" id="browser-panel">
           <button class="hud-section-toggle" id="browser-panel-header">
-            <span class="hud-section-label-row"><span class="hud-embed-dot" id="browser-dot"></span>BROWSER</span>
+            <span class="hud-section-label-row"><span class="hud-embed-dot" id="browser-dot"></span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> BROWSER</span>
             <span class="hud-section-actions">
               <span class="hud-embed-action hud-when-open" id="browser-refresh-btn" title="Refresh">↻</span>
               <span class="hud-embed-action hud-when-open" id="browser-expand-btn" title="Expand">⤢</span>
@@ -1493,7 +1440,7 @@
         <!-- ═══ Terminal (collapsible + expandable) ═══ -->
         <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-terminal" id="terminal-panel">
           <button class="hud-section-toggle" id="terminal-panel-header">
-            <span class="hud-section-label-row"><span class="hud-embed-dot" id="terminal-dot"></span>TERMINAL</span>
+            <span class="hud-section-label-row"><span class="hud-embed-dot" id="terminal-dot"></span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> TERMINAL</span>
             <span class="hud-section-actions">
               <span class="hud-embed-action hud-when-open" id="terminal-refresh-btn" title="Refresh">↻</span>
               <span class="hud-embed-action hud-when-open" id="terminal-expand-btn" title="Expand">⤢</span>
@@ -1507,7 +1454,7 @@
         <!-- ═══ Tasks ═══ -->
         <div class="hud-section hud-collapsible" data-section="tasks">
           <button class="hud-section-toggle" onclick="toggleSection('tasks')">
-            <span class="hud-section-label">RECURRING TASKS</span>
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg> TASKS</span>
             <span class="hud-section-actions">
               <span class="hud-embed-action hud-when-open" id="tasks-refresh-btn" title="Refresh" onclick="event.stopPropagation(); loadCronJobs(); loadSubagents();">↻</span>
               <span class="hud-section-chevron">›</span>
@@ -1526,7 +1473,7 @@
         <!-- ═══ Settings ═══ -->
         <div class="hud-section hud-collapsible" data-section="server-settings">
           <button class="hud-section-toggle" onclick="toggleSection('server-settings')">
-            <span class="hud-section-label">SETTINGS</span>
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> SETTINGS</span>
             <span class="hud-section-chevron">›</span>
           </button>
           <div class="hud-section-body">
@@ -1651,7 +1598,7 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <div class="oc-tab-switcher" id="tab-switcher">
-            <button class="oc-tab-switcher-arrow oc-arrow-left" id="tab-arrow-left">
+            <button class="oc-tab-switcher-arrow oc-arrow-left" id="tab-arrow-left" style="display:none">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <div class="oc-tab-switcher-current" id="tab-switcher-current">
@@ -1663,20 +1610,14 @@
                 <div class="oc-tab-switcher-meter-fill" id="tab-switcher-meter-fill"></div>
               </div>
             </div>
-            <button class="oc-tab-switcher-arrow oc-arrow-right" id="tab-arrow-right">
+            <button class="oc-tab-switcher-arrow oc-arrow-right" id="tab-arrow-right" style="display:none">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>
           <div class="oc-hamburger-dropdown" id="hamburger-dropdown"></div>
         </div>
         <div class="oc-pull-indicator" id="pull-indicator">↻ Release to refresh</div>
-        <div class="openclaw-agent-btn oc-hidden" id="agent-btn" aria-label="Switch agent">
-          <span class="openclaw-agent-emoji-btn">🤖</span>
-        </div>
       </div>
-
-      <!-- Agent dropdown (hidden) -->
-      <div class="openclaw-agent-dropdown oc-hidden" id="agent-dropdown"></div>
 
       <!-- Status banner (hidden) -->
       <div class="openclaw-banner oc-hidden" id="status-banner"></div>
