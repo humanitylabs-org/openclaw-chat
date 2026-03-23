@@ -3153,18 +3153,27 @@ function friendlyFile(name) {
 
 // ─── Collapsible Sections ─────────────────────────────────────────
 
+// Sections exempt from accordion (always open independently)
+const PINNED_SECTIONS = new Set(['agent-browser', 'agent-mindfeed']);
+
 function toggleSection(sectionId) {
   const el = document.querySelector(`.hud-collapsible[data-section="${sectionId}"]`);
   if (!el) return;
   const wasOpen = el.classList.contains('hud-open');
 
-  // Accordion: close all other sections first
+  // Pinned sections toggle independently — no accordion
+  if (PINNED_SECTIONS.has(sectionId)) {
+    if (wasOpen) el.classList.remove('hud-open');
+    else el.classList.add('hud-open');
+    return;
+  }
+
+  // Accordion: close all other NON-PINNED sections first
   document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
-    if (other !== el) {
+    if (other !== el && !PINNED_SECTIONS.has(other.dataset.section)) {
       other.classList.remove('hud-open');
-      // If it's an embed panel, also destroy its iframe
       const otherSection = other.dataset.section;
-      if (otherSection === 'agent-browser' || otherSection === 'agent-terminal' || otherSection === 'agent-mindfeed') {
+      if (otherSection === 'agent-terminal') {
         const evt = new CustomEvent('panel-close', { detail: otherSection });
         document.dispatchEvent(evt);
       }
@@ -3176,7 +3185,7 @@ function toggleSection(sectionId) {
   if (isOpen) el.classList.add('hud-open');
   else el.classList.remove('hud-open');
 
-  // Remember which section is open (only one at a time)
+  // Remember which accordion section is open (only one at a time)
   localStorage.setItem('openSection', isOpen ? sectionId : '');
 }
 
@@ -3188,8 +3197,15 @@ function restoreCollapsibleState() {
   localStorage.removeItem('terminalPanelOpen');
   localStorage.removeItem('mindfeedPanelOpen');
 
-  const openId = localStorage.getItem('openSection') || 'agent-browser';
-  if (openId) {
+  // Always open pinned sections (Browser + MindFeed)
+  for (const id of PINNED_SECTIONS) {
+    const el = document.querySelector(`.hud-collapsible[data-section="${id}"]`);
+    if (el) el.classList.add('hud-open');
+  }
+
+  // Restore last accordion section (excluding pinned ones)
+  const openId = localStorage.getItem('openSection') || '';
+  if (openId && !PINNED_SECTIONS.has(openId)) {
     const el = document.querySelector(`.hud-collapsible[data-section="${openId}"]`);
     if (el) el.classList.add('hud-open');
   }
@@ -4482,30 +4498,35 @@ function closeDashboard() {
   window.preloadAllEmbeds = preloadAll;
 
   function toggle(cfg) {
+    const sectionMap = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal', 'mindfeed-panel': 'agent-mindfeed' };
+    const sectionId = sectionMap[cfg.id] || cfg.id;
+    const isPinned = PINNED_SECTIONS.has(sectionId);
     const st = getState(cfg);
+
     if (st === 'closed') {
-      // Accordion: close all other sections first
-      document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
-        if (other.id !== cfg.id) {
-          other.classList.remove('hud-open');
-          // No need to destroy iframes — they stay preloaded
-        }
-      });
+      // Pinned panels toggle independently — no accordion
+      if (!isPinned) {
+        // Accordion: close other NON-PINNED sections
+        document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
+          if (other.id !== cfg.id && !PINNED_SECTIONS.has(other.dataset.section)) {
+            other.classList.remove('hud-open');
+          }
+        });
+      }
 
       setState(cfg, 'open');
-      // If iframe wasn't preloaded yet (edge case), do it now
       if (!cfg.iframe) preloadIframe(cfg);
-      const sectionMap = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal', 'mindfeed-panel': 'agent-mindfeed' };
-      localStorage.setItem('openSection', sectionMap[cfg.id] || cfg.id);
+      if (!isPinned) localStorage.setItem('openSection', sectionId);
     } else {
       setState(cfg, 'closed');
-      localStorage.setItem('openSection', '');
+      if (!isPinned) localStorage.setItem('openSection', '');
     }
   }
 
-  // Listen for accordion closes from toggleSection()
+  // Listen for accordion closes from toggleSection() — skip pinned sections
   const panelToSection = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal', 'mindfeed-panel': 'agent-mindfeed' };
   document.addEventListener('panel-close', (e) => {
+    if (PINNED_SECTIONS.has(e.detail)) return; // never close pinned via accordion
     for (const cfg of Object.values(panels)) {
       if (e.detail === (panelToSection[cfg.id] || cfg.id)) {
         setState(cfg, 'closed');

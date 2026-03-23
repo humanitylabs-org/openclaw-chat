@@ -252,7 +252,7 @@
    ══════════════════════════════════════════════════════════════ */
 
 .dashboard {
-  width: 280px;
+  width: 360px;
   flex-shrink: 0;
   background: #0d0d0f;
   border-right: none;
