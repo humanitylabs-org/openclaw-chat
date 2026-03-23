@@ -254,7 +254,7 @@
 .dashboard {
   width: 280px;
   flex-shrink: 0;
-  background: #0d0d0f;
+  background: #1a1a1a;
   border-right: none;
   box-shadow: 1px 0 12px rgba(0, 0, 0, 0.3);
   display: flex;
@@ -2571,7 +2571,7 @@
 .dashboard-skeleton {
   position: absolute;
   inset: 0;
-  background: #0d0d0f;
+  background: #1a1a1a;
   z-index: 10;
   padding: 28px 16px;
   display: flex;
@@ -3020,7 +3020,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   padding: 0 !important;
   display: flex;
   flex-direction: column;
-  background: #0d0d0f;
+  background: #1a1a1a;
 }
 
 .hud-embed-panel.hud-expanded .hud-section-toggle {
@@ -3052,7 +3052,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   padding: 0 !important;
   display: flex;
   flex-direction: column;
-  background: #0d0d0f;
+  background: #1a1a1a;
 }
 
 .hud-embed-panel.hud-fullscreen .hud-section-toggle {
@@ -3106,7 +3106,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
     border-radius: 0 !important;
     z-index: 2100 !important;
     box-shadow: none !important;
-    background: #0d0d0f;
+    background: #1a1a1a;
     display: flex;
     flex-direction: column;
   }
