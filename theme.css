@@ -252,7 +252,7 @@
    ══════════════════════════════════════════════════════════════ */
 
 .dashboard {
-  width: 280px;
+  width: 360px;
   flex-shrink: 0;
   background: #0d0d0f;
   border-right: none;
@@ -278,9 +278,9 @@
 
 .hud-identity {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  padding: 28px 0 8px;
+  padding: 12px 4px;
   gap: 10px;
   position: relative;
   cursor: pointer;
@@ -296,8 +296,7 @@
   display: none;
   position: absolute;
   top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   min-width: 180px;
   background: var(--background-secondary);
   border: 1px solid rgba(255,255,255,0.08);
@@ -382,19 +381,20 @@
 }
 
 .hud-orb {
-  width: 64px;
-  height: 64px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   transition: all 0.8s ease;
+  flex-shrink: 0;
 }
 
 .hud-orb-glow {
   position: absolute;
-  inset: -6px;
+  inset: -3px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%);
   transition: all 0.8s ease;
@@ -411,7 +411,7 @@
 }
 
 .hud-orb-emoji {
-  font-size: 30px;
+  font-size: 16px;
   line-height: 1;
   z-index: 1;
   transition: opacity 0.4s;
@@ -421,18 +421,27 @@
 
 .hud-agent-name {
   font-family: var(--font-sans);
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-normal);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
   transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.hud-identity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .hud-status-line {
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-faint);
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
   opacity: 0.5;
   transition: all 0.4s;
@@ -441,8 +450,7 @@
 .hud-status-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .hud-status-sep {
@@ -1993,7 +2001,7 @@
 .hud-orb::after {
   content: '';
   position: absolute;
-  inset: -8px;
+  inset: -4px;
   border-radius: 50%;
   border: 1px solid transparent;
   transition: all 0.8s ease;
