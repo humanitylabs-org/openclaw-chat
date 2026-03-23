@@ -3091,16 +3091,56 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 /* Terminal embed */
 #terminal-panel .hud-embed-body { background: #1a1a2e; }
 
-/* Mobile: medium = full */
+/* Mobile: both medium and full become proper fullscreen overlays */
 @media (max-width: 768px) {
-  .hud-embed-panel.hud-expanded {
+  .hud-embed-panel.hud-expanded,
+  .hud-embed-panel.hud-fullscreen {
+    position: fixed !important;
     inset: 0 !important;
     top: 0 !important;
     left: 0 !important;
-    transform: none;
+    transform: none !important;
     width: 100% !important;
     height: 100% !important;
+    max-height: none !important;
     border-radius: 0 !important;
+    z-index: 2100 !important;
+    box-shadow: none !important;
+    background: #0d0d0f;
+    display: flex;
+    flex-direction: column;
+  }
+  .hud-embed-panel.hud-expanded .hud-section-toggle,
+  .hud-embed-panel.hud-fullscreen .hud-section-toggle {
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    border-radius: 0;
+    background: rgba(255,255,255,0.04);
+    padding: 12px 16px !important;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+  }
+  .hud-embed-panel.hud-expanded .hud-embed-body,
+  .hud-embed-panel.hud-fullscreen .hud-embed-body {
+    flex: 1;
+    height: auto;
+    border-radius: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* Ensure backdrop sits behind the panel */
+  .hud-embed-backdrop.visible {
+    z-index: 2050 !important;
+  }
+
+  /* MindFeed expanded also goes fullscreen on mobile */
+  .hud-mindfeed-expanded {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2100 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    background: #0d0d0f;
   }
 }
 

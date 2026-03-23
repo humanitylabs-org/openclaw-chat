@@ -4832,9 +4832,24 @@ function closeDashboard() {
   function cycleExpand(cfg, e) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     const st = getState(cfg);
-    if (st === 'open') setState(cfg, 'medium');
-    else if (st === 'medium') setState(cfg, 'full');
-    else if (st === 'full') setState(cfg, 'open');
+    const mobile = state.isMobile;
+    if (mobile) {
+      // On mobile: open → fullscreen, fullscreen → open
+      if (st === 'open' || st === 'medium') {
+        setState(cfg, 'full');
+        // Close mobile dashboard drawer so it doesn't sit behind
+        const dash = document.querySelector('.dashboard');
+        const overlay = document.getElementById('dashboard-overlay');
+        dash?.classList.remove('open');
+        overlay?.classList.remove('open');
+      } else if (st === 'full') {
+        setState(cfg, 'open');
+      }
+    } else {
+      if (st === 'open') setState(cfg, 'medium');
+      else if (st === 'medium') setState(cfg, 'full');
+      else if (st === 'full') setState(cfg, 'open');
+    }
   }
 
   function closePanel(cfg, e) {
@@ -4961,6 +4976,13 @@ function closeDashboard() {
       mfExpand.textContent = '⤓';
       mfExpand.title = 'Minimize';
       backdrop?.classList.add('visible');
+      // Close mobile dashboard drawer
+      if (state.isMobile) {
+        const dash = document.querySelector('.dashboard');
+        const overlay = document.getElementById('dashboard-overlay');
+        dash?.classList.remove('open');
+        overlay?.classList.remove('open');
+      }
     }
   });
 
