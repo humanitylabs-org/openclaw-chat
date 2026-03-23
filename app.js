@@ -3408,7 +3408,19 @@ function toggleAgentDropdown2() {
   if (!dd) return;
   agentDropdownOpen = !agentDropdownOpen;
   dd.classList.toggle('open', agentDropdownOpen);
-  if (agentDropdownOpen) loadAgentDropdown();
+  if (agentDropdownOpen) {
+    // Position dropdown as fixed to escape overflow:hidden parents
+    const identity = document.getElementById('hud-identity');
+    if (identity) {
+      const rect = identity.getBoundingClientRect();
+      dd.style.position = 'fixed';
+      dd.style.top = (rect.bottom + 4) + 'px';
+      dd.style.left = rect.left + 'px';
+      dd.style.width = rect.width + 'px';
+      dd.style.transform = 'none';
+    }
+    loadAgentDropdown();
+  }
 }
 
 function closeAgentDropdown() {
