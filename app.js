@@ -1287,6 +1287,8 @@ function processQueue() {
   const key = state.sessionKey;
   const queue = state.messageQueue[key];
   if (!queue || queue.length === 0) return;
+  // Don't process if still streaming or sending
+  if (state.streams.has(key) || state.sending) return;
   const next = queue.shift();
   if (queue.length === 0) delete state.messageQueue[key];
   localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
@@ -1294,18 +1296,9 @@ function processQueue() {
   // Restore attachments if any
   if (next.attachments && next.attachments.length > 0) {
     state.pendingAttachments = next.attachments;
-    ui.attachPreview.classList.remove('oc-hidden');
-    ui.attachPreview.innerHTML = next.attachments.map(a =>
-      `<div class="oc-attach-item"><span class="oc-attach-name">${a.name}</span></div>`
-    ).join('');
   }
-  // Send the queued message
-  const input = document.getElementById('message-input');
-  if (input) {
-    input.value = next.text || '';
-    input.dispatchEvent(new Event('input'));
-    document.getElementById('send-btn')?.click();
-  }
+  // Send directly (bypass input/click which can race)
+  sendMessage(next.text || '');
 }
 
 async function switchTab(tab) {
