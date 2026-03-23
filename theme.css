@@ -2634,6 +2634,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 
 /* Hide actions based on state */
 .hud-when-open { display: none; }
+.hud-collapsible.hud-open .hud-when-open { display: inline-flex; }
 .hud-when-expanded { display: none !important; }
 .hud-embed-panel.hud-open .hud-when-open { display: inline-flex; }
 .hud-embed-panel.hud-expanded .hud-when-open { display: inline-flex; }

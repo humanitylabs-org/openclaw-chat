@@ -1507,7 +1507,10 @@
         <div class="hud-section hud-collapsible" data-section="tasks">
           <button class="hud-section-toggle" onclick="toggleSection('tasks')">
             <span class="hud-section-label">RECURRING TASKS</span>
-            <span class="hud-section-chevron">›</span>
+            <span class="hud-section-actions">
+              <span class="hud-embed-action hud-when-open" id="tasks-refresh-btn" title="Refresh" onclick="event.stopPropagation(); loadCronJobs(); loadSubagents();">↻</span>
+              <span class="hud-section-chevron">›</span>
+            </span>
           </button>
           <div class="hud-section-body">
             <div class="hud-timeline" id="hud-cron-list"></div>
