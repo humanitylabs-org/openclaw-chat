@@ -2672,10 +2672,12 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 }
 
 .sidebar-right-body iframe {
-  width: 100%;
-  height: 100%;
+  width: 142.86%;
+  height: 142.86%;
   border: none;
   display: block;
+  transform: scale(0.7);
+  transform-origin: top left;
 }
 
 .sidebar-right-body .hud-embed-loading {
