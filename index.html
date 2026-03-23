@@ -37,25 +37,22 @@
       --header-height: 36px;
     }
 
+    html {
+      height: 100%;
+      overflow: hidden;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       background: var(--background-primary);
       color: var(--text-normal);
-      height: 100vh;
-      height: 100dvh;
-      height: -webkit-fill-available;
+      height: 100%;
       overflow: hidden;
-      /* Prevent iOS standalone from adding extra bottom space */
-      position: fixed;
-      width: 100%;
-      top: 0;
-      left: 0;
+      margin: 0;
     }
 
     .app {
-      height: 100vh;
-      height: 100dvh;
-      height: -webkit-fill-available;
+      height: 100%;
       display: flex;
       flex-direction: row;
       overflow: hidden;
@@ -73,6 +70,7 @@
       overflow: hidden;
       padding: 0;
       position: relative;
+      min-height: 0; /* iOS: prevent flex item from growing beyond parent bounds */
     }
 
     .openclaw-chat-container.active { display: flex; }
@@ -1700,7 +1698,7 @@
 
   </div>
 
-  <script src="/app.js?v=81"></script>
+  <script src="/app.js?v=82"></script>
   <script>
     // Landing page logic
     (function() {

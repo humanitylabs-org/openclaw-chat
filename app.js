@@ -3028,6 +3028,12 @@ ui.tabBar.addEventListener("wheel", (e) => {
     ui.messagesContainer.style.transform = "";
     ui.messagesContainer.style.transition = "";
     ui.messagesContainer.style.willChange = "";
+    // Reset chatArea styles set during swipe
+    const chatArea = ui.messagesContainer.parentElement;
+    if (chatArea) {
+      chatArea.style.overflow = "";
+      chatArea.style.position = "";
+    }
     const switcherLabel = document.getElementById("tab-switcher-label");
     if (switcherLabel) {
       switcherLabel.style.opacity = "";
