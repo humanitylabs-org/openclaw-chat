@@ -2937,6 +2937,7 @@ ui.tabBar.addEventListener("wheel", (e) => {
   let swiping = false, swipeLocked = false;
   let currentDeltaX = 0, rafId = 0;
   let incomingPane = null;
+  let swipeWrapper = null;
 
   const SWIPE_THRESHOLD = 0.25;  // fraction of screen width to commit
   const SWIPE_VELOCITY = 0.3;    // px/ms — fast flick commits even if short
@@ -2953,6 +2954,53 @@ ui.tabBar.addEventListener("wheel", (e) => {
     const nextIdx = deltaX < 0 ? currentIdx + 1 : currentIdx - 1;
     if (nextIdx < 0 || nextIdx >= state.tabSessions.length) return null;
     return { idx: nextIdx, tab: state.tabSessions[nextIdx] };
+  }
+
+  // Collect all content elements below the header that should swipe together
+  function getSwipeContentElements() {
+    const chatArea = ui.messagesContainer.parentElement;
+    if (!chatArea) return [];
+    return Array.from(chatArea.children).filter(el => {
+      // Skip the top bar and hamburger bar (header stays fixed)
+      if (el.classList.contains("openclaw-top-bar")) return false;
+      // Skip the incoming pane (translated separately)
+      if (el.classList.contains("oc-swipe-incoming")) return false;
+      return true;
+    });
+  }
+
+  function createSwipeWrapper() {
+    removeSwipeWrapper();
+    const chatArea = ui.messagesContainer.parentElement;
+    if (!chatArea) return null;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "oc-swipe-wrapper";
+    wrapper.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;position:relative;overflow:hidden;";
+
+    // Move all content elements (messages, typing, input, banner) into the wrapper
+    const contentEls = getSwipeContentElements();
+    // Insert wrapper where the first content element is
+    if (contentEls.length > 0) {
+      chatArea.insertBefore(wrapper, contentEls[0]);
+    } else {
+      chatArea.appendChild(wrapper);
+    }
+    for (const el of contentEls) {
+      wrapper.appendChild(el);
+    }
+    return wrapper;
+  }
+
+  function removeSwipeWrapper() {
+    if (!swipeWrapper || !swipeWrapper.parentNode) { swipeWrapper = null; return; }
+    const chatArea = swipeWrapper.parentNode;
+    // Move children back to chatArea, before the wrapper
+    while (swipeWrapper.firstChild) {
+      chatArea.insertBefore(swipeWrapper.firstChild, swipeWrapper);
+    }
+    chatArea.removeChild(swipeWrapper);
+    swipeWrapper = null;
   }
 
   function createIncomingPane(tab, fromRight) {
@@ -3007,10 +3055,12 @@ ui.tabBar.addEventListener("wheel", (e) => {
       clampedDelta = deltaX * RESISTANCE;
     }
 
-    // Move messages container
-    ui.messagesContainer.style.transform = `translateX(${clampedDelta}px)`;
+    // Move the entire swipe wrapper (messages + typing + input) as one unit
+    if (swipeWrapper) {
+      swipeWrapper.style.transform = `translateX(${clampedDelta}px)`;
+    }
 
-    // Move incoming pane with it (it's absolutely positioned inside container's parent)
+    // Move incoming pane (absolutely positioned inside the wrapper)
     if (incomingPane) {
       incomingPane.style.transform = `translateX(${clampedDelta}px)`;
     }
@@ -3025,22 +3075,19 @@ ui.tabBar.addEventListener("wheel", (e) => {
   }
 
   function resetSwipeStyles() {
-    ui.messagesContainer.style.transform = "";
-    ui.messagesContainer.style.transition = "";
-    ui.messagesContainer.style.willChange = "";
-    // Reset chatArea styles set during swipe
-    const chatArea = ui.messagesContainer.parentElement;
-    if (chatArea) {
-      chatArea.style.overflow = "";
-      chatArea.style.position = "";
+    if (swipeWrapper) {
+      swipeWrapper.style.transform = "";
+      swipeWrapper.style.transition = "";
+      swipeWrapper.style.willChange = "";
     }
+    removeIncomingPane();
+    removeSwipeWrapper();
     const switcherLabel = document.getElementById("tab-switcher-label");
     if (switcherLabel) {
       switcherLabel.style.opacity = "";
       switcherLabel.style.transform = "";
       switcherLabel.style.transition = "";
     }
-    removeIncomingPane();
   }
 
   function animateSwipe(commit, deltaX, targetTab) {
@@ -3049,8 +3096,10 @@ ui.tabBar.addEventListener("wheel", (e) => {
     const easing = commit ? "cubic-bezier(0.2, 0.9, 0.3, 1)" : "cubic-bezier(0.4, 0, 0.2, 1)";
     const destX = commit ? (deltaX < 0 ? -w : w) : 0;
 
-    ui.messagesContainer.style.transition = `transform ${duration} ${easing}`;
-    ui.messagesContainer.style.transform = `translateX(${destX}px)`;
+    if (swipeWrapper) {
+      swipeWrapper.style.transition = `transform ${duration} ${easing}`;
+      swipeWrapper.style.transform = `translateX(${destX}px)`;
+    }
 
     if (incomingPane) {
       incomingPane.style.transition = `transform ${duration} ${easing}`;
@@ -3064,14 +3113,15 @@ ui.tabBar.addEventListener("wheel", (e) => {
       switcherLabel.style.transform = commit ? `translateX(${destX * 0.3}px)` : "";
     }
 
+    const animTarget = swipeWrapper || ui.messagesContainer;
     const onEnd = () => {
-      ui.messagesContainer.removeEventListener("transitionend", onEnd);
+      animTarget.removeEventListener("transitionend", onEnd);
       resetSwipeStyles();
       if (commit && targetTab) {
         switchTab(targetTab);
       }
     };
-    ui.messagesContainer.addEventListener("transitionend", onEnd);
+    animTarget.addEventListener("transitionend", onEnd);
     // Safety timeout in case transitionend doesn't fire
     setTimeout(onEnd, commit ? 300 : 250);
   }
@@ -3107,14 +3157,16 @@ ui.tabBar.addEventListener("wheel", (e) => {
         if (Math.abs(deltaX) > Math.abs(deltaY) * 3) {
           swiping = true;
           swipeLocked = true;
-          ui.messagesContainer.style.willChange = "transform";
-          // Create incoming pane
-          const target = getSwipeTarget(deltaX);
-          if (target) {
-            incomingPane = createIncomingPane(target.tab, deltaX < 0);
-            chatArea.style.position = "relative";
-            chatArea.style.overflow = "hidden";
-            chatArea.appendChild(incomingPane);
+          // Create wrapper around all content below header
+          swipeWrapper = createSwipeWrapper();
+          if (swipeWrapper) {
+            swipeWrapper.style.willChange = "transform";
+            // Create incoming pane inside the wrapper
+            const target = getSwipeTarget(deltaX);
+            if (target) {
+              incomingPane = createIncomingPane(target.tab, deltaX < 0);
+              swipeWrapper.appendChild(incomingPane);
+            }
           }
         } else {
           swipeLocked = true;
@@ -3138,7 +3190,6 @@ ui.tabBar.addEventListener("wheel", (e) => {
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
 
       if (!swiping) {
-        ui.messagesContainer.style.willChange = "";
         return;
       }
 
