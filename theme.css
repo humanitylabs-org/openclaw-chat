@@ -437,6 +437,35 @@
   flex: 1;
 }
 
+/* Theme toggle button */
+.hud-theme-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--text-faint);
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.hud-theme-toggle:hover {
+  opacity: 1;
+  color: var(--text-normal);
+  background: rgba(128,128,128,0.12);
+}
+
+/* Show sun in dark mode, moon in light mode */
+.hud-theme-icon-light { display: none; }
+.hud-theme-icon-dark { display: block; }
+[data-theme="light"] .hud-theme-icon-light { display: block; }
+[data-theme="light"] .hud-theme-icon-dark { display: none; }
+
 .hud-status-line {
   font-family: var(--font-sans);
   font-size: 10px;
