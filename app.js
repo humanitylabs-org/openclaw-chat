@@ -2832,6 +2832,33 @@ ui.sendBtn.addEventListener("click", handleSendOrQueue);
 
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
 state.isMobile = isMobile;
+
+// ─── Keep input pinned when virtual keyboard opens (iOS/Android) ────
+if (isMobile && window.visualViewport) {
+  const inputArea = document.querySelector('.openclaw-input-area');
+  const chatContainer = document.getElementById('chat-container');
+  let vpTimeout;
+  const onViewportResize = () => {
+    clearTimeout(vpTimeout);
+    vpTimeout = setTimeout(() => {
+      const vv = window.visualViewport;
+      const keyboardOpen = vv.height < window.innerHeight * 0.85;
+      if (keyboardOpen) {
+        // Keyboard is open: offset the input area up by the keyboard height
+        const offset = window.innerHeight - vv.height - vv.offsetTop;
+        inputArea.style.paddingBottom = '0px';
+        chatContainer.style.height = vv.height + 'px';
+      } else {
+        // Keyboard closed: restore
+        inputArea.style.paddingBottom = '';
+        chatContainer.style.height = '';
+      }
+    }, 50);
+  };
+  window.visualViewport.addEventListener('resize', onViewportResize);
+  window.visualViewport.addEventListener('scroll', onViewportResize);
+}
+
 ui.messageInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey && !isMobile) {
     e.preventDefault();
@@ -2903,18 +2930,17 @@ ui.tabBar.addEventListener("wheel", (e) => {
   ui.tabBar.scrollLeft += e.deltaY;
 }, { passive: false });
 
-// ─── Touch Gestures (pull-to-refresh + swipe between tabs) ──────────
+// ─── Touch Gestures (swipe between tabs) ──────────
 
 (function initTouchGestures() {
   let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
-  let pulling = false, swiping = false, swipeLocked = false;
+  let swiping = false, swipeLocked = false;
   let currentDeltaX = 0, rafId = 0;
   let incomingPane = null;
 
-  const pullIndicator = document.getElementById("pull-indicator");
   const SWIPE_THRESHOLD = 0.25;  // fraction of screen width to commit
   const SWIPE_VELOCITY = 0.3;    // px/ms — fast flick commits even if short
-  const LOCK_DISTANCE = 12;      // px before we decide swipe vs scroll
+  const LOCK_DISTANCE = 15;      // px before we decide swipe vs scroll
   const RESISTANCE = 0.3;        // rubber-band factor at edges
 
   function getContainerWidth() {
@@ -3054,13 +3080,10 @@ ui.tabBar.addEventListener("wheel", (e) => {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
-      pulling = false;
       swiping = false;
       swipeLocked = false;
       currentDeltaX = 0;
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-      // Prepare for potential swipe
-      ui.messagesContainer.style.willChange = "transform";
     }, { passive: true });
 
     ui.messagesContainer.addEventListener("touchmove", (e) => {
@@ -3072,21 +3095,13 @@ ui.tabBar.addEventListener("wheel", (e) => {
       const deltaX = currentX - touchStartX;
       const deltaY = currentY - touchStartY;
 
-      // Pull-to-refresh (only when scrolled to top, pulling down)
-      if (!swiping && !swipeLocked && ui.messagesContainer.scrollTop <= 0 && deltaY > 0 && Math.abs(deltaY) > Math.abs(deltaX)) {
-        if (deltaY > 60) {
-          pulling = true;
-          if (pullIndicator) pullIndicator.classList.add("oc-pulling");
-        }
-        return;
-      }
-
       // Decide direction lock
       if (!swipeLocked && !swiping) {
         if (Math.abs(deltaX) < LOCK_DISTANCE && Math.abs(deltaY) < LOCK_DISTANCE) return;
-        if (Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+        if (Math.abs(deltaX) > Math.abs(deltaY) * 3) {
           swiping = true;
           swipeLocked = true;
+          ui.messagesContainer.style.willChange = "transform";
           // Create incoming pane
           const target = getSwipeTarget(deltaX);
           if (target) {
@@ -3116,16 +3131,6 @@ ui.tabBar.addEventListener("wheel", (e) => {
       if (!state.isMobile) return;
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
 
-      // Pull-to-refresh
-      if (pulling) {
-        pulling = false;
-        if (pullIndicator) pullIndicator.classList.remove("oc-pulling");
-        state.messages = [];
-        ui.messagesContainer.innerHTML = "";
-        loadChatHistory().then(() => updateContextMeter());
-        return;
-      }
-
       if (!swiping) {
         ui.messagesContainer.style.willChange = "";
         return;
@@ -3148,10 +3153,9 @@ ui.tabBar.addEventListener("wheel", (e) => {
 
     // Cancel swipe on touch cancel
     ui.messagesContainer.addEventListener("touchcancel", () => {
-      if (swiping || pulling) {
+      if (swiping) {
         swiping = false;
         swipeLocked = false;
-        pulling = false;
         if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
         resetSwipeStyles();
       }

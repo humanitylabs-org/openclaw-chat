@@ -572,16 +572,6 @@
     }
     .oc-confirm-ok:hover { opacity: 0.85; }
 
-    /* ─── Pull-to-Refresh ────────────────────────────────────────── */
-    .oc-pull-indicator {
-      display: none;
-      text-align: center;
-      padding: 10px;
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-    .oc-pull-indicator.oc-pulling { display: block; }
-
     /* ─── Status Banner ──────────────────────────────────────────── */
     .openclaw-banner {
       padding: 8px 16px;
@@ -602,6 +592,7 @@
     /* ─── Messages ───────────────────────────────────────────────── */
     .openclaw-messages {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 16px max(16px, calc(50% - 410px));
@@ -610,6 +601,8 @@
       gap: 8px;
       scroll-behavior: smooth;
       overscroll-behavior: contain;
+      touch-action: pan-y pinch-zoom;
+      -webkit-overflow-scrolling: touch;
     }
 
     .openclaw-messages::-webkit-scrollbar { width: 4px; }
@@ -1265,7 +1258,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=59">
+  <link rel="stylesheet" href="/theme.css?v=61">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1655,7 +1648,7 @@
           </div>
           <div class="oc-hamburger-dropdown" id="hamburger-dropdown"></div>
         </div>
-        <div class="oc-pull-indicator" id="pull-indicator">↻ Release to refresh</div>
+
       </div>
 
       <!-- Status banner (hidden) -->
@@ -1707,7 +1700,7 @@
 
   </div>
 
-  <script src="/app.js?v=79"></script>
+  <script src="/app.js?v=81"></script>
   <script>
     // Landing page logic
     (function() {
