@@ -864,6 +864,35 @@ function renderHamburgerDropdown() {
   const dd = document.getElementById("hamburger-dropdown");
   if (!dd) return;
   dd.innerHTML = "";
+
+  // ── Mobile agent switcher (horizontal emoji row) ──
+  if (state.isMobile && state.agents.length > 1) {
+    const agentRow = document.createElement("div");
+    agentRow.className = "oc-agent-row";
+    for (const agent of state.agents) {
+      const btn = document.createElement("button");
+      btn.className = "oc-agent-pill" + (agent.id === state.activeAgent.id ? " oc-agent-active" : "");
+      btn.title = agent.name;
+      const emoji = document.createElement("span");
+      emoji.className = "oc-agent-pill-emoji";
+      emoji.textContent = agent.emoji || "🤖";
+      btn.appendChild(emoji);
+      const name = document.createElement("span");
+      name.className = "oc-agent-pill-name";
+      name.textContent = agent.name || agent.id;
+      btn.appendChild(name);
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (agent.id !== state.activeAgent.id) {
+          dd.classList.remove("oc-open");
+          switchAgent(agent);
+        }
+      });
+      agentRow.appendChild(btn);
+    }
+    dd.appendChild(agentRow);
+  }
+
   const currentKey = state.sessionKey || "main";
   for (const tab of state.tabSessions) {
     const isHome = tab.key === "main";
@@ -1229,42 +1258,85 @@ function removeQueuedMessage(key, index) {
 }
 
 function renderQueuedMessages() {
-  // Remove old queue bubbles
-  document.querySelectorAll('.oc-queued-bubble').forEach(el => el.remove());
+  const modelBar = document.querySelector('.openclaw-model-bar');
+  if (!modelBar) return;
+
+  // Remove old queue bar
+  document.getElementById('oc-queue-bar')?.remove();
 
   const queue = state.messageQueue[state.sessionKey] || [];
   if (queue.length === 0) return;
 
-  const mc = ui.messagesContainer;
-  if (!mc) return;
-
   const key = state.sessionKey;
-  queue.forEach((msg, i) => {
-    const bubble = document.createElement('div');
-    bubble.className = 'openclaw-msg openclaw-msg-user oc-queued-bubble';
+  const bar = document.createElement('div');
+  bar.id = 'oc-queue-bar';
+  bar.className = 'oc-queue-bar';
 
+  // Collapsed header: "⏳ N queued" + expand toggle + clear all
+  const header = document.createElement('div');
+  header.className = 'oc-queue-header';
+  header.innerHTML = `<span class="oc-queue-summary">⏳ <strong>${queue.length}</strong> queued</span>`;
+  const actions = document.createElement('span');
+  actions.className = 'oc-queue-actions';
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'oc-queue-clear';
+  clearBtn.textContent = 'Clear all';
+  clearBtn.title = 'Remove all queued messages';
+  clearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    delete state.messageQueue[key];
+    localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
+    renderQueuedMessages();
+  });
+  actions.appendChild(clearBtn);
+
+  const chevron = document.createElement('span');
+  chevron.className = 'oc-queue-chevron';
+  chevron.textContent = '▾';
+  actions.appendChild(chevron);
+  header.appendChild(actions);
+
+  // Item list (collapsed by default)
+  const list = document.createElement('div');
+  list.className = 'oc-queue-list';
+
+  queue.forEach((msg, i) => {
     let preview = msg.text || '';
     if (msg.attachments && msg.attachments.length > 0) {
       const names = msg.attachments.map(a => a.name).join(', ');
-      preview = preview ? `📎 ${names}\n${preview}` : `📎 ${names}`;
+      preview = preview ? `📎 ${names} — ${preview}` : `📎 ${names}`;
     }
-    const esc = preview.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    if (preview.length > 100) preview = preview.slice(0, 100) + '…';
+    const esc = preview.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-    bubble.innerHTML = `
-      <div class="openclaw-msg-text">${esc}</div>
-      <div class="oc-queued-bar">
-        <span class="oc-queued-badge">queued #${i + 1}</span>
-        <button class="oc-queued-remove" title="Remove from queue">✕</button>
-      </div>
+    const item = document.createElement('div');
+    item.className = 'oc-queue-item';
+    item.innerHTML = `
+      <span class="oc-queue-num">${i + 1}</span>
+      <span class="oc-queue-text">${esc}</span>
     `;
-    bubble.querySelector('.oc-queued-remove').addEventListener('click', (e) => {
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'oc-queue-remove';
+    removeBtn.textContent = '✕';
+    removeBtn.title = 'Remove';
+    removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       removeQueuedMessage(key, i);
     });
-    mc.appendChild(bubble);
+    item.appendChild(removeBtn);
+    list.appendChild(item);
   });
 
-  scrollToBottom();
+  // Toggle expand/collapse
+  header.addEventListener('click', () => {
+    const expanded = bar.classList.toggle('oc-queue-expanded');
+    chevron.textContent = expanded ? '▴' : '▾';
+  });
+
+  bar.appendChild(header);
+  bar.appendChild(list);
+  modelBar.parentNode.insertBefore(bar, modelBar);
 }
 
 function processQueue() {

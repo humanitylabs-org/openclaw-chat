@@ -432,6 +432,38 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.3);
     }
     .oc-hamburger-dropdown.oc-open { display: block; }
+    /* Mobile agent switcher row */
+    .oc-agent-row {
+      display: flex;
+      gap: 6px;
+      padding: 10px 12px;
+      overflow-x: auto;
+      border-bottom: 1px solid rgba(128,128,128,0.1);
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .oc-agent-row::-webkit-scrollbar { display: none; }
+    .oc-agent-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(128,128,128,0.08);
+      border: 1px solid rgba(128,128,128,0.12);
+      border-radius: 20px;
+      padding: 6px 12px 6px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
+      min-height: 36px;
+    }
+    .oc-agent-pill:hover { background: rgba(128,128,128,0.14); }
+    .oc-agent-pill.oc-agent-active {
+      background: rgba(var(--accent-rgb, 74,158,255), 0.12);
+      border-color: rgba(var(--accent-rgb, 74,158,255), 0.3);
+    }
+    .oc-agent-pill-emoji { font-size: 18px; line-height: 1; }
+    .oc-agent-pill-name { font-size: 12px; color: var(--text-muted); font-weight: 500; }
     .oc-hamburger-dropdown-item {
       display: flex;
       align-items: center;
@@ -1262,7 +1294,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=65">
+  <link rel="stylesheet" href="/theme.css?v=66">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1703,7 +1735,7 @@
 
   </div>
 
-  <script src="/app.js?v=88"></script>
+  <script src="/app.js?v=89"></script>
   <script>
     // Landing page logic
     (function() {

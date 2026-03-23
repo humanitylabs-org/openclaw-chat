@@ -3347,48 +3347,110 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
    Message Queue (queued messages while agent is responding)
    ══════════════════════════════════════════════════════════════ */
 
-/* ─── Queued Message Bubbles ──────────────────────────────────── */
-.oc-queued-bubble {
-  opacity: 0.6;
-  position: relative;
-  animation: queueSlideIn 0.2s ease;
+/* ─── Queue Bar (above model bar) ────────────────────────────── */
+.oc-queue-bar {
+  margin: 0 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  animation: queueSlideIn 0.15s ease;
+  overflow: hidden;
 }
-.oc-queued-bubble .openclaw-msg-text {
-  font-style: italic;
-}
-.oc-queued-bar {
+.oc-queue-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  user-select: none;
+  min-height: 32px;
+}
+.oc-queue-summary {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+.oc-queue-summary strong {
+  color: var(--text-normal);
+  font-weight: 600;
+}
+.oc-queue-actions {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
-.oc-queued-badge {
-  font-family: var(--font-mono, monospace);
-  font-size: 9px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.5);
-  letter-spacing: 0.03em;
-}
-.oc-queued-remove {
+.oc-queue-clear {
   background: none;
   border: none;
-  color: rgba(255,255,255,0.3);
+  font-size: 10px;
+  color: var(--text-faint);
   cursor: pointer;
-  font-size: 11px;
   padding: 2px 6px;
   border-radius: 4px;
   transition: color 0.15s, background 0.15s;
-  line-height: 1;
 }
-.oc-queued-remove:hover {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.15);
+.oc-queue-clear:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+.oc-queue-chevron {
+  font-size: 10px;
+  color: var(--text-faint);
+  transition: transform 0.15s;
 }
+.oc-queue-list {
+  display: none;
+  flex-direction: column;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.oc-queue-bar.oc-queue-expanded .oc-queue-list { display: flex; }
+.oc-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.oc-queue-item:last-child { border-bottom: none; }
+.oc-queue-num {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+.oc-queue-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.oc-queue-remove {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  opacity: 0.5;
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.oc-queue-remove:hover { color: #ef4444; background: rgba(239,68,68,0.1); opacity: 1; }
 @keyframes queueSlideIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-[data-theme="light"] .oc-queued-badge { color: rgba(0,0,0,0.4); }
-[data-theme="light"] .oc-queued-remove { color: rgba(0,0,0,0.25); }
+[data-theme="light"] .oc-queue-bar { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .oc-queue-list { border-top-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .oc-queue-item { border-bottom-color: rgba(0,0,0,0.04); }
+[data-theme="light"] .oc-queue-num { background: rgba(0,0,0,0.06); }
