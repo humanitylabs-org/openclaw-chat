@@ -989,6 +989,10 @@
       opacity: 1;
     }
     .openclaw-send-btn.stop-mode:hover { opacity: 0.85; }
+    .openclaw-send-btn.stop-mode.queue-mode {
+      background: var(--interactive-accent);
+      color: var(--text-on-accent);
+    }
 
     /* Voice/Mic button states */
     .openclaw-send-btn.mic-mode {
@@ -1275,7 +1279,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=56">
+  <link rel="stylesheet" href="/theme.css?v=57">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1477,6 +1481,20 @@
             </span>
           </button>
           <div class="hud-section-body hud-embed-body" id="terminal-panel-body"></div>
+        </div>
+
+        <!-- ═══ MindFeed (collapsible + expandable) ═══ -->
+        <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-mindfeed" id="mindfeed-panel">
+          <button class="hud-section-toggle" id="mindfeed-panel-header">
+            <span class="hud-section-label-row"><span class="hud-embed-dot" id="mindfeed-dot"></span>MINDFEED</span>
+            <span class="hud-section-actions">
+              <span class="hud-embed-action hud-when-open" id="mindfeed-refresh-btn" title="Refresh">↻</span>
+              <span class="hud-embed-action hud-when-open" id="mindfeed-expand-btn" title="Expand">⤢</span>
+              <span class="hud-embed-action hud-when-expanded" id="mindfeed-close-max-btn" title="Close">×</span>
+              <span class="hud-section-chevron">›</span>
+            </span>
+          </button>
+          <div class="hud-section-body hud-embed-body" id="mindfeed-panel-body"></div>
         </div>
 
         <!-- ═══ Tasks ═══ -->
@@ -1721,7 +1739,7 @@
 
   </div>
 
-  <script src="/app.js?v=67"></script>
+  <script src="/app.js?v=73"></script>
   <script>
     // Landing page logic
     (function() {

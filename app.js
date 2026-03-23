@@ -3164,7 +3164,7 @@ function toggleSection(sectionId) {
       other.classList.remove('hud-open');
       // If it's an embed panel, also destroy its iframe
       const otherSection = other.dataset.section;
-      if (otherSection === 'agent-browser' || otherSection === 'agent-terminal') {
+      if (otherSection === 'agent-browser' || otherSection === 'agent-terminal' || otherSection === 'agent-mindfeed') {
         const evt = new CustomEvent('panel-close', { detail: otherSection });
         document.dispatchEvent(evt);
       }
@@ -3186,6 +3186,7 @@ function restoreCollapsibleState() {
   if (legacy) localStorage.removeItem('openSections');
   localStorage.removeItem('browserPanelOpen');
   localStorage.removeItem('terminalPanelOpen');
+  localStorage.removeItem('mindfeedPanelOpen');
 
   const openId = localStorage.getItem('openSection') || 'agent-browser';
   if (openId) {
@@ -4364,6 +4365,24 @@ function closeDashboard() {
           return 'https://' + url.hostname + ':7681';
         } catch { return null; }
       }
+    },
+    mindfeed: {
+      id: 'mindfeed-panel',
+      bodyId: 'mindfeed-panel-body',
+      headerId: 'mindfeed-panel-header',
+      dotId: 'mindfeed-dot',
+      expandId: 'mindfeed-expand-btn',
+      refreshId: 'mindfeed-refresh-btn',
+      closeId: 'mindfeed-close-max-btn',
+      storageKey: 'mindfeedPanelOpen',
+      iframe: null,
+      getUrl() {
+        try {
+          const conn = JSON.parse(localStorage.getItem('connection') || '{}');
+          const url = new URL(conn.gatewayUrl || '');
+          return 'https://' + url.hostname + ':8787';
+        } catch { return null; }
+      }
     }
   };
 
@@ -4476,7 +4495,8 @@ function closeDashboard() {
       setState(cfg, 'open');
       // If iframe wasn't preloaded yet (edge case), do it now
       if (!cfg.iframe) preloadIframe(cfg);
-      localStorage.setItem('openSection', cfg.id === 'browser-panel' ? 'agent-browser' : 'agent-terminal');
+      const sectionMap = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal', 'mindfeed-panel': 'agent-mindfeed' };
+      localStorage.setItem('openSection', sectionMap[cfg.id] || cfg.id);
     } else {
       setState(cfg, 'closed');
       localStorage.setItem('openSection', '');
@@ -4484,9 +4504,10 @@ function closeDashboard() {
   }
 
   // Listen for accordion closes from toggleSection()
+  const panelToSection = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal', 'mindfeed-panel': 'agent-mindfeed' };
   document.addEventListener('panel-close', (e) => {
     for (const cfg of Object.values(panels)) {
-      if (e.detail === (cfg.id === 'browser-panel' ? 'agent-browser' : 'agent-terminal')) {
+      if (e.detail === (panelToSection[cfg.id] || cfg.id)) {
         setState(cfg, 'closed');
       }
     }

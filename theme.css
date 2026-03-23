@@ -2634,6 +2634,10 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 #terminal-panel .hud-embed-loading { background: #1a1a2e; }
 #terminal-panel .hud-embed-spinner { border-color: rgba(255,255,255,0.06); border-top-color: rgba(255,255,255,0.25); }
 
+/* MindFeed loading override */
+#mindfeed-panel .hud-embed-loading { background: #0a0a0f; }
+#mindfeed-panel .hud-embed-body { background: #0a0a0f; }
+
 /* ── Medium expand (floating window) ──────────────────── */
 
 .hud-embed-panel.hud-expanded {
