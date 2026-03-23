@@ -4320,7 +4320,9 @@ function closeDashboard() {
   });
 
   // Disconnect button
-  document.getElementById('dash-disconnect-btn')?.addEventListener('click', () => {
+  document.getElementById('dash-disconnect-btn')?.addEventListener('click', async () => {
+    const ok = await confirmClose('Disconnect?', 'This will unpair your device. You\'ll need to re-enter your gateway URL and token to reconnect.');
+    if (!ok) return;
     if (state.gateway) state.gateway.stop();
     localStorage.removeItem('connection');
     localStorage.removeItem('deviceIdentity');

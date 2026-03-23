@@ -1450,9 +1450,19 @@
   .hud-settings-label { font-size: 11px; }
   .hud-settings-value { font-size: 10px; }
 
-  /* Identity row: ensure it fits */
-  .hud-identity-row { padding: 10px 2px; }
+  /* Identity row: bigger touch targets */
+  .hud-identity-row { padding: 14px 4px 8px; }
+  .hud-identity { min-height: 44px; padding: 6px 0; }
   .hud-agent-name { font-size: 13px; }
+
+  /* Disconnect: separate from agent name to avoid misclicks */
+  .hud-status-row { margin-top: 2px; }
+  .hud-disconnect-link {
+    padding: 6px 10px;
+    margin-left: 4px;
+    border-radius: 4px;
+    background: rgba(128,128,128,0.06);
+  }
 }
 
 /* ── Hide dash-menu-btn when hamburger bar is visible ───── */
