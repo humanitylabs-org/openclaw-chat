@@ -1230,6 +1230,12 @@
     @media (max-width: 768px) {
       .openclaw-msg { max-width: 88%; }
       .openclaw-messages { padding: 8px 10px; }
+      /* Compact model bar: hide reasoning, tighten spacing */
+      .bar-reasoning-group { display: none; }
+      .openclaw-model-bar { padding: 4px 10px; gap: 0; }
+      .openclaw-model-bar .bar-sep { margin: 0 2px; }
+      .openclaw-model-label { font-size: 11px; padding: 6px 6px; min-height: 30px; }
+      .openclaw-model-bar .bar-chip { font-size: 11px; padding: 6px 6px; min-height: 30px; }
     }
 
     /* ─── Light Theme ────────────────────────────────────────────── */
@@ -1675,8 +1681,7 @@
           <!-- Model label bar -->
           <div class="openclaw-model-bar">
             <span class="openclaw-model-label" id="model-label" title="Click to change model"></span>
-            <span class="bar-sep">·</span>
-            <span class="bar-chip bar-chip-toggle" id="bar-reasoning" title="Reasoning mode (session only)">reasoning</span>
+            <span class="bar-reasoning-group"><span class="bar-sep">·</span><span class="bar-chip bar-chip-toggle" id="bar-reasoning" title="Reasoning mode (session only)">reasoning</span></span>
             <span class="bar-sep">·</span>
             <span class="bar-chip" id="bar-thinking" title="Thinking level">think: off</span>
             <span class="bar-sep">·</span>
@@ -1698,7 +1703,7 @@
 
   </div>
 
-  <script src="/app.js?v=84"></script>
+  <script src="/app.js?v=85"></script>
   <script>
     // Landing page logic
     (function() {

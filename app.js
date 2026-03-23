@@ -1544,13 +1544,20 @@ function defaultLabel(defaultVal, key) {
   return val ? "default (" + val + ")" : "default";
 }
 
+function compactDefaultLabel(defaultVal, key) {
+  // On mobile, just show the value without "default (...)" wrapper
+  const val = (key && key in state.pendingDefaults) ? state.pendingDefaults[key] : defaultVal;
+  return val || "off";
+}
+
 function updateBarControls() {
   const thinkEl = document.getElementById("bar-thinking");
   const reasonEl = document.getElementById("bar-reasoning");
   const verboseEl = document.getElementById("bar-verbose");
+  const mobile = state.isMobile;
 
   if (thinkEl) {
-    const v = state.thinkingLevel || defaultLabel(state.defaults.thinking, "thinking");
+    const v = state.thinkingLevel || (mobile ? compactDefaultLabel(state.defaults.thinking, "thinking") : defaultLabel(state.defaults.thinking, "thinking"));
     thinkEl.textContent = "think: " + v;
     thinkEl.classList.toggle("active", !!state.thinkingLevel);
   }
@@ -1562,7 +1569,7 @@ function updateBarControls() {
     reasonEl.classList.toggle("active", isOn);
   }
   if (verboseEl) {
-    const v = state.verboseLevel || defaultLabel(state.defaults.verbose, "verbose");
+    const v = state.verboseLevel || (mobile ? compactDefaultLabel(state.defaults.verbose, "verbose") : defaultLabel(state.defaults.verbose, "verbose"));
     verboseEl.textContent = "verbose: " + v;
     verboseEl.classList.toggle("active", !!state.verboseLevel);
   }
