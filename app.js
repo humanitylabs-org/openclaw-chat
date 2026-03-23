@@ -1309,9 +1309,44 @@ async function switchTab(tab) {
   restoreDraft();
   renderQueuedMessages();
 
+  // Update mobile tab label IMMEDIATELY (no waiting for sessions.list)
+  updateMobileTabLabelInstant(tab);
+
   // Re-render tabs and context meter in background (don't block UI)
   renderTabs();
   updateContextMeter();
+}
+
+/** Instantly update the mobile tab switcher label + arrows without any network call */
+function updateMobileTabLabelInstant(tab) {
+  const label = document.getElementById("tab-switcher-label");
+  const arrowLeft = document.getElementById("tab-arrow-left");
+  const arrowRight = document.getElementById("tab-arrow-right");
+  if (!label) return;
+
+  if (tab.key === "main") {
+    label.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-4px;opacity:0.8"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
+    label.title = "";
+    label.ondblclick = null;
+  } else {
+    label.textContent = tab.label || "Untitled";
+    label.title = "Double-click to rename";
+    label.ondblclick = (e) => {
+      e.stopPropagation();
+      startSwitcherRename(label, tab);
+    };
+  }
+
+  // Update arrows based on current position in tabSessions
+  const idx = state.tabSessions.findIndex(t => t.key === tab.key);
+  if (arrowLeft) {
+    arrowLeft.style.visibility = idx <= 0 ? "hidden" : "visible";
+    arrowLeft.style.pointerEvents = idx <= 0 ? "none" : "auto";
+  }
+  if (arrowRight) {
+    arrowRight.style.visibility = idx >= state.tabSessions.length - 1 ? "hidden" : "visible";
+    arrowRight.style.pointerEvents = idx >= state.tabSessions.length - 1 ? "none" : "auto";
+  }
 }
 
 async function resetTab(tab) {
