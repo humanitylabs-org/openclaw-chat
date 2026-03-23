@@ -2831,6 +2831,7 @@ function handleSendOrQueue() {
 ui.sendBtn.addEventListener("click", handleSendOrQueue);
 
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
+state.isMobile = isMobile;
 ui.messageInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey && !isMobile) {
     e.preventDefault();
@@ -2907,9 +2908,9 @@ ui.tabBar.addEventListener("wheel", (e) => {
 (function initTouchGestures() {
   let touchStartX = 0, touchStartY = 0, touchStartTime = 0, pulling = false;
   const pullIndicator = document.getElementById("pull-indicator");
-  const SWIPE_MIN_DIST = 120;    // px — must travel far enough (deliberate)
-  const SWIPE_MAX_TIME = 400;    // ms — must be fast (not a slow scroll)
-  const SWIPE_RATIO = 2.5;       // horizontal must dominate vertical by this much
+  const SWIPE_MIN_DIST = 60;     // px — must travel far enough (deliberate)
+  const SWIPE_MAX_TIME = 500;    // ms — must be fast (not a slow scroll)
+  const SWIPE_RATIO = 1.8;       // horizontal must dominate vertical by this much
 
   if (ui.messagesContainer) {
     ui.messagesContainer.addEventListener("touchstart", (e) => {
@@ -4347,6 +4348,7 @@ function closeDashboard() {
   // Responsive: show/hide menu button
   function updateDashLayout() {
     const isMobile = window.innerWidth <= 768;
+    state.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || isMobile;
     const menuBtn = document.getElementById('dash-menu-btn');
     const dashboard = document.getElementById('dashboard');
     if (menuBtn) menuBtn.style.display = isMobile ? '' : 'none';
