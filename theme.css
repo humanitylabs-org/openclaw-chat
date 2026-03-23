@@ -1450,6 +1450,10 @@
   .hud-settings-label { font-size: 11px; }
   .hud-settings-value { font-size: 10px; }
 
+  /* Hide top-bar agent switcher on mobile (use control panel one instead) */
+  .openclaw-agent-btn { display: none !important; }
+  .openclaw-agent-dropdown { display: none !important; }
+
   /* Identity row: bigger touch targets */
   .hud-identity-row { padding: 14px 4px 8px; }
   .hud-identity { min-height: 44px; padding: 6px 0; }
