@@ -641,6 +641,15 @@ async function switchAgent(agent) {
   localStorage.setItem("activeAgent", JSON.stringify(agent));
   localStorage.setItem("sessionKey", "main");
   updateAgentButton();
+  // Update HUD identity
+  const emojiEl = document.getElementById('hud-beacon-emoji');
+  if (emojiEl) emojiEl.textContent = agent.emoji || '🤖';
+  const nameEl = document.getElementById('hud-agent-name');
+  if (nameEl) {
+    const chevron = nameEl.querySelector('.hud-agent-chevron');
+    nameEl.textContent = (agent.name || 'Agent') + ' ';
+    if (chevron) nameEl.appendChild(chevron);
+  }
   state.messages = [];
   ui.messagesContainer.innerHTML = "";
   showLoading("Loading…");
@@ -3436,7 +3445,15 @@ async function loadAgentDropdown() {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         closeAgentDropdown();
-        // TODO: agent switching would need session routing changes
+        if (!isActive) {
+          // Map agents.list format to switchAgent format
+          switchAgent({
+            id: agent.id,
+            name: agent.identity?.name || agent.id,
+            emoji: agent.identity?.emoji || '🤖',
+            creature: agent.identity?.creature || '',
+          });
+        }
       });
       container.appendChild(btn);
     }
