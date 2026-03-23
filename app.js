@@ -13,6 +13,62 @@ function str(v, fallback = "") {
   return typeof v === "string" ? v : fallback;
 }
 
+/** Generate a short tab title (2-4 words, max 25 chars) from the user's first message */
+function generateTabTitle(text) {
+  // Strip attachments, code blocks, URLs, markdown
+  let clean = text
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]+`/g, "")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[#*_~>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!clean) return null;
+
+  // Take first sentence or clause
+  const sentence = clean.split(/[.!?\n]/)[0].trim();
+  if (!sentence) return null;
+
+  // Remove filler starts
+  const stripped = sentence
+    .replace(/^(hey|hi|hello|please|can you|could you|i want to|i need to|i'd like to|let's|lets)\s+/i, "")
+    .trim();
+
+  const words = (stripped || sentence).split(/\s+/);
+
+  // Take 2-4 words, cap at 25 chars
+  let title = "";
+  for (let i = 0; i < Math.min(words.length, 4); i++) {
+    const next = title ? title + " " + words[i] : words[i];
+    if (next.length > 25) break;
+    title = next;
+  }
+
+  if (!title || title.length < 2) return null;
+
+  // Capitalize first letter
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
+/** Auto-rename an "Untitled" tab after the user's first message */
+async function autoRenameTab(sessionKey, messageText) {
+  if (sessionKey === "main") return;
+  const tab = state.tabSessions.find(t => t.key === sessionKey);
+  if (!tab || tab.label !== "Untitled") return;
+  const title = generateTabTitle(messageText);
+  if (!title) return;
+  try {
+    await state.gateway.request("sessions.patch", {
+      key: `${agentPrefix()}${sessionKey}`,
+      label: title,
+    });
+    tab.label = title;
+    renderTabs();
+  } catch { /* non-critical */ }
+}
+
 function normalizeGatewayUrl(raw) {
   let url = raw.trim();
   if (url.startsWith("https://")) url = "wss://" + url.slice(8);
@@ -972,7 +1028,6 @@ async function renderTabs() {
 }
 
 async function _renderTabsInner() {
-  ui.tabBar.innerHTML = "";
   const currentKey = state.sessionKey || "main";
 
   let sessions = [];
@@ -983,12 +1038,14 @@ async function _renderTabsInner() {
       state._cachedSessions = sessions;
       state._cachedSessionsAt = Date.now();
     } catch {
-      // Use cached sessions if gateway call fails
       sessions = state._cachedSessions || [];
     }
   } else {
     sessions = state._cachedSessions || [];
   }
+
+  // Build tabs into a fragment off-screen, then swap in at the end
+  const fragment = document.createDocumentFragment();
 
   const prefix = agentPrefix();
   const convSessions = sessions.filter(s => {
@@ -1123,7 +1180,7 @@ async function _renderTabsInner() {
       tabEl.addEventListener("click", () => switchTab(tab));
     }
 
-    ui.tabBar.appendChild(tabEl);
+    fragment.appendChild(tabEl);
   }
 
   const addBtn = document.createElement("div");
@@ -1133,7 +1190,11 @@ async function _renderTabsInner() {
   addLabel.textContent = "+";
   addBtn.appendChild(addLabel);
   addBtn.addEventListener("click", () => createNewTab());
-  ui.tabBar.appendChild(addBtn);
+  fragment.appendChild(addBtn);
+
+  // Swap in all at once (no flicker)
+  ui.tabBar.innerHTML = "";
+  ui.tabBar.appendChild(fragment);
 
   updateTabMode();
 }
@@ -1168,8 +1229,8 @@ function clearDraft(key) {
 function queueMessage(text) {
   const key = state.sessionKey;
   if (!key) return;
-  if (!state.messageQueue[key]) state.messageQueue[key] = [];
-  state.messageQueue[key].push({ text, timestamp: Date.now() });
+  // Only allow 1 queued message per tab
+  state.messageQueue[key] = [{ text, timestamp: Date.now() }];
   localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
   renderQueuedMessages();
 }
@@ -2421,6 +2482,9 @@ async function sendMessage(text) {
   state.messages.push({ role: "user", text: displayText || fullMessage, images: userImages, timestamp: Date.now() });
   renderMessages();
 
+  // Auto-rename "Untitled" tabs based on first message
+  void autoRenameTab(state.sessionKey, text);
+
   const runId = generateId();
   const sendSessionKey = state.sessionKey;
 
@@ -2636,6 +2700,9 @@ function getSTTConfig() {
 }
 
 function updateSendButton() {
+  // Don't override stop/queue mode icons
+  if (ui.sendBtn?.classList.contains('stop-mode')) { updateStopSendIcon(); return; }
+
   const hasContent = ui.messageInput.value.trim() || state.pendingAttachments.length > 0;
   const sttReady = isSTTConfigured();
 
@@ -2737,20 +2804,24 @@ function autoResize() {
 // ─── Input Handlers ──────────────────────────────────────────────────
 
 function handleSendOrQueue() {
-  if (ui.sendBtn.classList.contains("stop-mode")) {
+  const text = ui.messageInput.value.trim();
+  const isStreaming = state.streams.has(state.sessionKey);
+
+  // If streaming and input is empty, abort (stop button behavior)
+  if (ui.sendBtn.classList.contains("stop-mode") && !text) {
     abortMessage();
     return;
   }
+
   if (ui.sendBtn.classList.contains("mic-mode") || ui.sendBtn.classList.contains("recording")) {
     handleMicClick();
     return;
   }
-  const text = ui.messageInput.value.trim();
+
   if (!text && state.pendingAttachments.length === 0) return;
 
-  // If agent is currently streaming, queue instead of send
-  const isStreaming = state.streams.has(state.sessionKey);
-  if (isStreaming && text && state.pendingAttachments.length === 0) {
+  // If agent is currently streaming, queue the message client-side
+  if (isStreaming && text) {
     queueMessage(text);
     ui.messageInput.value = '';
     ui.messageInput.dispatchEvent(new Event('input'));
@@ -2774,7 +2845,11 @@ ui.messageInput.addEventListener("keydown", (e) => {
 
 ui.messageInput.addEventListener("input", () => {
   autoResize();
-  updateSendButton();
+  if (ui.sendBtn.classList.contains('stop-mode')) {
+    updateStopSendIcon();
+  } else {
+    updateSendButton();
+  }
 });
 
 ui.messageInput.addEventListener("paste", (e) => {
@@ -2796,20 +2871,34 @@ ui.attachBtn.addEventListener("click", () => ui.fileInput.click());
 ui.fileInput.addEventListener("change", () => handleFileSelect());
 
 // Send button mode: toggles between send and stop
+const STOP_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>';
+
 function setSendButtonStopMode(isStop) {
   const btn = ui.sendBtn;
   if (!btn) return;
-  const sendIcon = btn.querySelector('.send-icon');
-  const stopIcon = btn.querySelector('.stop-icon');
   if (isStop) {
     btn.classList.add('stop-mode');
     btn.disabled = false;
-    if (sendIcon) sendIcon.style.display = 'none';
-    if (stopIcon) stopIcon.style.display = '';
+    updateStopSendIcon();
   } else {
     btn.classList.remove('stop-mode');
-    if (sendIcon) sendIcon.style.display = '';
-    if (stopIcon) stopIcon.style.display = 'none';
+    btn.classList.remove('queue-mode');
+    updateSendButton();
+  }
+}
+
+// When streaming: show send arrow if input has text (queue mode), stop square if empty
+function updateStopSendIcon() {
+  const btn = ui.sendBtn;
+  if (!btn || !btn.classList.contains('stop-mode')) return;
+  const hasText = ui.messageInput.value.trim().length > 0;
+  btn.classList.remove('oc-opacity-low');
+  if (hasText) {
+    btn.classList.add('queue-mode');
+    btn.innerHTML = SEND_ICON;
+  } else {
+    btn.classList.remove('queue-mode');
+    btn.innerHTML = STOP_ICON;
   }
 }
 
@@ -3907,7 +3996,77 @@ function applyDashSettings(settings) {
 
 function exportCurrentSession() {
   const sk = state.sessionKey || "main";
-  sendControlAction('/export-session');
+  const messages = state.messages || [];
+  if (messages.length === 0) {
+    alert("Nothing to export — this session is empty.");
+    return;
+  }
+
+  const tab = state.tabSessions.find(t => t.key === sk);
+  const label = tab?.label || sk;
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  const readableDate = now.toLocaleString();
+
+  // Build clean HTML
+  const esc = (s) => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let msgHtml = '';
+  for (const msg of messages) {
+    const role = msg.role === 'user' ? 'You' : 'Assistant';
+    const cls = msg.role === 'user' ? 'user' : 'assistant';
+    const text = esc(msg.text).replace(/\n/g, '<br>');
+    const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '';
+    msgHtml += `<div class="msg ${cls}"><div class="msg-header"><strong>${role}</strong><span class="time">${time}</span></div><div class="msg-body">${text}</div></div>\n`;
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(label)} — Session Export</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1a1a; padding: 24px; line-height: 1.6; }
+  .header { max-width: 720px; margin: 0 auto 24px; padding-bottom: 16px; border-bottom: 1px solid #e0e0e0; }
+  .header h1 { font-size: 18px; font-weight: 500; color: #1a1a1a; }
+  .header p { font-size: 12px; color: #888; margin-top: 4px; }
+  .messages { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .msg { padding: 12px 16px; border-radius: 10px; }
+  .msg.user { background: #f5f5f5; border: 1px solid #e8e8e8; }
+  .msg.assistant { background: transparent; }
+  .msg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .msg-header strong { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #888; }
+  .time { font-size: 11px; color: #aaa; }
+  .msg-body { font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+  .msg.user .msg-body { color: #1a1a1a; }
+  .msg.assistant .msg-body { color: #333; }
+  .footer { max-width: 720px; margin: 24px auto 0; padding-top: 16px; border-top: 1px solid #e0e0e0; text-align: center; font-size: 11px; color: #aaa; }
+  @media print { body { padding: 0; } .msg { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>${esc(label)}</h1>
+  <p>Exported ${esc(readableDate)} · ${messages.length} messages</p>
+</div>
+<div class="messages">
+${msgHtml}
+</div>
+<div class="footer">Exported from usemyclaw.com</div>
+</body>
+</html>`;
+
+  // Trigger download
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${label.replace(/[^a-zA-Z0-9-_ ]/g, '')}-${dateStr}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ─── Sub-agents Panel ────────────────────────────────────────────
