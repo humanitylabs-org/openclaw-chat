@@ -646,11 +646,16 @@ async function switchAgent(agent) {
     if (chevron) nameEl.appendChild(chevron);
   }
   state.messages = [];
+  state.tabCache = {};
   ui.messagesContainer.innerHTML = "";
   showLoading("Loading…");
   await loadChatHistory();
   await renderTabs();
   prefetchAllTabs();
+  // Reload control panel sections for new agent
+  loadAgentFiles();
+  loadCronJobs();
+  loadSubagents();
 }
 
 // Top-bar agent dropdown removed — control panel handles switching
@@ -1324,7 +1329,7 @@ async function resetTab(tab) {
   }
   try {
     await state.gateway.request("chat.send", {
-      sessionKey: tab.key,
+      sessionKey: `${agentPrefix()}${tab.key}`,
       message: "/reset",
       deliver: false,
       idempotencyKey: "reset-" + Date.now(),
@@ -1372,7 +1377,7 @@ async function createNewTab() {
   const sessionKey = `tab-${nextNum}`;
   try {
     await state.gateway.request("chat.send", {
-      sessionKey: sessionKey,
+      sessionKey: `${agentPrefix()}${sessionKey}`,
       message: "/new",
       deliver: false,
       idempotencyKey: "newtab-" + Date.now(),
@@ -1674,7 +1679,7 @@ function renderModelList(box, models, provider, currentModel, modal, providerMap
       row.textContent = "Switching...";
       try {
         await state.gateway.request("chat.send", {
-          sessionKey: state.sessionKey,
+          sessionKey: `${agentPrefix()}${state.sessionKey}`,
           message: `/model ${fullId}`,
           deliver: false,
           idempotencyKey: "model-" + Date.now(),
@@ -1721,7 +1726,7 @@ async function loadChatHistory(opts) {
   if (!background) showLoading("Loading…");
   try {
     const result = await state.gateway.request("chat.history", {
-      sessionKey: targetKey,
+      sessionKey: `${agentPrefix()}${targetKey}`,
       limit: 200,
     });
 
@@ -2503,7 +2508,7 @@ async function sendMessage(text) {
 
   try {
     const sendParams = {
-      sessionKey: sendSessionKey,
+      sessionKey: `${agentPrefix()}${sendSessionKey}`,
       message: fullMessage,
       deliver: false,
       idempotencyKey: runId,
@@ -2527,7 +2532,7 @@ async function abortMessage() {
   if (!state.gateway?.connected || !ss) return;
   try {
     await state.gateway.request("chat.abort", {
-      sessionKey: state.sessionKey,
+      sessionKey: `${agentPrefix()}${state.sessionKey}`,
       runId: ss.runId,
     });
   } catch { /* ignore */ }
@@ -3572,8 +3577,22 @@ async function loadCronJobs() {
       return;
     }
 
+    // Filter by active agent: show jobs pinned to this agent, or global jobs (no agentId) when default agent is active
+    const activeId = state.activeAgent?.id || 'main';
+    const isDefaultAgent = state.agents.length === 0 || state.agents[0]?.id === activeId;
+    const filtered = jobs.filter(job => {
+      if (job.agentId) return job.agentId === activeId;
+      // Jobs without agentId belong to the default agent
+      return isDefaultAgent;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
     // Sort by next run
-    const sorted = [...jobs].sort((a, b) => (a.state?.nextRunAtMs || Infinity) - (b.state?.nextRunAtMs || Infinity));
+    const sorted = [...filtered].sort((a, b) => (a.state?.nextRunAtMs || Infinity) - (b.state?.nextRunAtMs || Infinity));
 
     container.innerHTML = '';
     for (const job of sorted) {
@@ -4105,7 +4124,7 @@ async function loadSubagents() {
     const result = await state.gateway.request("sessions.list", {});
     const sessions = result?.sessions || [];
     const prefix = agentPrefix();
-    const subs = sessions.filter(s => s.key.includes(":subagent:"));
+    const subs = sessions.filter(s => s.key.startsWith(prefix) && s.key.includes(":subagent:"));
     
     if (subs.length === 0) {
       container.innerHTML = '<div class="hud-empty-hint">none running</div>';
