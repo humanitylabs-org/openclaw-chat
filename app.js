@@ -3153,27 +3153,18 @@ function friendlyFile(name) {
 
 // ─── Collapsible Sections ─────────────────────────────────────────
 
-// Sections exempt from accordion (always open independently)
-const PINNED_SECTIONS = new Set(['agent-browser', 'agent-mindfeed']);
-
 function toggleSection(sectionId) {
   const el = document.querySelector(`.hud-collapsible[data-section="${sectionId}"]`);
   if (!el) return;
   const wasOpen = el.classList.contains('hud-open');
 
-  // Pinned sections toggle independently — no accordion
-  if (PINNED_SECTIONS.has(sectionId)) {
-    if (wasOpen) el.classList.remove('hud-open');
-    else el.classList.add('hud-open');
-    return;
-  }
-
-  // Accordion: close all other NON-PINNED sections first
+  // Accordion: close all other sections first
   document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
-    if (other !== el && !PINNED_SECTIONS.has(other.dataset.section)) {
+    if (other !== el) {
       other.classList.remove('hud-open');
+      // If it's an embed panel, also destroy its iframe
       const otherSection = other.dataset.section;
-      if (otherSection === 'agent-terminal') {
+      if (otherSection === 'agent-browser' || otherSection === 'agent-terminal') {
         const evt = new CustomEvent('panel-close', { detail: otherSection });
         document.dispatchEvent(evt);
       }
@@ -3185,7 +3176,7 @@ function toggleSection(sectionId) {
   if (isOpen) el.classList.add('hud-open');
   else el.classList.remove('hud-open');
 
-  // Remember which accordion section is open (only one at a time)
+  // Remember which section is open (only one at a time)
   localStorage.setItem('openSection', isOpen ? sectionId : '');
 }
 
@@ -3197,15 +3188,8 @@ function restoreCollapsibleState() {
   localStorage.removeItem('terminalPanelOpen');
   localStorage.removeItem('mindfeedPanelOpen');
 
-  // Always open pinned sections (Browser + MindFeed)
-  for (const id of PINNED_SECTIONS) {
-    const el = document.querySelector(`.hud-collapsible[data-section="${id}"]`);
-    if (el) el.classList.add('hud-open');
-  }
-
-  // Restore last accordion section (excluding pinned ones)
-  const openId = localStorage.getItem('openSection') || '';
-  if (openId && !PINNED_SECTIONS.has(openId)) {
+  const openId = localStorage.getItem('openSection') || 'agent-browser';
+  if (openId) {
     const el = document.querySelector(`.hud-collapsible[data-section="${openId}"]`);
     if (el) el.classList.add('hud-open');
   }
@@ -4382,24 +4366,6 @@ function closeDashboard() {
         } catch { return null; }
       }
     },
-    mindfeed: {
-      id: 'mindfeed-panel',
-      bodyId: 'mindfeed-panel-body',
-      headerId: 'mindfeed-panel-header',
-      dotId: 'mindfeed-dot',
-      expandId: 'mindfeed-expand-btn',
-      refreshId: 'mindfeed-refresh-btn',
-      closeId: 'mindfeed-close-max-btn',
-      storageKey: 'mindfeedPanelOpen',
-      iframe: null,
-      getUrl() {
-        try {
-          const conn = JSON.parse(localStorage.getItem('connection') || '{}');
-          const url = new URL(conn.gatewayUrl || '');
-          return 'https://' + url.hostname + ':8787';
-        } catch { return null; }
-      }
-    }
   };
 
   const backdrop = document.getElementById('embed-backdrop');
@@ -4498,35 +4464,28 @@ function closeDashboard() {
   window.preloadAllEmbeds = preloadAll;
 
   function toggle(cfg) {
-    const sectionMap = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal', 'mindfeed-panel': 'agent-mindfeed' };
-    const sectionId = sectionMap[cfg.id] || cfg.id;
-    const isPinned = PINNED_SECTIONS.has(sectionId);
     const st = getState(cfg);
-
     if (st === 'closed') {
-      // Pinned panels toggle independently — no accordion
-      if (!isPinned) {
-        // Accordion: close other NON-PINNED sections
-        document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
-          if (other.id !== cfg.id && !PINNED_SECTIONS.has(other.dataset.section)) {
-            other.classList.remove('hud-open');
-          }
-        });
-      }
+      // Accordion: close all other sections first
+      document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
+        if (other.id !== cfg.id) {
+          other.classList.remove('hud-open');
+        }
+      });
 
       setState(cfg, 'open');
       if (!cfg.iframe) preloadIframe(cfg);
-      if (!isPinned) localStorage.setItem('openSection', sectionId);
+      const sectionMap = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal' };
+      localStorage.setItem('openSection', sectionMap[cfg.id] || cfg.id);
     } else {
       setState(cfg, 'closed');
-      if (!isPinned) localStorage.setItem('openSection', '');
+      localStorage.setItem('openSection', '');
     }
   }
 
-  // Listen for accordion closes from toggleSection() — skip pinned sections
-  const panelToSection = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal', 'mindfeed-panel': 'agent-mindfeed' };
+  // Listen for accordion closes from toggleSection()
+  const panelToSection = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal' };
   document.addEventListener('panel-close', (e) => {
-    if (PINNED_SECTIONS.has(e.detail)) return; // never close pinned via accordion
     for (const cfg of Object.values(panels)) {
       if (e.detail === (panelToSection[cfg.id] || cfg.id)) {
         setState(cfg, 'closed');
@@ -4585,6 +4544,103 @@ function closeDashboard() {
   });
 
   // Iframes preloaded on connect — panel restore handled by restoreCollapsibleState()
+
+  // ─── MindFeed Right Sidebar (independent of accordion) ─────────────
+
+  const mfBody = document.getElementById('mindfeed-panel-body');
+  const mfDot = document.getElementById('mindfeed-dot');
+  const mfRefresh = document.getElementById('mindfeed-refresh-btn');
+  const mfExpand = document.getElementById('mindfeed-expand-btn');
+  const mfClose = document.getElementById('mindfeed-close-max-btn');
+  let mfIframe = null;
+
+  function mfGetUrl() {
+    try {
+      const conn = JSON.parse(localStorage.getItem('connection') || '{}');
+      const url = new URL(conn.gatewayUrl || '');
+      return 'https://' + url.hostname + ':8787';
+    } catch { return null; }
+  }
+
+  function mfPreload() {
+    if (mfIframe || !mfBody) return;
+    const url = mfGetUrl();
+    if (!url) return;
+
+    // Loading spinner
+    if (!mfBody.querySelector('.hud-embed-loading')) {
+      const el = document.createElement('div');
+      el.className = 'hud-embed-loading';
+      el.innerHTML = '<div class="hud-embed-spinner"></div><span class="hud-embed-loading-text">Connecting…</span>';
+      mfBody.appendChild(el);
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.style.opacity = '0';
+    iframe.style.transition = 'opacity 0.3s';
+
+    let loaded = false;
+    iframe.addEventListener('load', () => {
+      loaded = true;
+      mfDot?.classList.add('connected');
+      const loader = mfBody.querySelector('.hud-embed-loading');
+      if (loader) { loader.style.opacity = '0'; loader.style.transition = 'opacity 0.3s'; setTimeout(() => loader.remove(), 300); }
+      iframe.style.opacity = '1';
+    });
+    setTimeout(() => {
+      if (!loaded) {
+        mfDot?.classList.remove('connected');
+        const txt = mfBody.querySelector('.hud-embed-loading-text');
+        if (txt) txt.textContent = 'Taking longer than usual…';
+      }
+    }, 8000);
+
+    mfIframe = iframe;
+    mfBody.appendChild(iframe);
+  }
+
+  // Expose for preloadAll
+  const origPreloadAll = window.preloadAllEmbeds;
+  window.preloadAllEmbeds = function() {
+    origPreloadAll?.();
+    mfPreload();
+  };
+
+  mfRefresh?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (mfIframe) { mfDot?.classList.remove('connected'); mfIframe.src = mfIframe.src; }
+  });
+
+  mfExpand?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const sidebar = document.getElementById('sidebar-right');
+    if (!sidebar) return;
+    const isExpanded = sidebar.classList.contains('sidebar-right-expanded');
+    if (isExpanded) {
+      sidebar.classList.remove('sidebar-right-expanded');
+      mfExpand.textContent = '⤢';
+      mfExpand.title = 'Expand';
+      if (mfClose) mfClose.style.display = 'none';
+      backdrop?.classList.remove('visible');
+    } else {
+      sidebar.classList.add('sidebar-right-expanded');
+      mfExpand.textContent = '⤓';
+      mfExpand.title = 'Minimize';
+      if (mfClose) mfClose.style.display = '';
+      backdrop?.classList.add('visible');
+    }
+  });
+
+  mfClose?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const sidebar = document.getElementById('sidebar-right');
+    if (sidebar) sidebar.classList.remove('sidebar-right-expanded');
+    mfExpand.textContent = '⤢';
+    mfExpand.title = 'Expand';
+    mfClose.style.display = 'none';
+    backdrop?.classList.remove('visible');
+  });
 })();
 
 // ─── Initialize ──────────────────────────────────────────────────────
