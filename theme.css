@@ -318,10 +318,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 12px 12px;
   border-radius: 7px;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
   cursor: pointer;
   border: none;
@@ -329,6 +329,7 @@
   width: 100%;
   text-align: left;
   transition: background 0.12s, color 0.12s;
+  min-height: 48px;
 }
 .hud-agent-dropdown-item:hover {
   background: rgba(255,255,255,0.06);
@@ -357,10 +358,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 12px 12px;
   border-radius: 7px;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-faint);
   cursor: pointer;
   border: none;
@@ -368,6 +369,7 @@
   width: 100%;
   text-align: left;
   transition: background 0.12s, color 0.12s;
+  min-height: 48px;
 }
 .hud-agent-dropdown-add:hover {
   background: rgba(255,255,255,0.06);
@@ -448,7 +450,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 10px;
   border-radius: 6px;
   color: var(--text-faint);
   opacity: 0.5;
@@ -458,6 +460,8 @@
   justify-content: center;
   flex-shrink: 0;
   margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .hud-theme-toggle:hover {
@@ -501,14 +505,15 @@
 
 .hud-disconnect-link {
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
   opacity: 0.4;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
+  padding: 10px 6px;
   transition: color 0.15s, opacity 0.15s;
+  min-height: 36px;
 }
 .hud-disconnect-link:hover { color: rgba(239,68,68,0.7); opacity: 1; }
 
@@ -534,9 +539,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 6px;
+  padding: 8px 6px;
   border-radius: 6px;
   transition: background 0.12s;
+  min-height: 44px;
 }
 .hud-tl-item:hover {
   background: rgba(255,255,255,0.02);
@@ -591,12 +597,17 @@
   background: none;
   border: none;
   color: transparent;
-  font-size: 8px;
+  font-size: 10px;
   cursor: pointer;
-  padding: 3px 5px;
-  border-radius: 4px;
+  padding: 0;
+  border-radius: 6px;
   transition: all 0.15s;
   flex-shrink: 0;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .hud-tl-item:hover .hud-tl-run { color: var(--accent); opacity: 0.4; }
 .hud-tl-run:hover { opacity: 1 !important; background: rgba(var(--accent-rgb), 0.1); }
@@ -662,15 +673,18 @@
 
 .hud-file-chip {
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--text-muted);
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 20px;
-  padding: 5px 12px;
+  border-radius: 22px;
+  padding: 10px 14px;
   cursor: pointer;
   transition: all 0.15s;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
 }
 .hud-file-chip:hover {
   background: rgba(255,255,255,0.08);
@@ -853,6 +867,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 4px 0;
+  min-height: 44px;
 }
 .hud-defaults-label {
   font-family: var(--font-sans);
@@ -883,17 +898,18 @@
 }
 .hud-defaults-select {
   font-family: var(--font-mono, monospace);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   background: rgba(128,128,128,0.06);
   border: 1px solid rgba(128,128,128,0.12);
-  border-radius: 4px;
-  padding: 2px 6px;
+  border-radius: 6px;
+  padding: 8px 24px 8px 8px;
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s;
   -webkit-appearance: none;
   appearance: none;
+  min-height: 36px;
   background-image: url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23888' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 6px center;
@@ -914,16 +930,17 @@
   display: block;
   width: 100%;
   margin-top: 8px;
-  padding: 6px 12px;
+  padding: 12px 12px;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--accent, #4a9eff);
   background: rgba(74, 158, 255, 0.08);
   border: 1px solid rgba(74, 158, 255, 0.2);
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
+  min-height: 44px;
 }
 .hud-defaults-apply:hover {
   background: rgba(74, 158, 255, 0.15);
@@ -946,6 +963,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 3px 0;
+  min-height: 44px;
 }
 .hud-settings-label {
   font-family: var(--font-sans);
@@ -1038,10 +1056,15 @@
   border: none;
   color: var(--text-faint);
   cursor: pointer;
-  font-size: 11px;
-  padding: 1px 4px;
-  border-radius: 4px;
+  font-size: 14px;
+  padding: 0;
+  border-radius: 6px;
   transition: background 0.15s, color 0.15s;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .hud-subagent-kill:hover {
   background: rgba(255, 80, 80, 0.15);
@@ -1103,7 +1126,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 10px 0;
+  padding: 12px 0;
   background: none;
   border: none;
   cursor: pointer;
@@ -1111,6 +1134,7 @@
   transition: color 0.15s;
   outline: none;
   flex-shrink: 0;
+  min-height: 44px;
 }
 .hud-section-toggle:hover { color: var(--text-normal); }
 .hud-section-toggle:focus-visible {
@@ -1217,6 +1241,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 7px 0;
+  min-height: 44px;
 }
 
 .hud-setting-name {
@@ -1228,18 +1253,24 @@
 
 .hud-toggle {
   position: relative;
-  width: 32px;
-  height: 18px;
+  width: 40px;
+  height: 22px;
   flex-shrink: 0;
+  /* Expand tap target beyond visual toggle */
+  padding: 11px 0;
+  box-sizing: content-box;
 }
 
 .hud-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
 
 .hud-toggle-track {
   position: absolute;
-  inset: 0;
+  top: 11px;
+  left: 0;
+  width: 40px;
+  height: 22px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 9px;
+  border-radius: 11px;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -1247,8 +1278,8 @@
 .hud-toggle-track::before {
   content: '';
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   left: 2px;
   top: 2px;
   background: var(--text-faint);
@@ -1261,7 +1292,7 @@
 }
 
 .hud-toggle input:checked + .hud-toggle-track::before {
-  transform: translateX(14px);
+  transform: translateX(18px);
   background: #4caf50;
 }
 
@@ -1274,15 +1305,16 @@
 
 .hud-disconnect {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 300;
   letter-spacing: 0.04em;
   color: var(--text-faint);
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
+  padding: 10px 6px;
   transition: color 0.15s;
+  min-height: 44px;
 }
 
 .hud-disconnect:hover { color: #ef4444; }
@@ -1309,17 +1341,18 @@
 
 .dash-field input {
   width: 100%;
-  padding: 8px 10px;
+  padding: 12px 12px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 300;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--text-normal);
   outline: none;
   transition: border-color 0.15s;
   box-sizing: border-box;
+  min-height: 48px;
 }
 
 .dash-field input:focus {
@@ -1329,17 +1362,18 @@
 .hud-connect-btn {
   width: 100%;
   margin-top: 6px;
-  padding: 10px;
+  padding: 12px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 300;
   letter-spacing: 0.06em;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   transition: opacity 0.15s;
+  min-height: 48px;
 }
 
 .hud-connect-btn:hover { opacity: 0.85; }
@@ -1373,11 +1407,12 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0 10px;
+  padding: 0 12px;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  min-height: var(--header-height);
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .dash-menu-btn:hover { color: var(--text-normal); }
@@ -1617,12 +1652,17 @@
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 22px;
+  font-size: 24px;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0;
   line-height: 1;
-  border-radius: 4px;
+  border-radius: 8px;
   transition: color 0.15s, background 0.15s;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .oc-file-viewer-close:hover { color: var(--text-normal); background: rgba(128,128,128,0.12); }
 
@@ -2750,12 +2790,17 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 .hud-embed-action {
   color: var(--text-faint);
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
+  padding: 0;
+  border-radius: 6px;
   font-size: 14px;
   line-height: 1;
   transition: color 0.15s, background 0.15s;
   user-select: none;
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hud-embed-action:hover {
@@ -3110,12 +3155,17 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 20px;
+  font-size: 22px;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0;
   line-height: 1;
-  border-radius: 4px;
+  border-radius: 8px;
   transition: color 0.15s, background 0.15s;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .oc-task-close:hover { color: var(--text-normal); background: rgba(128,128,128,0.12); }
 
@@ -3177,15 +3227,16 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 
 .oc-task-action {
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--accent);
   background: rgba(var(--accent-rgb), 0.08);
   border: 1px solid rgba(var(--accent-rgb), 0.2);
-  border-radius: 6px;
-  padding: 6px 14px;
+  border-radius: 8px;
+  padding: 12px 18px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
+  min-height: 44px;
 }
 .oc-task-action:hover {
   background: rgba(var(--accent-rgb), 0.15);

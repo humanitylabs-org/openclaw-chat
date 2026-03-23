@@ -334,7 +334,7 @@
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      padding: 8px 8px;
+      padding: 10px;
       border-radius: 6px;
       line-height: 1;
       flex-shrink: 0;
@@ -343,8 +343,8 @@
       justify-content: center;
       opacity: 0.5;
       transition: opacity 0.15s, background 0.15s;
-      min-width: 36px;
-      min-height: 36px;
+      min-width: 44px;
+      min-height: 44px;
     }
     .oc-tab-switcher-arrow:hover { background: rgba(128,128,128,0.12); opacity: 0.9; }
     .oc-tab-switcher-arrow:active { background: rgba(128,128,128,0.2); opacity: 1; }
@@ -382,14 +382,14 @@
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      padding: 6px 8px;
+      padding: 10px;
       border-radius: 6px;
       line-height: 1;
       font-size: 14px;
       opacity: 0.5;
       transition: opacity 0.15s, background 0.15s;
-      min-width: 32px;
-      min-height: 32px;
+      min-width: 44px;
+      min-height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -437,6 +437,7 @@
       font-size: 14px;
       border-bottom: 1px solid rgba(128,128,128,0.06);
       transition: background 0.12s;
+      min-height: 48px;
     }
     .oc-hamburger-dropdown-item:last-child { border-bottom: none; }
     .oc-hamburger-dropdown-item:hover { background: rgba(128,128,128,0.1); }
@@ -477,8 +478,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 32px;
-      height: 32px;
+      width: 44px;
+      height: 44px;
       border-radius: 6px;
       cursor: pointer;
       opacity: 0.35;
@@ -545,11 +546,13 @@
       justify-content: flex-end;
     }
     .oc-confirm-buttons button {
-      padding: 6px 14px;
-      border-radius: 4px;
+      padding: 12px 20px;
+      border-radius: 8px;
       border: none;
-      font-size: 13px;
+      font-size: 14px;
       cursor: pointer;
+      min-height: 44px;
+      min-width: 80px;
     }
     .oc-confirm-cancel {
       background: rgba(128,128,128,0.15);
@@ -844,12 +847,12 @@
     .openclaw-input-row {
       display: flex;
       align-items: flex-end;
-      gap: 4px;
+      gap: 2px;
       background: var(--background-secondary);
       border-radius: 22px;
-      padding: 4px 4px 4px 6px;
+      padding: 4px 4px 4px 4px;
       border: none;
-      min-height: 40px;
+      min-height: 44px;
       overflow: hidden;
       margin: 0 8px 4px;
     }
@@ -858,8 +861,8 @@
 
     /* Attach button */
     .openclaw-attach-btn {
-      width: 28px;
-      height: 28px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       border: none;
       background: transparent;
@@ -920,8 +923,8 @@
     .openclaw-status-dot.connected { background: #4caf50; }
 
     .openclaw-send-btn {
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       border: none;
       background: var(--interactive-accent);
@@ -981,13 +984,15 @@
       border: none;
       color: #e34;
       cursor: pointer;
-      padding: 6px;
+      padding: 10px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: background 0.15s;
       font-size: 16px;
+      min-width: 44px;
+      min-height: 44px;
     }
     .openclaw-reconnect-btn:hover { background: var(--background-modifier-hover); }
 
@@ -1028,10 +1033,16 @@
       border: none;
       color: var(--text-faint);
       cursor: pointer;
-      font-size: 14px;
-      padding: 0 2px;
+      font-size: 16px;
+      padding: 0;
       line-height: 1;
       flex-shrink: 0;
+      min-width: 32px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
     }
     .openclaw-attach-remove:hover { color: var(--text-normal); }
 
@@ -1047,12 +1058,13 @@
       background: var(--interactive-accent);
       color: var(--text-on-accent);
       border: none;
-      border-radius: 16px;
-      padding: 4px 12px;
-      font-size: 12px;
+      border-radius: 22px;
+      padding: 10px 16px;
+      font-size: 13px;
       cursor: pointer;
       white-space: nowrap;
       min-width: 110px;
+      min-height: 44px;
       text-align: center;
     }
     .openclaw-audio-play-btn:hover { opacity: 0.85; }
@@ -1106,11 +1118,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 7px 10px;
-      border-radius: 5px;
+      padding: 12px 12px;
+      border-radius: 8px;
       cursor: pointer;
       transition: background 0.12s;
-      font-size: 13px;
+      font-size: 14px;
+      min-height: 44px;
     }
     .openclaw-picker-row:hover { background: var(--background-modifier-hover); }
     .openclaw-picker-row.active { background: rgba(124, 58, 237, 0.1); }
@@ -1126,9 +1139,12 @@
     .openclaw-picker-back {
       background: none; border: none; cursor: pointer;
       color: var(--text-muted); font-size: 0.85em;
-      padding: 4px 8px; border-radius: 5px;
+      padding: 10px 12px; border-radius: 8px;
       transition: background 0.12s;
       margin-bottom: 8px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
     }
     .openclaw-picker-back:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
     .openclaw-picker-selecting {
@@ -1159,10 +1175,13 @@
       font-weight: 500;
       color: var(--text-muted);
       cursor: pointer;
-      padding: 3px 8px;
+      padding: 8px 10px;
       border-radius: 6px;
       transition: background 0.15s, color 0.15s;
       white-space: nowrap;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
     }
     .openclaw-model-label:hover {
       background: rgba(128,128,128,0.12);
@@ -1179,12 +1198,15 @@
       font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, sans-serif);
       font-size: 12px;
       color: var(--text-faint);
-      padding: 3px 8px;
+      padding: 8px 10px;
       border-radius: 6px;
       cursor: pointer;
       white-space: nowrap;
       transition: background 0.15s, color 0.15s;
       user-select: none;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
     }
     .openclaw-model-bar .bar-chip:hover {
       background: rgba(128,128,128,0.12);
@@ -1236,7 +1258,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=57">
+  <link rel="stylesheet" href="/theme.css?v=58">
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
@@ -1678,7 +1700,7 @@
 
   </div>
 
-  <script src="/app.js?v=77"></script>
+  <script src="/app.js?v=78"></script>
   <script>
     // Landing page logic
     (function() {
