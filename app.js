@@ -1864,8 +1864,19 @@ async function loadChatHistory(opts) {
       })
       .filter(m => (m.text.trim() || m.images.length > 0) && !m.text.startsWith("HEARTBEAT"));
 
+    // Hide system-generated startup messages (not real user input)
     if (parsed.length > 0 && parsed[0].role === "user") {
-      parsed = parsed.slice(1);
+      const firstText = parsed[0].text.trim();
+      const isSystemStartup =
+        firstText.startsWith("A new session was started") ||
+        firstText.startsWith("Read HEARTBEAT") ||
+        firstText.startsWith("Execute your Session Startup") ||
+        /^\[?(system|openclaw)\]?\s/i.test(firstText) ||
+        firstText.startsWith("You are starting a new") ||
+        firstText === "/new" || firstText === "/reset";
+      if (isSystemStartup) {
+        parsed = parsed.slice(1);
+      }
     }
 
     // Cache the result
