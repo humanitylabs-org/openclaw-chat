@@ -2900,8 +2900,11 @@ ui.tabBar.addEventListener("wheel", (e) => {
 // ─── Touch Gestures (pull-to-refresh + swipe between tabs) ──────────
 
 (function initTouchGestures() {
-  let touchStartX = 0, touchStartY = 0, pulling = false;
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0, pulling = false;
   const pullIndicator = document.getElementById("pull-indicator");
+  const SWIPE_MIN_DIST = 120;    // px — must travel far enough (deliberate)
+  const SWIPE_MAX_TIME = 400;    // ms — must be fast (not a slow scroll)
+  const SWIPE_RATIO = 2.5;       // horizontal must dominate vertical by this much
 
   if (ui.messagesContainer) {
     ui.messagesContainer.addEventListener("touchstart", (e) => {
@@ -2909,6 +2912,7 @@ ui.tabBar.addEventListener("wheel", (e) => {
       if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
       pulling = false;
     }, { passive: true });
 
@@ -2931,6 +2935,7 @@ ui.tabBar.addEventListener("wheel", (e) => {
 
       const deltaX = e.changedTouches[0].clientX - touchStartX;
       const deltaY = e.changedTouches[0].clientY - touchStartY;
+      const elapsed = Date.now() - touchStartTime;
 
       if (pulling) {
         pulling = false;
@@ -2941,15 +2946,13 @@ ui.tabBar.addEventListener("wheel", (e) => {
         return;
       }
 
-      if (Math.abs(deltaX) > 80 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      // Swipe between tabs: must be fast, far, and predominantly horizontal
+      if (Math.abs(deltaX) > SWIPE_MIN_DIST &&
+          Math.abs(deltaX) > Math.abs(deltaY) * SWIPE_RATIO &&
+          elapsed < SWIPE_MAX_TIME) {
         const currentIdx = state.tabSessions.findIndex(t => t.key === state.sessionKey);
         if (currentIdx < 0) return;
-        let nextIdx;
-        if (deltaX < 0) {
-          nextIdx = currentIdx + 1;
-        } else {
-          nextIdx = currentIdx - 1;
-        }
+        const nextIdx = deltaX < 0 ? currentIdx + 1 : currentIdx - 1;
         if (nextIdx >= 0 && nextIdx < state.tabSessions.length) {
           switchTab(state.tabSessions[nextIdx]);
         }
