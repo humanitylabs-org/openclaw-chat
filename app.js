@@ -618,6 +618,56 @@ async function startChat() {
   setTimeout(() => processQueue(), 1000);
 
   setInterval(() => updateContextMeter(), 15000);
+
+  // ─── Recover from app backgrounding (Android/iOS tab suspend) ──────
+  // When the user switches to another app, the browser suspends JS and the
+  // WebSocket can silently die. Stream events sent during suspension are lost.
+  // When the user comes back, the UI is frozen with stale data.
+  let lastHiddenAt = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      lastHiddenAt = Date.now();
+      return;
+    }
+    // Page is visible again — recover
+    const awayMs = Date.now() - lastHiddenAt;
+    const wasAwayLong = awayMs > 3000; // more than 3 seconds in background
+
+    if (!state.gateway || !state.gateway.connected) {
+      // WS died while backgrounded — reconnection will happen via scheduleReconnect
+      // but force it immediately instead of waiting for backoff
+      if (state.gateway && !state.gateway.closed) {
+        state.gateway.backoffMs = 100;
+        // If WS is in a limbo state (not closed but not working), kill it
+        if (state.gateway.ws) {
+          try { state.gateway.ws.close(); } catch {}
+        }
+      }
+      return;
+    }
+
+    if (wasAwayLong) {
+      // Connection might still be alive but we missed stream events.
+      // Refresh chat to get the final state.
+      const activeStream = state.streams.get(state.sessionKey);
+      if (activeStream) {
+        // Was streaming when we left — check if it's still going or finished
+        loadChatHistory({ background: true }).then(() => {
+          // If history loaded and stream seems stale (no new deltas), clean up
+          const ss = state.streams.get(state.sessionKey);
+          if (ss && ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > 30000)) {
+            // Stream has been silent for 30s+ — likely finished while backgrounded
+            finishStream(state.sessionKey);
+            loadChatHistory();
+          }
+        });
+      } else {
+        // Not streaming — just refresh to pick up any messages we missed
+        loadChatHistory({ background: true });
+      }
+      updateContextMeter();
+    }
+  });
 }
 
 function updateConnectionStatus(connected) {
