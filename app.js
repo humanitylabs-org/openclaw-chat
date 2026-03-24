@@ -3101,26 +3101,44 @@ state.isMobile = isMobile;
 if (isMobile && window.visualViewport) {
   const inputArea = document.querySelector('.openclaw-input-area');
   const chatContainer = document.getElementById('chat-container');
-  let vpTimeout;
+  let wasKeyboardOpen = false;
   const onViewportResize = () => {
-    clearTimeout(vpTimeout);
-    vpTimeout = setTimeout(() => {
-      const vv = window.visualViewport;
-      const keyboardOpen = vv.height < window.innerHeight * 0.85;
-      if (keyboardOpen) {
-        // Keyboard is open: offset the input area up by the keyboard height
-        const offset = window.innerHeight - vv.height - vv.offsetTop;
-        inputArea.style.paddingBottom = '0px';
-        chatContainer.style.height = vv.height + 'px';
-      } else {
-        // Keyboard closed: restore
-        inputArea.style.paddingBottom = '';
-        chatContainer.style.height = '';
-      }
-    }, 50);
+    const vv = window.visualViewport;
+    const keyboardOpen = vv.height < window.innerHeight * 0.75;
+    if (keyboardOpen) {
+      // Keyboard is open: constrain chat to visible viewport
+      inputArea.style.paddingBottom = '0px';
+      chatContainer.style.height = vv.height + 'px';
+      // Prevent browser from scrolling the page down (causes blank space on Android)
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      // Keep messages scrolled to bottom
+      scrollToBottom();
+    } else {
+      // Keyboard closed: restore
+      inputArea.style.paddingBottom = '';
+      chatContainer.style.height = '';
+      window.scrollTo(0, 0);
+      if (wasKeyboardOpen) scrollToBottom();
+    }
+    wasKeyboardOpen = keyboardOpen;
   };
   window.visualViewport.addEventListener('resize', onViewportResize);
   window.visualViewport.addEventListener('scroll', onViewportResize);
+
+  // Also catch focus events — Android sometimes scrolls before visualViewport fires
+  ui.messageInput.addEventListener('focus', () => {
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 100);
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      scrollToBottom();
+    }, 300);
+  });
 }
 
 ui.messageInput.addEventListener("keydown", (e) => {
