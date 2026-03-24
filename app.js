@@ -2327,7 +2327,10 @@ function buildToolLabel(toolName, args) {
       const p = str(a?.path, str(a?.file_path));
       return { label: `✏️ Editing ${p.split("/").pop() || "file"}` };
     }
-    case "web_search": return { label: `🔍 Searching "${str(a?.query).slice(0, 40)}"` };
+    case "web_search": {
+      const q = str(a?.query);
+      return { label: `🔍 Searching "${q.length > 40 ? q.slice(0, 40) + "…" : q}"` };
+    }
     case "web_fetch": {
       const rawUrl = str(a?.url);
       try { return { label: `🌐 Fetching ${new URL(rawUrl).hostname}`, url: rawUrl }; }
@@ -2335,9 +2338,26 @@ function buildToolLabel(toolName, args) {
     }
     case "browser": return { label: "🌐 Using browser" };
     case "image": return { label: "👁️ Viewing image" };
+    case "memory_search": {
+      const q = str(a?.query);
+      return { label: `🧠 Searching "${q.length > 40 ? q.slice(0, 40) + "…" : q}"` };
+    }
+    case "memory_get": {
+      const p = str(a?.path);
+      return { label: `🧠 Reading ${p.split("/").pop() || "memory"}` };
+    }
     case "message": return { label: "💬 Sending message" };
     case "tts": return { label: "🔊 Speaking" };
+    case "session_status": return { label: "📊 Checking status" };
     case "sessions_spawn": return { label: "🤖 Spawning sub-agent" };
+    case "sessions_list": return { label: "📋 Listing sessions" };
+    case "sessions_history": return { label: "📜 Reading history" };
+    case "sessions_send": return { label: "📨 Sending to session" };
+    case "subagents": return { label: "🤖 Managing sub-agents" };
+    case "process": return { label: "⚙️ Managing process" };
+    case "nodes": return { label: "📡 Checking nodes" };
+    case "canvas": return { label: "🖼️ Using canvas" };
+    case "agents_list": return { label: "📋 Listing agents" };
     default: return { label: toolName ? `⚡ ${toolName}` : "Working" };
   }
 }
