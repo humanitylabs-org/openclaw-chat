@@ -1602,6 +1602,7 @@
               <div class="hud-settings-actions">
                 <button class="hud-server-action" onclick="sendControlAction('Run openclaw doctor. Summarize results.')" title="Health check">🩺 check-up</button>
                 <button class="hud-server-action" onclick="sendControlAction('Security audit: firewall, SSH, ports, updates. Brief summary.')">🛡️ security</button>
+                <button class="hud-server-action" onclick="sendControlAction('Optimize my agent startup speed. Audit AGENTS.md startup sequence — remove instructions to re-read files already injected in the system prompt (SOUL.md, USER.md, TOOLS.md, IDENTITY.md, HEARTBEAT.md). Then check MEMORY.md size — if over 16k chars, restructure it: move deep project details to memory/projects/ files, keep concise summaries in MEMORY.md. Goal: MEMORY.md under 16k so it fits in the system prompt without truncation, eliminating the need to re-read it. Report what you changed and the before/after size.')" title="Speed up session boot time">⚡ optimize startup</button>
                 <button class="hud-server-action" onclick="sendControlAction('Restart the gateway. Confirm when back.')">restart</button>
               </div>
               <div class="hud-settings-actions">

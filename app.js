@@ -2514,13 +2514,22 @@ function handleGatewayEvent(msg) {
   }
 }
 
+function matchActiveSessionKey(payload) {
+  const sk = str(payload.sessionKey);
+  if (!sk) return null;
+  const prefix = agentPrefix();
+  const active = state.sessionKey;
+  if (sk === active || sk === `${prefix}${active}` || sk.endsWith(`:${active}`)) return active;
+  return null;
+}
+
 function handleStreamEvent(payload) {
   const stream = str(payload.stream);
   const eventState = str(payload.state);
   const payloadData = payload.data;
 
-  const sessionKey = resolveStreamSession(payload);
-  const isActiveTab = sessionKey === state.sessionKey;
+  let sessionKey = resolveStreamSession(payload);
+  let isActiveTab = sessionKey === state.sessionKey;
 
   if (!sessionKey || !state.streams.has(sessionKey)) {
     if (stream === "compaction" || eventState === "compacting") {
@@ -2530,7 +2539,29 @@ function handleStreamEvent(payload) {
         else showBanner("Compacting context...");
       }
     }
-    return;
+    // Auto-create stream for startup/reset events on active session
+    const matched = matchActiveSessionKey(payload);
+    if (matched && (stream === "tool" || stream === "lifecycle" || eventState === "lifecycle")) {
+      const runId = str(payload.runId, str(payloadData?.runId));
+      const ss = {
+        runId: runId || "startup-" + Date.now(),
+        text: null,
+        toolCalls: [],
+        items: [],
+        splitPoints: [],
+        lastDeltaTime: 0,
+        compactTimer: null,
+        workingTimer: null,
+      };
+      state.streams.set(matched, ss);
+      if (runId) state.runToSession.set(runId, matched);
+      sessionKey = matched;
+      isActiveTab = true;
+      hideLoading(); // replace static "Loading…" with live tool activity
+      setSendButtonStopMode(true);
+    } else {
+      return;
+    }
   }
 
   const ss = state.streams.get(sessionKey);
