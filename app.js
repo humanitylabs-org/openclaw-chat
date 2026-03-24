@@ -1447,6 +1447,11 @@ async function switchTab(tab) {
   state.sessionKey = tab.key;
   localStorage.setItem("sessionKey", tab.key);
 
+  // Visual switch IMMEDIATELY — don't wait for history
+  renderTabs();
+  updateMobileTabLabelInstant(tab);
+  restoreDraft();
+
   // Serve from cache instantly if available
   const cached = state.tabCache[tab.key];
   if (cached) {
@@ -1461,14 +1466,9 @@ async function switchTab(tab) {
   }
 
   restoreStreamUI();
-  restoreDraft();
   renderQueuedMessages();
 
-  // Update mobile tab label IMMEDIATELY (no waiting for sessions.list)
-  updateMobileTabLabelInstant(tab);
-
-  // Re-render tabs and context meter in background (don't block UI)
-  renderTabs();
+  // Context meter in background (don't block UI)
   updateContextMeter();
 }
 
