@@ -614,6 +614,8 @@ async function startChat() {
   prefetchAllTabs(); // pre-load other tabs in background
   restoreDraft();
   renderQueuedMessages();
+  // Drain any queued messages from a previous session/page load
+  setTimeout(() => processQueue(), 1000);
 
   setInterval(() => updateContextMeter(), 15000);
 }
@@ -1423,6 +1425,8 @@ function processQueue() {
   if (!queue || queue.length === 0) return;
   // Don't process if still streaming or sending
   if (state.streams.has(key) || state.sending) return;
+  // Don't process if gateway is disconnected
+  if (!state.gateway?.connected) return;
   const next = queue.shift();
   if (queue.length === 0) delete state.messageQueue[key];
   localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
@@ -1467,6 +1471,11 @@ async function switchTab(tab) {
 
   restoreStreamUI();
   renderQueuedMessages();
+
+  // Drain any queued messages if no active stream on this tab
+  if (!state.streams.has(tab.key) && !state.sending) {
+    setTimeout(() => processQueue(), 300);
+  }
 
   // Context meter in background (don't block UI)
   updateContextMeter();
@@ -2444,9 +2453,9 @@ function finishStream(sessionKey) {
     ui.typingIndicator.classList.add("oc-hidden");
     const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
     if (typingText) typingText.textContent = "Thinking";
-    // Auto-send next queued message after a brief pause
-    setTimeout(() => processQueue(), 500);
   }
+  // Always try to drain queue for the finished session (even if user switched tabs)
+  setTimeout(() => processQueue(), 500);
 }
 
 function restoreStreamUI() {
@@ -2651,7 +2660,12 @@ function handleChatEvent(payload) {
   const chatState = str(payload.state);
 
   if (!ss && (chatState === "final" || chatState === "aborted" || chatState === "error")) {
-    if (isActiveTab) { hideBanner(); loadChatHistory(); }
+    if (isActiveTab) {
+      hideBanner();
+      loadChatHistory();
+      // Drain queue — stream may have been cleaned up before final arrived
+      setTimeout(() => processQueue(), 500);
+    }
     return;
   }
 
