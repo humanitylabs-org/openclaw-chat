@@ -3480,6 +3480,9 @@ ui.tabBar.addEventListener("wheel", (e) => {
     ui.messagesContainer.addEventListener("touchstart", (e) => {
       if (!state.isMobile) return;
       if (e.target.closest("textarea, input, a, button, .openclaw-tool-item")) return;
+      // Don't intercept swipes starting inside horizontally-scrollable code blocks
+      const scrollable = e.target.closest("pre, code, .openclaw-file-viewer-body");
+      if (scrollable && scrollable.scrollWidth > scrollable.clientWidth) return;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
