@@ -786,6 +786,7 @@ async function switchAgent(agent) {
   loadAgentFiles();
   loadCronJobs();
   loadSubagents();
+  renderRecentlyClosed();
 }
 
 // Top-bar agent dropdown removed — control panel handles switching
@@ -1594,12 +1595,17 @@ async function resetTab(tab) {
 
 async function closeTab(tab, currentKey) {
   if (!state.gateway?.connected || state.tabDeleteInProgress) return;
-  const ok = await confirmClose("Close tab?", `Close "${tab.label}"? Chat history will be lost.`);
+  const ok = await confirmClose("Close tab?", `Close "${tab.label}"?`);
   if (!ok) return;
   delete state.tabCache[tab.key];
+
+  // Soft-close: move to recently closed instead of deleting
+  addToRecentlyClosed(tab);
+
+  // Remove from gateway session list (but don't delete transcript)
   state.tabDeleteInProgress = true;
   try {
-    await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tab.key}`);
+    await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tab.key}`, false);
   } catch (err) {
     console.error("Close failed:", err);
   } finally {
@@ -1615,6 +1621,179 @@ async function closeTab(tab, currentKey) {
   }
   await renderTabs();
   await updateContextMeter();
+  renderRecentlyClosed();
+}
+
+// ─── Recently Closed Management ──────────────────────────────────
+
+function getRecentlyClosed() {
+  try {
+    return JSON.parse(localStorage.getItem("recentlyClosed") || "[]");
+  } catch { return []; }
+}
+
+function saveRecentlyClosed(items) {
+  localStorage.setItem("recentlyClosed", JSON.stringify(items));
+}
+
+function getRCRetentionDays() {
+  return parseInt(localStorage.getItem("rcRetentionDays") || "30", 10);
+}
+
+function setRCRetention(days) {
+  localStorage.setItem("rcRetentionDays", String(days));
+  pruneRecentlyClosed();
+  renderRecentlyClosed();
+}
+
+function addToRecentlyClosed(tab) {
+  const items = getRecentlyClosed();
+  // Don't duplicate
+  const existing = items.findIndex(i => i.key === tab.key);
+  if (existing >= 0) items.splice(existing, 1);
+  items.unshift({
+    key: tab.key,
+    label: tab.label || "Untitled",
+    closedAt: Date.now(),
+    agentPrefix: agentPrefix(),
+  });
+  // Cap at 50 items
+  if (items.length > 50) items.length = 50;
+  saveRecentlyClosed(items);
+}
+
+function pruneRecentlyClosed() {
+  const items = getRecentlyClosed();
+  const days = getRCRetentionDays();
+  const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+  const pruned = items.filter(i => i.closedAt > cutoff);
+  if (pruned.length !== items.length) saveRecentlyClosed(pruned);
+  return pruned;
+}
+
+function formatAge(timestamp) {
+  const diff = Date.now() - timestamp;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
+}
+
+function renderRecentlyClosed() {
+  const section = document.getElementById("recently-closed-section");
+  const container = document.getElementById("recently-closed-list");
+  if (!section || !container) return;
+
+  const items = pruneRecentlyClosed();
+
+  // Hide section if empty
+  if (items.length === 0) {
+    section.style.display = "none";
+    return;
+  }
+  section.style.display = "";
+
+  // Set retention dropdown
+  const select = document.getElementById("rc-retention-select");
+  if (select) select.value = String(getRCRetentionDays());
+
+  container.innerHTML = "";
+  for (const item of items) {
+    const row = document.createElement("div");
+    row.className = "hud-rc-item";
+    row.title = `Restore "${item.label}"`;
+    row.addEventListener("click", () => restoreRecentlyClosed(item));
+
+    const label = document.createElement("span");
+    label.className = "hud-rc-item-label";
+    label.textContent = item.label;
+
+    const age = document.createElement("span");
+    age.className = "hud-rc-item-age";
+    age.textContent = formatAge(item.closedAt);
+
+    const del = document.createElement("button");
+    del.className = "hud-rc-item-delete";
+    del.textContent = "✕";
+    del.title = "Delete permanently";
+    del.addEventListener("click", (e) => {
+      e.stopPropagation();
+      permanentlyDeleteClosed(item);
+    });
+
+    row.appendChild(label);
+    row.appendChild(age);
+    row.appendChild(del);
+    container.appendChild(row);
+  }
+}
+
+async function restoreRecentlyClosed(item) {
+  if (!state.gateway?.connected) return;
+
+  // Remove from recently closed
+  const items = getRecentlyClosed();
+  const idx = items.findIndex(i => i.key === item.key);
+  if (idx >= 0) items.splice(idx, 1);
+  saveRecentlyClosed(items);
+
+  // Try to restore the session label on the gateway
+  try {
+    await state.gateway.request("sessions.patch", {
+      key: `${item.agentPrefix || agentPrefix()}${item.key}`,
+      label: item.label,
+    });
+  } catch { /* session may have been reset, that's OK */ }
+
+  // Switch to this tab
+  state.sessionKey = item.key;
+  localStorage.setItem("sessionKey", item.key);
+  state.messages = [];
+  ui.messagesContainer.innerHTML = "";
+  await loadChatHistory();
+  await renderTabs();
+  await updateContextMeter();
+  renderRecentlyClosed();
+}
+
+async function permanentlyDeleteClosed(item) {
+  // Remove from list
+  const items = getRecentlyClosed();
+  const idx = items.findIndex(i => i.key === item.key);
+  if (idx >= 0) items.splice(idx, 1);
+  saveRecentlyClosed(items);
+
+  // Delete from gateway (with transcript)
+  try {
+    if (state.gateway?.connected) {
+      await deleteSessionWithFallback(state.gateway, `${item.agentPrefix || agentPrefix()}${item.key}`, true);
+    }
+  } catch { /* best effort */ }
+
+  renderRecentlyClosed();
+}
+
+async function clearRecentlyClosed() {
+  const items = getRecentlyClosed();
+  if (items.length === 0) return;
+  const ok = await confirmClose("Clear all?", `Permanently delete ${items.length} closed tab(s)?`);
+  if (!ok) return;
+
+  // Delete all from gateway
+  for (const item of items) {
+    try {
+      if (state.gateway?.connected) {
+        await deleteSessionWithFallback(state.gateway, `${item.agentPrefix || agentPrefix()}${item.key}`, true);
+      }
+    } catch { /* best effort */ }
+  }
+
+  saveRecentlyClosed([]);
+  renderRecentlyClosed();
 }
 
 async function createNewTab() {
@@ -3673,6 +3852,7 @@ async function fetchServerInfo() {
     loadAgentSwitcher();
     loadAgentFiles();
     loadCronJobs();
+    renderRecentlyClosed();
 
     // Version + Update (from connect snapshot)
     const snap = state.snapshot || {};

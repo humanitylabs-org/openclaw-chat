@@ -1476,8 +1476,16 @@
         <!-- Alerts -->
         <div class="hud-alerts" id="hud-alerts"></div>
 
-        <!-- ═══ Files ═══ -->
-        <div class="hud-files-row" id="hud-file-list"></div>
+        <!-- ═══ Agent Files (collapsible) ═══ -->
+        <div class="hud-section hud-collapsible" data-section="agent-files">
+          <button class="hud-section-toggle" onclick="toggleSection('agent-files')">
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg> AGENT FILES</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div class="hud-files-row" id="hud-file-list"></div>
+          </div>
+        </div>
 
         <!-- ═══ MindFeed Widget (always visible, cropped) ═══ -->
         <div class="hud-section hud-mindfeed-widget" id="mindfeed-widget">
@@ -1534,6 +1542,29 @@
             <div class="hud-subagents-subsection">
               <div class="hud-subsection-label">Sub-agents</div>
               <div id="hud-subagents-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Recently Closed ═══ -->
+        <div class="hud-section hud-collapsible" data-section="recently-closed" id="recently-closed-section" style="display:none">
+          <button class="hud-section-toggle" onclick="toggleSection('recently-closed')">
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> RECENTLY CLOSED</span>
+            <span class="hud-section-actions">
+              <span class="hud-embed-action hud-when-open" id="recently-closed-clear-btn" title="Clear all" onclick="event.stopPropagation(); clearRecentlyClosed();">✕</span>
+              <span class="hud-section-chevron">›</span>
+            </span>
+          </button>
+          <div class="hud-section-body">
+            <div id="recently-closed-list"></div>
+            <div class="hud-recently-closed-footer" id="recently-closed-footer">
+              <span class="hud-rc-retention-label">Auto-delete after</span>
+              <select class="hud-rc-retention-select" id="rc-retention-select" onchange="setRCRetention(this.value)">
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30" selected>30 days</option>
+                <option value="90">90 days</option>
+              </select>
             </div>
           </div>
         </div>
