@@ -743,15 +743,20 @@
   color: #e55;
   background: rgba(255,80,80,0.1);
 }
-.hud-recently-closed-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.hud-rc-settings {
   padding: 8px 4px 4px;
   border-top: 1px solid rgba(255,255,255,0.04);
   margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.hud-rc-retention-label {
+.hud-rc-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hud-rc-setting-label {
   font-size: 10px;
   color: var(--text-faint);
 }
@@ -772,12 +777,6 @@
   padding: 12px 0;
 }
 
-.hud-rc-info {
-  font-size: 10px;
-  color: var(--text-faint);
-  padding: 4px 4px 8px;
-  line-height: 1.4;
-}
 .hud-rc-badge {
   display: inline-block;
   font-size: 9px;
@@ -793,7 +792,7 @@
   background: rgba(255,255,255,0.08);
   color: var(--text-faint);
 }
-.hud-rc-badge-refreshed {
+.hud-rc-badge-auto {
   background: rgba(74,158,255,0.15);
   color: #6ab0ff;
 }
@@ -836,7 +835,7 @@
   color: #2a6fb5;
 }
 [data-theme="light"] .oc-refresh-banner-close { color: #2a6fb5; }
-[data-theme="light"] .hud-rc-badge-refreshed {
+[data-theme="light"] .hud-rc-badge-auto {
   background: rgba(30,100,200,0.1);
   color: #2a6fb5;
 }
@@ -851,7 +850,7 @@
   border-color: rgba(0,0,0,0.1);
 }
 [data-theme="light"] .hud-rc-item { border-bottom-color: rgba(0,0,0,0.06); }
-[data-theme="light"] .hud-recently-closed-footer { border-top-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .hud-rc-settings { border-top-color: rgba(0,0,0,0.06); }
 
 /* ── Bottom Controls ──────────────────────────────────── */
 

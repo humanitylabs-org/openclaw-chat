@@ -1655,6 +1655,15 @@ function setRCRetention(days) {
   renderTabHistory();
 }
 
+function getAutoCloseDays() {
+  return parseInt(localStorage.getItem("autoCloseDays") || "1", 10);
+}
+
+function setAutoClosePolicy(days) {
+  localStorage.setItem("autoCloseDays", String(days));
+  renderTabHistory();
+}
+
 function addToTabHistory(tab, reason = "closed") {
   const items = getTabHistory();
   // Don't duplicate same key
@@ -1743,7 +1752,7 @@ function showRefreshBanner(tabLabel) {
   const banner = document.getElementById("refresh-banner");
   const text = document.getElementById("refresh-banner-text");
   if (!banner) return;
-  if (text) text.textContent = `This session was refreshed. Previous conversation moved to Tab History.`;
+  if (text) text.textContent = `This session was auto closed. Previous conversation moved to Recently Closed.`;
   banner.classList.remove("oc-hidden");
 }
 
@@ -1755,8 +1764,8 @@ function dismissRefreshBanner() {
 // ─── Tab History Rendering ───────────────────────────────────────
 
 function renderTabHistory() {
-  const section = document.getElementById("tab-history-section");
-  const container = document.getElementById("tab-history-list");
+  const section = document.getElementById("recently-closed-section");
+  const container = document.getElementById("recently-closed-list");
   if (!section || !container) return;
 
   const items = pruneTabHistory();
@@ -1768,9 +1777,11 @@ function renderTabHistory() {
   }
   section.style.display = "";
 
-  // Set retention dropdown
-  const select = document.getElementById("rc-retention-select");
-  if (select) select.value = String(getRCRetentionDays());
+  // Set dropdowns
+  const retentionSelect = document.getElementById("rc-retention-select");
+  if (retentionSelect) retentionSelect.value = String(getRCRetentionDays());
+  const autoCloseSelect = document.getElementById("rc-autoclose-select");
+  if (autoCloseSelect) autoCloseSelect.value = String(getAutoCloseDays());
 
   container.innerHTML = "";
   for (const item of items) {
@@ -1786,8 +1797,8 @@ function renderTabHistory() {
     // Reason badge
     const badge = document.createElement("span");
     if (item.reason === "refreshed") {
-      badge.className = "hud-rc-badge hud-rc-badge-refreshed";
-      badge.textContent = "refreshed";
+      badge.className = "hud-rc-badge hud-rc-badge-auto";
+      badge.textContent = "auto closed";
     } else {
       badge.className = "hud-rc-badge hud-rc-badge-closed";
       badge.textContent = "closed";
@@ -2262,6 +2273,14 @@ async function loadChatHistory(opts) {
       })
       .filter(m => (m.text.trim() || m.images.length > 0) && !m.text.startsWith("HEARTBEAT"));
 
+    // Strip injected system messages from user messages
+    parsed = parsed.map(m => {
+      if (m.role === "user") {
+        m.text = stripSystemMessages(m.text);
+      }
+      return m;
+    }).filter(m => m.text.trim() || m.images.length > 0);
+
     // Hide system-generated startup messages (not real user input)
     if (parsed.length > 0 && parsed[0].role === "user") {
       const firstText = parsed[0].text.trim();
@@ -2300,6 +2319,34 @@ async function prefetchAllTabs() {
     if (state.tabCache[tab.key]) continue; // already cached
     loadChatHistory({ background: true, sessionKey: tab.key });
   }
+}
+
+// Strip system-injected messages from user message text
+// These are OpenClaw gateway notifications (exec completed, etc.) that get
+// prepended to user messages. They start with "System: [" or "[System Message]"
+function stripSystemMessages(text) {
+  if (!text) return text;
+  // Split into lines and filter out system lines + their trailing blank lines
+  const lines = text.split("\n");
+  const cleaned = [];
+  let skipBlanks = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    // Match system message patterns:
+    // "System: [2026-03-26 13:20:19 UTC] Exec completed..."
+    // "[System Message] ..."
+    // "System: [timestamp] ..."
+    if (/^System:\s*\[/i.test(trimmed) || /^\[System Message\]/i.test(trimmed)) {
+      skipBlanks = true;
+      continue;
+    }
+    if (skipBlanks && trimmed === "") continue;
+    skipBlanks = false;
+    cleaned.push(line);
+  }
+
+  return cleaned.join("\n").trim();
 }
 
 function extractContent(content) {
