@@ -1636,11 +1636,10 @@
           </div>
 
           <!-- ═══ Recently Closed ═══ -->
-          <div class="hud-section hud-collapsible" data-section="recently-closed" id="recently-closed-section" style="display:none">
+          <div class="hud-section hud-collapsible" data-section="recently-closed" id="recently-closed-section">
             <button class="hud-section-toggle" onclick="toggleSection('recently-closed')">
               <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> RECENTLY CLOSED</span>
               <span class="hud-section-actions">
-                <span class="hud-embed-action hud-when-open" id="recently-closed-clear-btn" title="Clear all" onclick="event.stopPropagation(); clearTabHistory();">✕</span>
                 <span class="hud-section-chevron">›</span>
               </span>
             </button>
@@ -1666,6 +1665,7 @@
                   </select>
                 </div>
               </div>
+              <button class="hud-rc-delete-all-btn oc-hidden" id="rc-delete-all-btn" onclick="clearTabHistory()">Delete All</button>
             </div>
           </div>
 

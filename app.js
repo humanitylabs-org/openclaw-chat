@@ -1819,16 +1819,10 @@ function dismissRefreshBanner() {
 function renderTabHistory() {
   const section = document.getElementById("recently-closed-section");
   const container = document.getElementById("recently-closed-list");
+  const deleteAllBtn = document.getElementById("rc-delete-all-btn");
   if (!section || !container) return;
 
   const items = pruneTabHistory();
-
-  // Hide section if empty
-  if (items.length === 0) {
-    section.style.display = "none";
-    return;
-  }
-  section.style.display = "";
 
   // Set dropdowns
   const retentionSelect = document.getElementById("rc-retention-select");
@@ -1837,6 +1831,16 @@ function renderTabHistory() {
   if (autoCloseSelect) autoCloseSelect.value = String(getAutoCloseDays());
 
   container.innerHTML = "";
+
+  // Show empty state or items
+  if (items.length === 0) {
+    container.innerHTML = '<div class="hud-empty-hint">No recently closed tabs</div>';
+    if (deleteAllBtn) deleteAllBtn.classList.add("oc-hidden");
+    return;
+  }
+
+  if (deleteAllBtn) deleteAllBtn.classList.remove("oc-hidden");
+
   for (const item of items) {
     const row = document.createElement("div");
     row.className = "hud-rc-item";

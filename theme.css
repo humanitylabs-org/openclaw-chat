@@ -852,6 +852,37 @@
 [data-theme="light"] .hud-rc-item { border-bottom-color: rgba(0,0,0,0.06); }
 [data-theme="light"] .hud-rc-settings { border-top-color: rgba(0,0,0,0.06); }
 
+/* Delete All button */
+.hud-rc-delete-all-btn {
+  display: block;
+  width: calc(100% - 8px);
+  margin: 6px 4px 4px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  color: #ff6b6b;
+  background: rgba(255,107,107,0.08);
+  border: 1px solid rgba(255,107,107,0.15);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: center;
+}
+.hud-rc-delete-all-btn:hover {
+  background: rgba(255,107,107,0.15);
+  border-color: rgba(255,107,107,0.25);
+}
+[data-theme="light"] .hud-rc-delete-all-btn {
+  color: #d32f2f;
+  background: rgba(211,47,47,0.06);
+  border-color: rgba(211,47,47,0.12);
+}
+[data-theme="light"] .hud-rc-delete-all-btn:hover {
+  background: rgba(211,47,47,0.12);
+  border-color: rgba(211,47,47,0.2);
+}
+
 /* ── Agent Card ───────────────────────────────────────── */
 
 .hud-agent-card {
