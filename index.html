@@ -704,11 +704,11 @@
 
     .openclaw-msg-user {
       align-self: flex-end;
-      background: #3a3a42;
-      color: var(--text-on-accent);
+      background: #e0e0e3;
+      color: #1a1a1a;
       border-bottom-right-radius: 4px;
     }
-    .openclaw-msg-user .openclaw-msg-text { color: var(--text-on-accent); }
+    .openclaw-msg-user .openclaw-msg-text { color: #1a1a1a; }
 
     .openclaw-msg-assistant {
       align-self: flex-start;
@@ -1487,23 +1487,10 @@
           </div>
         </div>
 
-        <!-- ═══ MindFeed Widget (always visible, cropped) ═══ -->
-        <div class="hud-section hud-mindfeed-widget" id="mindfeed-widget">
-          <div class="hud-mindfeed-widget-header">
-            <span class="hud-section-label-row"><span class="hud-embed-dot" id="mindfeed-dot"></span>MINDFEED</span>
-            <span class="hud-mindfeed-widget-actions">
-              <span class="hud-embed-action" id="mindfeed-refresh-btn" title="Refresh">↻</span>
-              <span class="hud-embed-action" id="mindfeed-expand-btn" title="Expand">⤢</span>
-              <span class="hud-embed-action hud-mf-close-btn" id="mindfeed-close-btn" title="Back to panel">✕</span>
-            </span>
-          </div>
-          <div class="hud-mindfeed-widget-body" id="mindfeed-panel-body"></div>
-        </div>
-
         <!-- ═══ Browser (collapsible + expandable) ═══ -->
         <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-browser" id="browser-panel">
           <button class="hud-section-toggle" id="browser-panel-header">
-            <span class="hud-section-label-row"><span class="hud-embed-dot" id="browser-dot"></span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> BROWSER</span>
+            <span class="hud-section-label-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> BROWSER <span class="hud-embed-dot" id="browser-dot"></span></span>
             <span class="hud-section-actions">
               <span class="hud-embed-action hud-when-open" id="browser-refresh-btn" title="Refresh">↻</span>
               <span class="hud-embed-action hud-when-open" id="browser-expand-btn" title="Expand">⤢</span>
@@ -1517,7 +1504,7 @@
         <!-- ═══ Terminal (collapsible + expandable) ═══ -->
         <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-terminal" id="terminal-panel">
           <button class="hud-section-toggle" id="terminal-panel-header">
-            <span class="hud-section-label-row"><span class="hud-embed-dot" id="terminal-dot"></span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> TERMINAL</span>
+            <span class="hud-section-label-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> TERMINAL <span class="hud-embed-dot" id="terminal-dot"></span></span>
             <span class="hud-section-actions">
               <span class="hud-embed-action hud-when-open" id="terminal-refresh-btn" title="Refresh">↻</span>
               <span class="hud-embed-action hud-when-open" id="terminal-expand-btn" title="Expand">⤢</span>
@@ -1664,6 +1651,28 @@
             </div>
           </div>
         </div>
+        <!-- ═══ Widgets ═══ -->
+        <div class="hud-section hud-collapsible hud-open" data-section="widgets">
+          <button class="hud-section-toggle" onclick="toggleSection('widgets')">
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> WIDGETS</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <!-- MindFeed Widget -->
+            <div class="hud-mindfeed-widget" id="mindfeed-widget">
+              <div class="hud-mindfeed-widget-header">
+                <span class="hud-section-label-row">MINDFEED <span class="hud-embed-dot" id="mindfeed-dot"></span></span>
+                <span class="hud-mindfeed-widget-actions">
+                  <span class="hud-embed-action" id="mindfeed-refresh-btn" title="Refresh">↻</span>
+                  <span class="hud-embed-action" id="mindfeed-expand-btn" title="Expand">⤢</span>
+                  <span class="hud-embed-action hud-mf-close-btn" id="mindfeed-close-btn" title="Back to panel">✕</span>
+                </span>
+              </div>
+              <div class="hud-mindfeed-widget-body" id="mindfeed-panel-body"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Hidden disconnect -->
         <div style="display:none;"><button id="dash-disconnect-btn">Disconnect</button></div>
 
@@ -1842,6 +1851,15 @@
         <button class="oc-confirm-cancel" id="confirm-cancel">Cancel</button>
         <button class="oc-confirm-ok" id="confirm-ok">Close</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Restart required toast -->
+  <div class="oc-restart-toast oc-hidden" id="restart-toast">
+    <div class="oc-restart-toast-content">
+      <span class="oc-restart-toast-text">Restart the gateway for this to take effect.</span>
+      <button class="oc-restart-toast-btn" id="restart-toast-apply" onclick="applyAutoCloseConfig()">Apply &amp; restart</button>
+      <button class="oc-restart-toast-close" onclick="dismissRestartToast()">✕</button>
     </div>
   </div>
 

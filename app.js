@@ -1660,8 +1660,61 @@ function getAutoCloseDays() {
 }
 
 function setAutoClosePolicy(days) {
+  const prev = getAutoCloseDays();
   localStorage.setItem("autoCloseDays", String(days));
   renderTabHistory();
+  // Show restart toast if the setting actually changed
+  if (prev !== parseInt(days, 10)) {
+    showRestartToast();
+  }
+}
+
+// ─── Auto-Close Config (Gateway Integration) ────────────────────
+
+function showRestartToast() {
+  const toast = document.getElementById("restart-toast");
+  if (toast) toast.classList.remove("oc-hidden");
+}
+
+function dismissRestartToast() {
+  const toast = document.getElementById("restart-toast");
+  if (toast) toast.classList.add("oc-hidden");
+}
+
+async function applyAutoCloseConfig() {
+  if (!state.gateway?.connected) return;
+  const days = getAutoCloseDays();
+  let configMsg;
+  if (days === 0) {
+    configMsg = "Please run these commands and restart the gateway:\n" +
+      "openclaw config set session.reset.mode idle\n" +
+      "openclaw config set session.reset.idleMinutes 525600\n" +
+      "openclaw gateway restart";
+  } else if (days === 1) {
+    configMsg = "Please run these commands and restart the gateway:\n" +
+      "openclaw config set session.reset.mode daily\n" +
+      "openclaw config set session.reset.atHour 4\n" +
+      "openclaw gateway restart";
+  } else {
+    const idleMinutes = days * 24 * 60;
+    configMsg = "Please run these commands and restart the gateway:\n" +
+      "openclaw config set session.reset.mode idle\n" +
+      `openclaw config set session.reset.idleMinutes ${idleMinutes}\n` +
+      "openclaw gateway restart";
+  }
+
+  // Send as a message to the agent
+  try {
+    await state.gateway.request("chat.send", {
+      sessionKey: `${agentPrefix()}${state.sessionKey}`,
+      message: configMsg,
+    });
+    dismissRestartToast();
+    // Reload to show the sent message
+    await loadChatHistory();
+  } catch (err) {
+    console.error("Failed to send config command:", err);
+  }
 }
 
 function addToTabHistory(tab, reason = "closed") {
