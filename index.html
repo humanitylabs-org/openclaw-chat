@@ -32,8 +32,10 @@
       --text-muted: #999;
       --text-faint: #666;
       --text-on-accent: #E8E8E8;
-      --interactive-accent: #5B9FE4;
-      --interactive-accent-hover: #7AB4ED;
+      --interactive-accent: #2A2A2E;
+      --interactive-accent-hover: #343438;
+      --link-color: #7aafef;
+      --link-color-hover: #9dc4f4;
       --accent-rgb: 242, 242, 242;
       --header-height: 36px;
     }
@@ -743,7 +745,8 @@
       overflow-x: auto;
       font-size: 12px;
     }
-    .openclaw-msg-assistant a { color: var(--interactive-accent); text-decoration: underline; }
+    .openclaw-msg-assistant a { color: var(--link-color, var(--interactive-accent)); text-decoration: underline; }
+    .openclaw-msg-assistant a:hover { color: var(--link-color-hover, var(--interactive-accent-hover)); }
     .openclaw-msg-assistant strong { font-weight: 600; }
     .openclaw-msg-assistant em { font-style: italic; }
     .openclaw-msg-assistant ul, .openclaw-msg-assistant ol {
@@ -1276,8 +1279,10 @@
       --text-muted: #666;
       --text-faint: #999;
       --text-on-accent: #fff;
-      --interactive-accent: #4a7dff;
-      --interactive-accent-hover: #3a6ae6;
+      --interactive-accent: #e8e8ec;
+      --interactive-accent-hover: #dcdce0;
+      --link-color: #2563eb;
+      --link-color-hover: #1d4ed8;
     }
     body[data-theme="light"] .openclaw-msg-assistant {
       color: var(--text-normal);
@@ -1286,7 +1291,7 @@
     [data-theme="light"] .openclaw-top-bar { background: var(--background-secondary); border-bottom-color: var(--background-modifier-border); }
     [data-theme="light"] .openclaw-msg-assistant { background: var(--background-secondary); }
     [data-theme="light"] .openclaw-msg-user { background: var(--interactive-accent); }
-    [data-theme="light"] .openclaw-msg-user .openclaw-msg-text { color: var(--text-on-accent); }
+    [data-theme="light"] .openclaw-msg-user .openclaw-msg-text { color: #1a1a1a; }
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
