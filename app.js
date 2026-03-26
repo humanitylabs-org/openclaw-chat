@@ -5504,6 +5504,7 @@ function closeDashboard() {
 
       setState(cfg, 'open');
       if (!cfg.iframe) preloadIframe(cfg);
+      else if (cfg.iframe) { cfg.iframe.src = cfg.iframe.src; } // refresh on open
       const sectionMap = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal' };
       localStorage.setItem('openSection', sectionMap[cfg.id] || cfg.id);
     } else {

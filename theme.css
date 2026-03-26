@@ -2506,11 +2506,12 @@
 
 .hud-section {
   border-top: none !important;
-  background: rgba(255,255,255,0.045);
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  border-radius: 8px;
+  background: transparent;
+  border: none !important;
+  border-radius: 0;
   padding: 0 12px !important;
-  margin-top: 6px;
+  margin-top: 2px;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
 }
 
 .hud-section:first-of-type {
@@ -2518,8 +2519,7 @@
 }
 
 .hud-section.hud-collapsible.hud-open {
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.10) !important;
+  background: transparent;
 }
 
 .hud-section.hud-collapsible.hud-open .hud-section-body {
@@ -2701,15 +2701,15 @@
 }
 
 [data-theme="light"] .hud-section {
-  background: rgba(255,255,255,0.7) !important;
-  border-color: rgba(0,0,0,0.08) !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(0,0,0,0.08) !important;
+  box-shadow: none;
 }
 
 [data-theme="light"] .hud-section.hud-collapsible.hud-open {
-  background: rgba(255,255,255,0.85) !important;
-  border-color: rgba(0,0,0,0.10) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  background: transparent !important;
+  box-shadow: none;
 }
 
 [data-theme="light"] .landing-preview-frame {
@@ -3124,10 +3124,10 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 
 .hud-mindfeed-widget {
   overflow: hidden;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.045);
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  margin-top: 6px;
+  border-radius: 0;
+  background: transparent;
+  border: none !important;
+  margin-top: 0;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -3151,7 +3151,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   overflow: hidden;
   position: relative;
   background: #0a0a0f;
-  border-radius: 0 0 8px 8px;
+  border-radius: 6px;
 }
 
 .hud-mindfeed-widget-body iframe {
@@ -3208,8 +3208,8 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 }
 
 [data-theme="light"] .hud-mindfeed-widget {
-  background: rgba(0,0,0,0.03);
-  border-color: rgba(0,0,0,0.08) !important;
+  background: transparent;
+  border: none !important;
 }
 
 [data-theme="light"] .hud-mindfeed-widget-body {
