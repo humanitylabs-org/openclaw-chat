@@ -1477,86 +1477,8 @@
         <div class="hud-alerts" id="hud-alerts"></div>
 
         <!-- ══════════════════════════════════════════════ -->
-        <!-- AGENT-SCOPED SECTIONS                        -->
-        <!-- ══════════════════════════════════════════════ -->
-
-        <!-- ═══ Agent Files (collapsible) ═══ -->
-        <div class="hud-section hud-collapsible" data-section="agent-files">
-          <button class="hud-section-toggle" onclick="toggleSection('agent-files')">
-            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg> AGENT FILES</span>
-            <span class="hud-section-chevron">›</span>
-          </button>
-          <div class="hud-section-body">
-            <div class="hud-files-row" id="hud-file-list"></div>
-          </div>
-        </div>
-
-        <!-- ═══ Recurring Tasks ═══ -->
-        <div class="hud-section hud-collapsible" data-section="recurring-tasks">
-          <button class="hud-section-toggle" onclick="toggleSection('recurring-tasks')">
-            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg> RECURRING TASKS</span>
-            <span class="hud-section-actions">
-              <span class="hud-embed-action hud-when-open" id="tasks-refresh-btn" title="Refresh" onclick="event.stopPropagation(); loadCronJobs();">↻</span>
-              <span class="hud-section-chevron">›</span>
-            </span>
-          </button>
-          <div class="hud-section-body">
-            <div class="hud-timeline" id="hud-cron-list"></div>
-          </div>
-        </div>
-
-        <!-- ═══ Sub-Agents ═══ -->
-        <div class="hud-section hud-collapsible" data-section="sub-agents">
-          <button class="hud-section-toggle" onclick="toggleSection('sub-agents')">
-            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> SUB-AGENTS</span>
-            <span class="hud-section-actions">
-              <span class="hud-embed-action hud-when-open" id="subagents-refresh-btn" title="Refresh" onclick="event.stopPropagation(); loadSubagents();">↻</span>
-              <span class="hud-section-chevron">›</span>
-            </span>
-          </button>
-          <div class="hud-section-body">
-            <div id="hud-subagents-list"></div>
-          </div>
-        </div>
-
-        <!-- ═══ Recently Closed ═══ -->
-        <div class="hud-section hud-collapsible" data-section="recently-closed" id="recently-closed-section" style="display:none">
-          <button class="hud-section-toggle" onclick="toggleSection('recently-closed')">
-            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> RECENTLY CLOSED</span>
-            <span class="hud-section-actions">
-              <span class="hud-embed-action hud-when-open" id="recently-closed-clear-btn" title="Clear all" onclick="event.stopPropagation(); clearTabHistory();">✕</span>
-              <span class="hud-section-chevron">›</span>
-            </span>
-          </button>
-          <div class="hud-section-body">
-            <div id="recently-closed-list"></div>
-            <div class="hud-rc-settings">
-              <div class="hud-rc-setting-row">
-                <span class="hud-rc-setting-label">Auto close after</span>
-                <select class="hud-rc-retention-select" id="rc-autoclose-select" onchange="setAutoClosePolicy(this.value)">
-                  <option value="1">1 day</option>
-                  <option value="3">3 days</option>
-                  <option value="7">7 days</option>
-                  <option value="0">Never</option>
-                </select>
-              </div>
-              <div class="hud-rc-setting-row">
-                <span class="hud-rc-setting-label">Delete forever after</span>
-                <select class="hud-rc-retention-select" id="rc-retention-select" onchange="setRCRetention(this.value)">
-                  <option value="7">7 days</option>
-                  <option value="14">14 days</option>
-                  <option value="30" selected>30 days</option>
-                  <option value="90">90 days</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ══════════════════════════════════════════════ -->
         <!-- GATEWAY-SCOPED SECTIONS                       -->
         <!-- ══════════════════════════════════════════════ -->
-        <div class="hud-panel-divider"></div>
 
         <!-- ═══ Browser (collapsible + expandable) ═══ -->
         <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-browser" id="browser-panel">
@@ -1669,6 +1591,86 @@
             </div>
           </div>
         </div>
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- AGENT CARD (agent-scoped sections)            -->
+        <!-- ══════════════════════════════════════════════ -->
+        <div class="hud-agent-card" id="hud-agent-card">
+
+          <!-- ═══ Agent Files (collapsible) ═══ -->
+          <div class="hud-section hud-collapsible" data-section="agent-files">
+            <button class="hud-section-toggle" onclick="toggleSection('agent-files')">
+              <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg> AGENT FILES</span>
+              <span class="hud-section-chevron">›</span>
+            </button>
+            <div class="hud-section-body">
+              <div class="hud-files-row" id="hud-file-list"></div>
+            </div>
+          </div>
+
+          <!-- ═══ Recurring Tasks ═══ -->
+          <div class="hud-section hud-collapsible" data-section="recurring-tasks">
+            <button class="hud-section-toggle" onclick="toggleSection('recurring-tasks')">
+              <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg> RECURRING TASKS</span>
+              <span class="hud-section-actions">
+                <span class="hud-embed-action hud-when-open" id="tasks-refresh-btn" title="Refresh" onclick="event.stopPropagation(); loadCronJobs();">↻</span>
+                <span class="hud-section-chevron">›</span>
+              </span>
+            </button>
+            <div class="hud-section-body">
+              <div class="hud-timeline" id="hud-cron-list"></div>
+            </div>
+          </div>
+
+          <!-- ═══ Sub-Agents ═══ -->
+          <div class="hud-section hud-collapsible" data-section="sub-agents">
+            <button class="hud-section-toggle" onclick="toggleSection('sub-agents')">
+              <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> SUB-AGENTS</span>
+              <span class="hud-section-actions">
+                <span class="hud-embed-action hud-when-open" id="subagents-refresh-btn" title="Refresh" onclick="event.stopPropagation(); loadSubagents();">↻</span>
+                <span class="hud-section-chevron">›</span>
+              </span>
+            </button>
+            <div class="hud-section-body">
+              <div id="hud-subagents-list"></div>
+            </div>
+          </div>
+
+          <!-- ═══ Recently Closed ═══ -->
+          <div class="hud-section hud-collapsible" data-section="recently-closed" id="recently-closed-section" style="display:none">
+            <button class="hud-section-toggle" onclick="toggleSection('recently-closed')">
+              <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> RECENTLY CLOSED</span>
+              <span class="hud-section-actions">
+                <span class="hud-embed-action hud-when-open" id="recently-closed-clear-btn" title="Clear all" onclick="event.stopPropagation(); clearTabHistory();">✕</span>
+                <span class="hud-section-chevron">›</span>
+              </span>
+            </button>
+            <div class="hud-section-body">
+              <div id="recently-closed-list"></div>
+              <div class="hud-rc-settings">
+                <div class="hud-rc-setting-row">
+                  <span class="hud-rc-setting-label">Auto close after</span>
+                  <select class="hud-rc-retention-select" id="rc-autoclose-select" onchange="setAutoClosePolicy(this.value)">
+                    <option value="1">1 day</option>
+                    <option value="3">3 days</option>
+                    <option value="7">7 days</option>
+                    <option value="0">Never</option>
+                  </select>
+                </div>
+                <div class="hud-rc-setting-row">
+                  <span class="hud-rc-setting-label">Delete forever after</span>
+                  <select class="hud-rc-retention-select" id="rc-retention-select" onchange="setRCRetention(this.value)">
+                    <option value="7">7 days</option>
+                    <option value="14">14 days</option>
+                    <option value="30" selected>30 days</option>
+                    <option value="90">90 days</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
         <!-- ══════════════════════════════════════════════ -->
         <!-- WIDGETS (add-ons)                             -->
         <!-- ══════════════════════════════════════════════ -->

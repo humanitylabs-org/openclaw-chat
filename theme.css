@@ -852,6 +852,35 @@
 [data-theme="light"] .hud-rc-item { border-bottom-color: rgba(0,0,0,0.06); }
 [data-theme="light"] .hud-rc-settings { border-top-color: rgba(0,0,0,0.06); }
 
+/* ── Agent Card ───────────────────────────────────────── */
+
+.hud-agent-card {
+  background: rgba(74,158,255,0.06);
+  border: 1px solid rgba(74,158,255,0.12);
+  border-radius: 10px;
+  margin: 8px 8px 0;
+  padding: 4px 0;
+}
+
+.hud-agent-card .hud-section {
+  border-bottom-color: rgba(74,158,255,0.08) !important;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.hud-agent-card .hud-section:last-child {
+  border-bottom: none !important;
+}
+
+[data-theme="light"] .hud-agent-card {
+  background: rgba(74,158,255,0.05);
+  border-color: rgba(74,158,255,0.12);
+}
+
+[data-theme="light"] .hud-agent-card .hud-section {
+  border-bottom-color: rgba(74,158,255,0.08) !important;
+}
+
 /* ── Panel Dividers ───────────────────────────────────── */
 
 .hud-panel-divider {
