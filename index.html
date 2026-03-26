@@ -1527,7 +1527,7 @@
               <div id="recently-closed-list"></div>
               <div class="hud-rc-settings">
                 <div class="hud-rc-setting-row">
-                  <span class="hud-rc-setting-label">Auto close after</span>
+                  <span class="hud-rc-setting-label">Auto-reset after</span>
                   <select class="hud-rc-retention-select" id="rc-autoclose-select" onchange="setAutoClosePolicy(this.value)">
                     <option value="1">1 day</option>
                     <option value="3">3 days</option>
@@ -1767,11 +1767,19 @@
       <!-- Status banner (hidden) -->
       <div class="openclaw-banner oc-hidden" id="status-banner"></div>
 
-      <!-- Session refresh banner -->
+      <!-- Session auto-reset banner -->
       <div class="oc-refresh-banner oc-hidden" id="refresh-banner">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>
-        <span id="refresh-banner-text">This session was auto closed. Previous conversation moved to Recently Closed.</span>
-        <button class="oc-refresh-banner-close" onclick="dismissRefreshBanner()">✕</button>
+        <div class="oc-refresh-banner-content">
+          <div class="oc-refresh-banner-main">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>
+            <span id="refresh-banner-text">This session was auto-reset. Your previous conversation is saved on the server.</span>
+            <button class="oc-refresh-banner-close" onclick="dismissRefreshBanner()">✕</button>
+          </div>
+          <div class="oc-refresh-banner-actions">
+            <button class="oc-refresh-banner-btn oc-hidden" id="refresh-banner-continue">Continue where I left off</button>
+            <span class="oc-refresh-banner-hint oc-hidden" id="refresh-banner-settings">To keep sessions longer, adjust <em>Auto-reset after</em> in the sidebar.</span>
+          </div>
+        </div>
       </div>
 
       <!-- Messages -->

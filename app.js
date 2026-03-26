@@ -1780,18 +1780,20 @@ function detectSessionResets(sessions) {
     if (tabKey === "main" || tabKey.includes(":")) continue;
 
     const createdAt = s.createdAt || 0;
-    newFingerprints[tabKey] = createdAt;
+    const sessionId = s.sessionId || "";
+    const prev = fingerprints[tabKey];
+    const prevCreatedAt = typeof prev === "object" ? prev.createdAt : prev;
+    const prevSessionId = typeof prev === "object" ? prev.sessionId : "";
+
+    newFingerprints[tabKey] = { createdAt, sessionId };
 
     // Check if this tab existed before with a different createdAt
-    if (fingerprints[tabKey] && fingerprints[tabKey] !== createdAt && createdAt > fingerprints[tabKey]) {
-      // Session was reset! Add old entry to Tab History
-      const label = s.label || s.displayName || "Untitled";
-      addToTabHistory({ key: tabKey, label }, "refreshed");
+    if (prevCreatedAt && prevCreatedAt !== createdAt && createdAt > prevCreatedAt) {
       anyReset = true;
 
-      // If this is the active tab, show banner
+      // If this is the active tab, show banner with old session ID
       if (tabKey === state.sessionKey) {
-        showRefreshBanner(label);
+        showRefreshBanner(tabKey, prevSessionId);
       }
     }
   }
@@ -1801,11 +1803,34 @@ function detectSessionResets(sessions) {
   if (anyReset) renderTabHistory();
 }
 
-function showRefreshBanner(tabLabel) {
+function showRefreshBanner(tabKey, oldSessionId) {
   const banner = document.getElementById("refresh-banner");
-  const text = document.getElementById("refresh-banner-text");
   if (!banner) return;
-  if (text) text.textContent = `This session was auto closed. Previous conversation moved to Recently Closed.`;
+
+  const text = document.getElementById("refresh-banner-text");
+  if (text) text.textContent = "This session was auto-reset. Your previous conversation is saved on the server.";
+
+  const continueBtn = document.getElementById("refresh-banner-continue");
+  if (continueBtn) {
+    if (oldSessionId) {
+      continueBtn.classList.remove("oc-hidden");
+      continueBtn.onclick = () => {
+        const input = document.getElementById("message-input");
+        if (input) {
+          input.value = `Please read my previous conversation transcript (session ${oldSessionId}.jsonl) and summarize where we left off so we can continue.`;
+          input.focus();
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        dismissRefreshBanner();
+      };
+    } else {
+      continueBtn.classList.add("oc-hidden");
+    }
+  }
+
+  const settingsHint = document.getElementById("refresh-banner-settings");
+  if (settingsHint) settingsHint.classList.remove("oc-hidden");
+
   banner.classList.remove("oc-hidden");
 }
 

@@ -797,12 +797,10 @@
   color: #6ab0ff;
 }
 
-/* Session refresh banner */
+/* Session auto-reset banner */
 .oc-refresh-banner {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   margin: 8px 16px 0;
   background: rgba(74,158,255,0.1);
   border: 1px solid rgba(74,158,255,0.2);
@@ -811,7 +809,18 @@
   color: #8ec5ff;
   line-height: 1.4;
 }
-.oc-refresh-banner svg {
+.oc-refresh-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.oc-refresh-banner-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.oc-refresh-banner-main svg {
   flex-shrink: 0;
   opacity: 0.7;
 }
@@ -828,6 +837,38 @@
   flex-shrink: 0;
 }
 .oc-refresh-banner-close:hover { opacity: 1; }
+.oc-refresh-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 22px;
+  flex-wrap: wrap;
+}
+.oc-refresh-banner-btn {
+  background: rgba(74,158,255,0.15);
+  border: 1px solid rgba(74,158,255,0.3);
+  color: #8ec5ff;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.oc-refresh-banner-btn:hover {
+  background: rgba(74,158,255,0.25);
+  border-color: rgba(74,158,255,0.4);
+}
+.oc-refresh-banner-hint {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.oc-refresh-banner-hint em {
+  font-style: normal;
+  opacity: 1;
+}
 
 [data-theme="light"] .oc-refresh-banner {
   background: rgba(30,100,200,0.08);
@@ -835,6 +876,15 @@
   color: #2a6fb5;
 }
 [data-theme="light"] .oc-refresh-banner-close { color: #2a6fb5; }
+[data-theme="light"] .oc-refresh-banner-btn {
+  background: rgba(30,100,200,0.1);
+  border-color: rgba(30,100,200,0.2);
+  color: #2a6fb5;
+}
+[data-theme="light"] .oc-refresh-banner-btn:hover {
+  background: rgba(30,100,200,0.18);
+  border-color: rgba(30,100,200,0.3);
+}
 [data-theme="light"] .hud-rc-badge-auto {
   background: rgba(30,100,200,0.1);
   color: #2a6fb5;
