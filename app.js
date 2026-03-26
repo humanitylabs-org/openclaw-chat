@@ -1685,14 +1685,7 @@ function getOrphanSessions() {
   return orphans;
 }
 
-function getRCRetentionDays() {
-  return parseInt(localStorage.getItem("rcRetentionDays") || "30", 10);
-}
 
-function setRCRetention(days) {
-  localStorage.setItem("rcRetentionDays", String(days));
-  renderTabHistory();
-}
 
 function getAutoCloseDays() {
   return parseInt(localStorage.getItem("autoCloseDays") || "1", 10);
@@ -1891,9 +1884,7 @@ function renderTabHistory() {
   const deleteAllBtn = document.getElementById("rc-delete-all-btn");
   if (!section || !container) return;
 
-  // Set dropdowns
-  const retentionSelect = document.getElementById("rc-retention-select");
-  if (retentionSelect) retentionSelect.value = String(getRCRetentionDays());
+  // Set auto-reset dropdown (lives in Settings section)
   const autoCloseSelect = document.getElementById("rc-autoclose-select");
   if (autoCloseSelect) autoCloseSelect.value = String(getAutoCloseDays());
 
