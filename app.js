@@ -786,7 +786,7 @@ async function switchAgent(agent) {
   loadAgentFiles();
   loadCronJobs();
   loadSubagents();
-  renderRecentlyClosed();
+  renderTabHistory();
 }
 
 // Top-bar agent dropdown removed — control panel handles switching
@@ -1176,6 +1176,8 @@ async function _renderTabsInner() {
       sessions = result?.sessions || [];
       state._cachedSessions = sessions;
       state._cachedSessionsAt = Date.now();
+      // Detect session resets (daily refresh, etc.)
+      detectSessionResets(sessions);
     } catch {
       sessions = state._cachedSessions || [];
     }
@@ -1498,6 +1500,7 @@ async function switchTab(tab) {
   ui.typingIndicator.classList.add("oc-hidden");
   setSendButtonStopMode(false);
   hideBanner();
+  dismissRefreshBanner();
 
   state.sessionKey = tab.key;
   localStorage.setItem("sessionKey", tab.key);
@@ -1599,8 +1602,8 @@ async function closeTab(tab, currentKey) {
   if (!ok) return;
   delete state.tabCache[tab.key];
 
-  // Soft-close: move to recently closed instead of deleting
-  addToRecentlyClosed(tab);
+  // Soft-close: move to Tab History instead of deleting
+  addToTabHistory(tab, "closed");
 
   // Remove from gateway session list (but don't delete transcript)
   state.tabDeleteInProgress = true;
@@ -1621,19 +1624,25 @@ async function closeTab(tab, currentKey) {
   }
   await renderTabs();
   await updateContextMeter();
-  renderRecentlyClosed();
+  renderTabHistory();
 }
 
-// ─── Recently Closed Management ──────────────────────────────────
+// ─── Tab History Management ──────────────────────────────────────
 
-function getRecentlyClosed() {
+function getTabHistory() {
   try {
-    return JSON.parse(localStorage.getItem("recentlyClosed") || "[]");
+    // Migrate from old key
+    const old = localStorage.getItem("recentlyClosed");
+    if (old) {
+      localStorage.setItem("tabHistory", old);
+      localStorage.removeItem("recentlyClosed");
+    }
+    return JSON.parse(localStorage.getItem("tabHistory") || "[]");
   } catch { return []; }
 }
 
-function saveRecentlyClosed(items) {
-  localStorage.setItem("recentlyClosed", JSON.stringify(items));
+function saveTabHistory(items) {
+  localStorage.setItem("tabHistory", JSON.stringify(items));
 }
 
 function getRCRetentionDays() {
@@ -1642,13 +1651,13 @@ function getRCRetentionDays() {
 
 function setRCRetention(days) {
   localStorage.setItem("rcRetentionDays", String(days));
-  pruneRecentlyClosed();
-  renderRecentlyClosed();
+  pruneTabHistory();
+  renderTabHistory();
 }
 
-function addToRecentlyClosed(tab) {
-  const items = getRecentlyClosed();
-  // Don't duplicate
+function addToTabHistory(tab, reason = "closed") {
+  const items = getTabHistory();
+  // Don't duplicate same key
   const existing = items.findIndex(i => i.key === tab.key);
   if (existing >= 0) items.splice(existing, 1);
   items.unshift({
@@ -1656,18 +1665,19 @@ function addToRecentlyClosed(tab) {
     label: tab.label || "Untitled",
     closedAt: Date.now(),
     agentPrefix: agentPrefix(),
+    reason, // "closed" or "refreshed"
   });
   // Cap at 50 items
   if (items.length > 50) items.length = 50;
-  saveRecentlyClosed(items);
+  saveTabHistory(items);
 }
 
-function pruneRecentlyClosed() {
-  const items = getRecentlyClosed();
+function pruneTabHistory() {
+  const items = getTabHistory();
   const days = getRCRetentionDays();
   const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
   const pruned = items.filter(i => i.closedAt > cutoff);
-  if (pruned.length !== items.length) saveRecentlyClosed(pruned);
+  if (pruned.length !== items.length) saveTabHistory(pruned);
   return pruned;
 }
 
@@ -1683,12 +1693,73 @@ function formatAge(timestamp) {
   return `${days} days ago`;
 }
 
-function renderRecentlyClosed() {
-  const section = document.getElementById("recently-closed-section");
-  const container = document.getElementById("recently-closed-list");
+// ─── Session Reset Detection ─────────────────────────────────────
+
+function getTabFingerprints() {
+  try {
+    return JSON.parse(localStorage.getItem("tabFingerprints") || "{}");
+  } catch { return {}; }
+}
+
+function saveTabFingerprints(fp) {
+  localStorage.setItem("tabFingerprints", JSON.stringify(fp));
+}
+
+// Called from _renderTabsInner after sessions.list
+function detectSessionResets(sessions) {
+  const prefix = agentPrefix();
+  const fingerprints = getTabFingerprints();
+  const newFingerprints = {};
+  let anyReset = false;
+
+  for (const s of sessions) {
+    if (!s.key.startsWith(prefix)) continue;
+    const tabKey = s.key.slice(prefix.length);
+    if (tabKey === "main" || tabKey.includes(":")) continue;
+
+    const createdAt = s.createdAt || 0;
+    newFingerprints[tabKey] = createdAt;
+
+    // Check if this tab existed before with a different createdAt
+    if (fingerprints[tabKey] && fingerprints[tabKey] !== createdAt && createdAt > fingerprints[tabKey]) {
+      // Session was reset! Add old entry to Tab History
+      const label = s.label || s.displayName || "Untitled";
+      addToTabHistory({ key: tabKey, label }, "refreshed");
+      anyReset = true;
+
+      // If this is the active tab, show banner
+      if (tabKey === state.sessionKey) {
+        showRefreshBanner(label);
+      }
+    }
+  }
+
+  // Merge: keep new fingerprints, remove stale ones
+  saveTabFingerprints(newFingerprints);
+  if (anyReset) renderTabHistory();
+}
+
+function showRefreshBanner(tabLabel) {
+  const banner = document.getElementById("refresh-banner");
+  const text = document.getElementById("refresh-banner-text");
+  if (!banner) return;
+  if (text) text.textContent = `This session was refreshed. Previous conversation moved to Tab History.`;
+  banner.classList.remove("oc-hidden");
+}
+
+function dismissRefreshBanner() {
+  const banner = document.getElementById("refresh-banner");
+  if (banner) banner.classList.add("oc-hidden");
+}
+
+// ─── Tab History Rendering ───────────────────────────────────────
+
+function renderTabHistory() {
+  const section = document.getElementById("tab-history-section");
+  const container = document.getElementById("tab-history-list");
   if (!section || !container) return;
 
-  const items = pruneRecentlyClosed();
+  const items = pruneTabHistory();
 
   // Hide section if empty
   if (items.length === 0) {
@@ -1706,11 +1777,21 @@ function renderRecentlyClosed() {
     const row = document.createElement("div");
     row.className = "hud-rc-item";
     row.title = `Restore "${item.label}"`;
-    row.addEventListener("click", () => restoreRecentlyClosed(item));
+    row.addEventListener("click", () => restoreFromTabHistory(item));
 
     const label = document.createElement("span");
     label.className = "hud-rc-item-label";
     label.textContent = item.label;
+
+    // Reason badge
+    const badge = document.createElement("span");
+    if (item.reason === "refreshed") {
+      badge.className = "hud-rc-badge hud-rc-badge-refreshed";
+      badge.textContent = "refreshed";
+    } else {
+      badge.className = "hud-rc-badge hud-rc-badge-closed";
+      badge.textContent = "closed";
+    }
 
     const age = document.createElement("span");
     age.className = "hud-rc-item-age";
@@ -1722,24 +1803,25 @@ function renderRecentlyClosed() {
     del.title = "Delete permanently";
     del.addEventListener("click", (e) => {
       e.stopPropagation();
-      permanentlyDeleteClosed(item);
+      permanentlyDeleteFromHistory(item);
     });
 
     row.appendChild(label);
+    row.appendChild(badge);
     row.appendChild(age);
     row.appendChild(del);
     container.appendChild(row);
   }
 }
 
-async function restoreRecentlyClosed(item) {
+async function restoreFromTabHistory(item) {
   if (!state.gateway?.connected) return;
 
-  // Remove from recently closed
-  const items = getRecentlyClosed();
+  // Remove from Tab History
+  const items = getTabHistory();
   const idx = items.findIndex(i => i.key === item.key);
   if (idx >= 0) items.splice(idx, 1);
-  saveRecentlyClosed(items);
+  saveTabHistory(items);
 
   // Try to restore the session label on the gateway
   try {
@@ -1757,15 +1839,15 @@ async function restoreRecentlyClosed(item) {
   await loadChatHistory();
   await renderTabs();
   await updateContextMeter();
-  renderRecentlyClosed();
+  renderTabHistory();
 }
 
-async function permanentlyDeleteClosed(item) {
+async function permanentlyDeleteFromHistory(item) {
   // Remove from list
-  const items = getRecentlyClosed();
+  const items = getTabHistory();
   const idx = items.findIndex(i => i.key === item.key);
   if (idx >= 0) items.splice(idx, 1);
-  saveRecentlyClosed(items);
+  saveTabHistory(items);
 
   // Delete from gateway (with transcript)
   try {
@@ -1774,13 +1856,13 @@ async function permanentlyDeleteClosed(item) {
     }
   } catch { /* best effort */ }
 
-  renderRecentlyClosed();
+  renderTabHistory();
 }
 
-async function clearRecentlyClosed() {
-  const items = getRecentlyClosed();
+async function clearTabHistory() {
+  const items = getTabHistory();
   if (items.length === 0) return;
-  const ok = await confirmClose("Clear all?", `Permanently delete ${items.length} closed tab(s)?`);
+  const ok = await confirmClose("Clear all?", `Permanently delete ${items.length} tab(s) from history?`);
   if (!ok) return;
 
   // Delete all from gateway
@@ -1792,8 +1874,8 @@ async function clearRecentlyClosed() {
     } catch { /* best effort */ }
   }
 
-  saveRecentlyClosed([]);
-  renderRecentlyClosed();
+  saveTabHistory([]);
+  renderTabHistory();
 }
 
 async function createNewTab() {
@@ -3852,7 +3934,7 @@ async function fetchServerInfo() {
     loadAgentSwitcher();
     loadAgentFiles();
     loadCronJobs();
-    renderRecentlyClosed();
+    renderTabHistory();
 
     // Version + Update (from connect snapshot)
     const snap = state.snapshot || {};

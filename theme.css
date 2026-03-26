@@ -772,6 +772,79 @@
   padding: 12px 0;
 }
 
+.hud-rc-info {
+  font-size: 10px;
+  color: var(--text-faint);
+  padding: 4px 4px 8px;
+  line-height: 1.4;
+}
+.hud-rc-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+.hud-rc-badge-closed {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-faint);
+}
+.hud-rc-badge-refreshed {
+  background: rgba(74,158,255,0.15);
+  color: #6ab0ff;
+}
+
+/* Session refresh banner */
+.oc-refresh-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 8px 16px 0;
+  background: rgba(74,158,255,0.1);
+  border: 1px solid rgba(74,158,255,0.2);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #8ec5ff;
+  line-height: 1.4;
+}
+.oc-refresh-banner svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.oc-refresh-banner-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #8ec5ff;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.oc-refresh-banner-close:hover { opacity: 1; }
+
+[data-theme="light"] .oc-refresh-banner {
+  background: rgba(30,100,200,0.08);
+  border-color: rgba(30,100,200,0.15);
+  color: #2a6fb5;
+}
+[data-theme="light"] .oc-refresh-banner-close { color: #2a6fb5; }
+[data-theme="light"] .hud-rc-badge-refreshed {
+  background: rgba(30,100,200,0.1);
+  color: #2a6fb5;
+}
+[data-theme="light"] .hud-rc-badge-closed {
+  background: rgba(0,0,0,0.06);
+  color: #999;
+}
+
 [data-theme="light"] .hud-rc-item:hover { background: rgba(0,0,0,0.04); }
 [data-theme="light"] .hud-rc-retention-select {
   background: rgba(0,0,0,0.05);

@@ -1546,18 +1546,19 @@
           </div>
         </div>
 
-        <!-- ═══ Recently Closed ═══ -->
-        <div class="hud-section hud-collapsible" data-section="recently-closed" id="recently-closed-section" style="display:none">
-          <button class="hud-section-toggle" onclick="toggleSection('recently-closed')">
-            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> RECENTLY CLOSED</span>
+        <!-- ═══ Tab History ═══ -->
+        <div class="hud-section hud-collapsible" data-section="tab-history" id="tab-history-section" style="display:none">
+          <button class="hud-section-toggle" onclick="toggleSection('tab-history')">
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> TAB HISTORY</span>
             <span class="hud-section-actions">
-              <span class="hud-embed-action hud-when-open" id="recently-closed-clear-btn" title="Clear all" onclick="event.stopPropagation(); clearRecentlyClosed();">✕</span>
+              <span class="hud-embed-action hud-when-open" id="tab-history-clear-btn" title="Clear all" onclick="event.stopPropagation(); clearTabHistory();">✕</span>
               <span class="hud-section-chevron">›</span>
             </span>
           </button>
           <div class="hud-section-body">
-            <div id="recently-closed-list"></div>
-            <div class="hud-recently-closed-footer" id="recently-closed-footer">
+            <div class="hud-rc-info" id="tab-history-info">Idle sessions refresh automatically and appear here.</div>
+            <div id="tab-history-list"></div>
+            <div class="hud-recently-closed-footer" id="tab-history-footer">
               <span class="hud-rc-retention-label">Auto-delete after</span>
               <select class="hud-rc-retention-select" id="rc-retention-select" onchange="setRCRetention(this.value)">
                 <option value="7">7 days</option>
@@ -1725,6 +1726,13 @@
 
       <!-- Status banner (hidden) -->
       <div class="openclaw-banner oc-hidden" id="status-banner"></div>
+
+      <!-- Session refresh banner -->
+      <div class="oc-refresh-banner oc-hidden" id="refresh-banner">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>
+        <span id="refresh-banner-text">This session was refreshed. Previous conversation moved to Tab History.</span>
+        <button class="oc-refresh-banner-close" onclick="dismissRefreshBanner()">✕</button>
+      </div>
 
       <!-- Messages -->
       <div class="openclaw-messages" id="messages"></div>
