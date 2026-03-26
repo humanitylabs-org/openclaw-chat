@@ -883,12 +883,12 @@
   border-color: rgba(211,47,47,0.2);
 }
 
-/* ── Top Utility Row ──────────────────────────────────── */
+/* ── Bottom Utility Row ───────────────────────────────── */
 
-.hud-top-utility {
+.hud-bottom-utility {
   display: flex;
   justify-content: flex-end;
-  padding: 8px 12px 0;
+  padding: 8px 12px 12px;
 }
 
 /* ── Agent Card ───────────────────────────────────────── */
@@ -897,7 +897,7 @@
   background: rgba(var(--accent-rgb), 0.05);
   border: 1px solid rgba(var(--accent-rgb), 0.12);
   border-radius: 10px;
-  margin: 8px 8px 0;
+  margin: 4px 4px 0;
   padding: 4px 0;
 }
 
@@ -934,7 +934,7 @@
 .hud-panel-divider {
   height: 1px;
   background: rgba(255,255,255,0.08);
-  margin: 12px 12px 8px;
+  margin: 10px 8px 6px;
   position: relative;
 }
 .hud-panel-divider-label {
@@ -2615,7 +2615,7 @@
   background: transparent;
   border: none !important;
   border-radius: 0;
-  padding: 0 12px !important;
+  padding: 0 8px !important;
   margin-top: 2px;
   border-bottom: 1px solid rgba(255,255,255,0.06) !important;
 }
