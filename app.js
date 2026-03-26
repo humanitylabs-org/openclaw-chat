@@ -1575,6 +1575,7 @@ async function resetTab(tab) {
   const msg = "This will clear the conversation.";
   const ok = await confirmClose(title, msg);
   if (!ok) return;
+  _pendingManualReset = tab.key;
   if (tab.key === state.sessionKey) {
     state.messages = [];
     ui.messagesContainer.innerHTML = "";
@@ -1767,6 +1768,9 @@ function saveTabFingerprints(fp) {
   localStorage.setItem("tabFingerprints", JSON.stringify(fp));
 }
 
+// Track manual resets so we can distinguish from auto-resets
+let _pendingManualReset = null;
+
 // Called from _renderTabsInner after sessions.list
 function detectSessionResets(sessions) {
   const prefix = agentPrefix();
@@ -1791,9 +1795,11 @@ function detectSessionResets(sessions) {
     if (prevCreatedAt && prevCreatedAt !== createdAt && createdAt > prevCreatedAt) {
       anyReset = true;
 
-      // If this is the active tab, show banner with old session ID
+      // If this is the active tab, show banner
       if (tabKey === state.sessionKey) {
-        showRefreshBanner(tabKey, prevSessionId);
+        const isManual = _pendingManualReset === tabKey;
+        _pendingManualReset = null;
+        showRefreshBanner(tabKey, prevSessionId, isManual);
       }
     }
   }
@@ -1803,33 +1809,60 @@ function detectSessionResets(sessions) {
   if (anyReset) renderTabHistory();
 }
 
-function showRefreshBanner(tabKey, oldSessionId) {
+function showRefreshBanner(tabKey, oldSessionId, isManual) {
   const banner = document.getElementById("refresh-banner");
   if (!banner) return;
 
   const text = document.getElementById("refresh-banner-text");
-  if (text) text.textContent = "This session was auto-reset. Your previous conversation is saved on the server.";
-
   const continueBtn = document.getElementById("refresh-banner-continue");
-  if (continueBtn) {
-    if (oldSessionId) {
-      continueBtn.classList.remove("oc-hidden");
-      continueBtn.onclick = () => {
-        const input = document.getElementById("message-input");
-        if (input) {
-          input.value = `Please read my previous conversation transcript (session ${oldSessionId}.jsonl) and summarize where we left off so we can continue.`;
-          input.focus();
-          input.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-        dismissRefreshBanner();
-      };
-    } else {
-      continueBtn.classList.add("oc-hidden");
+  const settingsHint = document.getElementById("refresh-banner-settings");
+
+  if (isManual) {
+    // Manual reset: user just did this intentionally
+    if (text) text.textContent = "Session reset. Your previous conversation is saved on the server.";
+    if (continueBtn) {
+      if (oldSessionId) {
+        continueBtn.textContent = "Recover previous conversation";
+        continueBtn.classList.remove("oc-hidden");
+        continueBtn.onclick = () => {
+          const input = document.getElementById("message-input");
+          if (input) {
+            input.value = `Please read my previous conversation transcript (session ${oldSessionId}.jsonl) and summarize where we left off so we can continue.`;
+            input.focus();
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+          dismissRefreshBanner();
+        };
+      } else {
+        continueBtn.classList.add("oc-hidden");
+      }
+    }
+    if (settingsHint) settingsHint.classList.add("oc-hidden");
+  } else {
+    // Auto-reset: happened on a timer
+    if (text) text.textContent = "This session was auto-reset. Your previous conversation is saved on the server.";
+    if (continueBtn) {
+      if (oldSessionId) {
+        continueBtn.textContent = "Continue where I left off";
+        continueBtn.classList.remove("oc-hidden");
+        continueBtn.onclick = () => {
+          const input = document.getElementById("message-input");
+          if (input) {
+            input.value = `Please read my previous conversation transcript (session ${oldSessionId}.jsonl) and summarize where we left off so we can continue.`;
+            input.focus();
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+          dismissRefreshBanner();
+        };
+      } else {
+        continueBtn.classList.add("oc-hidden");
+      }
+    }
+    if (settingsHint) {
+      settingsHint.innerHTML = 'To keep sessions longer, change <em>Auto-reset after</em> in Settings.';
+      settingsHint.classList.remove("oc-hidden");
     }
   }
-
-  const settingsHint = document.getElementById("refresh-banner-settings");
-  if (settingsHint) settingsHint.classList.remove("oc-hidden");
 
   banner.classList.remove("oc-hidden");
 }
