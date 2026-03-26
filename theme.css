@@ -883,18 +883,31 @@
   border-color: rgba(211,47,47,0.2);
 }
 
+/* ── Top Utility Row ──────────────────────────────────── */
+
+.hud-top-utility {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px 0;
+}
+
 /* ── Agent Card ───────────────────────────────────────── */
 
 .hud-agent-card {
-  background: rgba(74,158,255,0.06);
-  border: 1px solid rgba(74,158,255,0.12);
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1px solid rgba(var(--accent-rgb), 0.12);
   border-radius: 10px;
   margin: 8px 8px 0;
   padding: 4px 0;
 }
 
+.hud-agent-card-identity {
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.08);
+}
+
 .hud-agent-card .hud-section {
-  border-bottom-color: rgba(74,158,255,0.08) !important;
+  border-bottom-color: rgba(var(--accent-rgb), 0.08) !important;
   margin-left: 0;
   margin-right: 0;
 }
@@ -904,12 +917,16 @@
 }
 
 [data-theme="light"] .hud-agent-card {
-  background: rgba(74,158,255,0.05);
-  border-color: rgba(74,158,255,0.12);
+  background: rgba(var(--accent-rgb), 0.04);
+  border-color: rgba(var(--accent-rgb), 0.15);
+}
+
+[data-theme="light"] .hud-agent-card-identity {
+  border-bottom-color: rgba(var(--accent-rgb), 0.1);
 }
 
 [data-theme="light"] .hud-agent-card .hud-section {
-  border-bottom-color: rgba(74,158,255,0.08) !important;
+  border-bottom-color: rgba(var(--accent-rgb), 0.08) !important;
 }
 
 /* ── Panel Dividers ───────────────────────────────────── */
