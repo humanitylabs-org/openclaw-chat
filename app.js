@@ -1207,8 +1207,12 @@ async function _renderTabsInner() {
     state.tabSessions.push({ key: "main", label: "Home", pct: 0 });
   }
 
+  const closedTabKeys = new Set(getClosedTabs());
   const others = convSessions
-    .filter(s => s.key.slice(prefix.length) !== "main")
+    .filter(s => {
+      const sk = s.key.slice(prefix.length);
+      return sk !== "main" && !closedTabKeys.has(sk);
+    })
     .sort((a, b) => (a.createdAt || a.updatedAt || 0) - (b.createdAt || b.updatedAt || 0));
 
   const savedOrder = JSON.parse(localStorage.getItem("tabOrder") || "[]");
@@ -1603,18 +1607,9 @@ async function closeTab(tab, currentKey) {
   if (!ok) return;
   delete state.tabCache[tab.key];
 
-  // Soft-close: move to Tab History instead of deleting
-  addToTabHistory(tab, "closed");
+  // Mark as closed (session stays on gateway as orphan)
+  addToClosedTabs(tab.key);
 
-  // Remove from gateway session list (but don't delete transcript)
-  state.tabDeleteInProgress = true;
-  try {
-    await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tab.key}`, false);
-  } catch (err) {
-    console.error("Close failed:", err);
-  } finally {
-    state.tabDeleteInProgress = false;
-  }
   finishStream(tab.key);
   if (tab.key === currentKey) {
     state.sessionKey = "main";
@@ -1628,22 +1623,66 @@ async function closeTab(tab, currentKey) {
   renderTabHistory();
 }
 
-// ─── Tab History Management ──────────────────────────────────────
+// ─── Closed Tabs Management (gateway-driven) ────────────────────
 
-function getTabHistory() {
-  try {
-    // Migrate from old key
-    const old = localStorage.getItem("recentlyClosed");
-    if (old) {
-      localStorage.setItem("tabHistory", old);
-      localStorage.removeItem("recentlyClosed");
-    }
-    return JSON.parse(localStorage.getItem("tabHistory") || "[]");
-  } catch { return []; }
+function getClosedTabs() {
+  try { return JSON.parse(localStorage.getItem("closedTabs") || "[]"); }
+  catch { return []; }
 }
 
-function saveTabHistory(items) {
-  localStorage.setItem("tabHistory", JSON.stringify(items));
+function saveClosedTabs(keys) {
+  localStorage.setItem("closedTabs", JSON.stringify(keys));
+}
+
+function addToClosedTabs(tabKey) {
+  const closed = getClosedTabs();
+  if (!closed.includes(tabKey)) {
+    closed.push(tabKey);
+    saveClosedTabs(closed);
+  }
+}
+
+function removeFromClosedTabs(tabKey) {
+  const closed = getClosedTabs().filter(k => k !== tabKey);
+  saveClosedTabs(closed);
+}
+
+function isTabClosed(tabKey) {
+  return getClosedTabs().includes(tabKey);
+}
+
+// Get orphan sessions: closed tabs that still exist on the gateway
+function getOrphanSessions() {
+  const prefix = agentPrefix();
+  const closedKeys = new Set(getClosedTabs());
+  const sessions = state._cachedSessions || [];
+
+  const orphans = [];
+  for (const s of sessions) {
+    if (!s.key.startsWith(prefix)) continue;
+    if (s.key.includes(":cron:") || s.key.includes(":subagent:")) continue;
+    const tabKey = s.key.slice(prefix.length);
+    if (tabKey.includes(":")) continue;
+    if (tabKey === "main") continue;
+    if (closedKeys.has(tabKey)) {
+      orphans.push({
+        key: tabKey,
+        fullKey: s.key,
+        label: s.label || s.displayName || tabKey,
+        updatedAt: s.updatedAt || s.createdAt || 0,
+      });
+    }
+  }
+
+  // Clean up closedTabs that no longer exist on gateway
+  const gatewayKeys = new Set(orphans.map(o => o.key));
+  const currentClosed = getClosedTabs();
+  const stillValid = currentClosed.filter(k => gatewayKeys.has(k));
+  if (stillValid.length !== currentClosed.length) saveClosedTabs(stillValid);
+
+  // Sort by most recently updated first
+  orphans.sort((a, b) => b.updatedAt - a.updatedAt);
+  return orphans;
 }
 
 function getRCRetentionDays() {
@@ -1652,7 +1691,6 @@ function getRCRetentionDays() {
 
 function setRCRetention(days) {
   localStorage.setItem("rcRetentionDays", String(days));
-  pruneTabHistory();
   renderTabHistory();
 }
 
@@ -1664,7 +1702,6 @@ function setAutoClosePolicy(days) {
   const prev = getAutoCloseDays();
   localStorage.setItem("autoCloseDays", String(days));
   renderTabHistory();
-  // Show restart toast if the setting actually changed
   if (prev !== parseInt(days, 10)) {
     showRestartToast();
   }
@@ -1716,32 +1753,6 @@ async function applyAutoCloseConfig() {
   } catch (err) {
     console.error("Failed to send config command:", err);
   }
-}
-
-function addToTabHistory(tab, reason = "closed") {
-  const items = getTabHistory();
-  // Don't duplicate same key
-  const existing = items.findIndex(i => i.key === tab.key);
-  if (existing >= 0) items.splice(existing, 1);
-  items.unshift({
-    key: tab.key,
-    label: tab.label || "Untitled",
-    closedAt: Date.now(),
-    agentPrefix: agentPrefix(),
-    reason, // "closed" or "refreshed"
-  });
-  // Cap at 50 items
-  if (items.length > 50) items.length = 50;
-  saveTabHistory(items);
-}
-
-function pruneTabHistory() {
-  const items = getTabHistory();
-  const days = getRCRetentionDays();
-  const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
-  const pruned = items.filter(i => i.closedAt > cutoff);
-  if (pruned.length !== items.length) saveTabHistory(pruned);
-  return pruned;
 }
 
 function formatAge(timestamp) {
@@ -1880,18 +1891,19 @@ function renderTabHistory() {
   const deleteAllBtn = document.getElementById("rc-delete-all-btn");
   if (!section || !container) return;
 
-  const items = pruneTabHistory();
-
   // Set dropdowns
   const retentionSelect = document.getElementById("rc-retention-select");
   if (retentionSelect) retentionSelect.value = String(getRCRetentionDays());
   const autoCloseSelect = document.getElementById("rc-autoclose-select");
   if (autoCloseSelect) autoCloseSelect.value = String(getAutoCloseDays());
 
+  // Get orphan sessions from gateway
+  const orphans = getOrphanSessions();
+
   container.innerHTML = "";
 
   // Show empty state or items
-  if (items.length === 0) {
+  if (orphans.length === 0) {
     container.innerHTML = '<div class="hud-empty-hint">No recently closed tabs</div>';
     if (deleteAllBtn) deleteAllBtn.classList.add("oc-hidden");
     return;
@@ -1899,29 +1911,23 @@ function renderTabHistory() {
 
   if (deleteAllBtn) deleteAllBtn.classList.remove("oc-hidden");
 
-  for (const item of items) {
+  for (const item of orphans) {
     const row = document.createElement("div");
     row.className = "hud-rc-item";
     row.title = `Restore "${item.label}"`;
-    row.addEventListener("click", () => restoreFromTabHistory(item));
+    row.addEventListener("click", () => restoreOrphan(item));
 
     const label = document.createElement("span");
     label.className = "hud-rc-item-label";
     label.textContent = item.label;
 
-    // Reason badge
     const badge = document.createElement("span");
-    if (item.reason === "refreshed") {
-      badge.className = "hud-rc-badge hud-rc-badge-auto";
-      badge.textContent = "auto closed";
-    } else {
-      badge.className = "hud-rc-badge hud-rc-badge-closed";
-      badge.textContent = "closed";
-    }
+    badge.className = "hud-rc-badge hud-rc-badge-closed";
+    badge.textContent = "closed";
 
     const age = document.createElement("span");
     age.className = "hud-rc-item-age";
-    age.textContent = formatAge(item.closedAt);
+    age.textContent = formatAge(item.updatedAt);
 
     const del = document.createElement("button");
     del.className = "hud-rc-item-delete";
@@ -1929,7 +1935,7 @@ function renderTabHistory() {
     del.title = "Delete permanently";
     del.addEventListener("click", (e) => {
       e.stopPropagation();
-      permanentlyDeleteFromHistory(item);
+      permanentlyDeleteOrphan(item);
     });
 
     row.appendChild(label);
@@ -1940,22 +1946,11 @@ function renderTabHistory() {
   }
 }
 
-async function restoreFromTabHistory(item) {
+async function restoreOrphan(item) {
   if (!state.gateway?.connected) return;
 
-  // Remove from Tab History
-  const items = getTabHistory();
-  const idx = items.findIndex(i => i.key === item.key);
-  if (idx >= 0) items.splice(idx, 1);
-  saveTabHistory(items);
-
-  // Try to restore the session label on the gateway
-  try {
-    await state.gateway.request("sessions.patch", {
-      key: `${item.agentPrefix || agentPrefix()}${item.key}`,
-      label: item.label,
-    });
-  } catch { /* session may have been reset, that's OK */ }
+  // Remove from closed tabs — session is still on gateway, just unhide it
+  removeFromClosedTabs(item.key);
 
   // Switch to this tab
   state.sessionKey = item.key;
@@ -1968,39 +1963,52 @@ async function restoreFromTabHistory(item) {
   renderTabHistory();
 }
 
-async function permanentlyDeleteFromHistory(item) {
-  // Remove from list
-  const items = getTabHistory();
-  const idx = items.findIndex(i => i.key === item.key);
-  if (idx >= 0) items.splice(idx, 1);
-  saveTabHistory(items);
+async function permanentlyDeleteOrphan(item) {
+  // Remove from closed tabs
+  removeFromClosedTabs(item.key);
 
   // Delete from gateway (with transcript)
   try {
     if (state.gateway?.connected) {
-      await deleteSessionWithFallback(state.gateway, `${item.agentPrefix || agentPrefix()}${item.key}`, true);
+      await deleteSessionWithFallback(state.gateway, item.fullKey, true);
     }
   } catch { /* best effort */ }
+
+  // Refresh cached sessions
+  try {
+    const result = await state.gateway.request("sessions.list", {});
+    state._cachedSessions = result?.sessions || [];
+    state._cachedSessionsAt = Date.now();
+  } catch { /* use existing cache */ }
 
   renderTabHistory();
 }
 
 async function clearTabHistory() {
-  const items = getTabHistory();
-  if (items.length === 0) return;
-  const ok = await confirmClose("Clear all?", `Permanently delete ${items.length} tab(s) from history?`);
+  const orphans = getOrphanSessions();
+  if (orphans.length === 0) return;
+  const ok = await confirmClose("Delete all?", `Permanently delete ${orphans.length} closed tab(s)?`);
   if (!ok) return;
 
-  // Delete all from gateway
-  for (const item of items) {
+  // Delete all orphans from gateway
+  for (const item of orphans) {
     try {
       if (state.gateway?.connected) {
-        await deleteSessionWithFallback(state.gateway, `${item.agentPrefix || agentPrefix()}${item.key}`, true);
+        await deleteSessionWithFallback(state.gateway, item.fullKey, true);
       }
     } catch { /* best effort */ }
   }
 
-  saveTabHistory([]);
+  // Clear closed tabs list
+  saveClosedTabs([]);
+
+  // Refresh cached sessions
+  try {
+    const result = await state.gateway.request("sessions.list", {});
+    state._cachedSessions = result?.sessions || [];
+    state._cachedSessionsAt = Date.now();
+  } catch { /* use existing cache */ }
+
   renderTabHistory();
 }
 
