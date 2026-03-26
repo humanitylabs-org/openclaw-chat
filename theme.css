@@ -883,12 +883,18 @@
   border-color: rgba(211,47,47,0.2);
 }
 
-/* ── Bottom Utility Row ───────────────────────────────── */
+/* ── Bottom Utility Row (pinned to dashboard bottom) ──── */
 
 .hud-bottom-utility {
   display: flex;
   justify-content: flex-end;
-  padding: 8px 12px 12px;
+  padding: 6px 10px;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+[data-theme="light"] .hud-bottom-utility {
+  border-top-color: rgba(0,0,0,0.06);
 }
 
 /* ── Agent Card ───────────────────────────────────────── */
@@ -932,30 +938,20 @@
 /* ── Panel Dividers ───────────────────────────────────── */
 
 .hud-panel-divider {
-  height: 1px;
-  background: rgba(255,255,255,0.08);
-  margin: 10px 8px 6px;
+  margin: 10px 8px 2px;
   position: relative;
+  height: auto;
+  background: none;
 }
 .hud-panel-divider-label {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: #1a1a1a;
-  padding: 0 10px;
+  display: block;
   font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: var(--text-faint);
-}
-
-[data-theme="light"] .hud-panel-divider {
-  background: rgba(0,0,0,0.1);
-}
-[data-theme="light"] .hud-panel-divider-label {
-  background: #f5f5f7;
+  text-align: center;
+  opacity: 0.6;
 }
 
 /* ── Restart Toast ────────────────────────────────────── */
