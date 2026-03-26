@@ -1675,10 +1675,13 @@ function getOrphanSessions() {
   }
 
   // Clean up closedTabs that no longer exist on gateway
-  const gatewayKeys = new Set(orphans.map(o => o.key));
-  const currentClosed = getClosedTabs();
-  const stillValid = currentClosed.filter(k => gatewayKeys.has(k));
-  if (stillValid.length !== currentClosed.length) saveClosedTabs(stillValid);
+  // Only clean up if we actually have cached sessions (avoid wiping on early init)
+  if (sessions.length > 0) {
+    const gatewayKeys = new Set(orphans.map(o => o.key));
+    const currentClosed = getClosedTabs();
+    const stillValid = currentClosed.filter(k => gatewayKeys.has(k));
+    if (stillValid.length !== currentClosed.length) saveClosedTabs(stillValid);
+  }
 
   // Sort by most recently updated first
   orphans.sort((a, b) => b.updatedAt - a.updatedAt);
