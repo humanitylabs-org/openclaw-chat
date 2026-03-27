@@ -238,7 +238,7 @@
       flex: 0 0 auto !important;
       max-width: none !important;
       min-width: auto !important;
-      width: 56px;
+      width: 64px;
       padding: 6px 0 0 0;
       opacity: 0.7;
       position: relative;
@@ -269,21 +269,20 @@
     }
     /* Reset button inline in home tab row */
     .openclaw-tab-home .openclaw-home-reset {
-      width: 0;
-      overflow: hidden;
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
       opacity: 0;
       cursor: pointer;
-      padding: 2px 0;
+      padding: 2px 4px;
       border-radius: 4px;
-      transition: all 0.15s;
-      flex-shrink: 0;
+      transition: opacity 0.15s;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .openclaw-tab-home:hover .openclaw-home-reset {
-      width: auto;
-      padding: 2px 4px;
       opacity: 0.4;
     }
     .openclaw-tab-home .openclaw-home-reset:hover { opacity: 1 !important; background: rgba(128,128,128,0.25); }
