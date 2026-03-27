@@ -1351,6 +1351,11 @@ async function _renderTabsInner() {
     state.tabSessions.push({ key: "main", label: "Home", pct: 0 });
   }
 
+  // Active session can never be "closed" — remove it if somehow it got there
+  const closedList = getClosedTabs();
+  if (closedList.includes(currentKey)) {
+    saveClosedTabs(closedList.filter(k => k !== currentKey));
+  }
   const closedTabKeys = new Set(getClosedTabs());
   const others = convSessions
     .filter(s => {
@@ -2169,9 +2174,19 @@ async function clearTabHistory() {
 
 async function createNewTab() {
   if (!state.gateway?.connected) return;
+  // Collect ALL known tab numbers: visible tabs + closed tabs + gateway sessions
   const nums = state.tabSessions
     .map(t => { const m = t.key.match(/^tab-(\d+)$/); return m ? parseInt(m[1]) : NaN; })
     .filter(n => !isNaN(n));
+  // Also include closed tabs and cached gateway sessions to avoid key collisions
+  for (const k of getClosedTabs()) {
+    const m = k.match(/^tab-(\d+)$/);
+    if (m) nums.push(parseInt(m[1]));
+  }
+  for (const s of (state._cachedSessions || [])) {
+    const m = s.key.match(/tab-(\d+)/);
+    if (m) nums.push(parseInt(m[1]));
+  }
   const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1;
   const sessionKey = `tab-${nextNum}`;
   try {
