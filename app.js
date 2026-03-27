@@ -921,7 +921,6 @@ async function switchAgent(agent) {
   loadAgentFiles();
   loadCronJobs();
   loadSubagents();
-  renderTabHistory();
 }
 
 // Top-bar agent dropdown removed — control panel handles switching
@@ -1320,8 +1319,6 @@ async function _renderTabsInner() {
       sessions = result?.sessions || [];
       state._cachedSessions = sessions;
       state._cachedSessionsAt = Date.now();
-      // Detect session resets (daily refresh, etc.)
-      detectSessionResets(sessions);
     } catch {
       sessions = state._cachedSessions || [];
     }
@@ -1351,16 +1348,10 @@ async function _renderTabsInner() {
     state.tabSessions.push({ key: "main", label: "Home", pct: 0 });
   }
 
-  // Active session can never be "closed" — remove it if somehow it got there
-  const closedList = getClosedTabs();
-  if (closedList.includes(currentKey)) {
-    saveClosedTabs(closedList.filter(k => k !== currentKey));
-  }
-  const closedTabKeys = new Set(getClosedTabs());
   const others = convSessions
     .filter(s => {
       const sk = s.key.slice(prefix.length);
-      return sk !== "main" && !closedTabKeys.has(sk);
+      return sk !== "main";
     })
     .sort((a, b) => (a.createdAt || a.updatedAt || 0) - (b.createdAt || b.updatedAt || 0));
 
@@ -1667,7 +1658,6 @@ async function switchTab(tab) {
   ui.typingIndicator.classList.add("oc-hidden");
   setSendButtonStopMode(false);
   hideBanner();
-  dismissRefreshBanner();
 
   state.sessionKey = tab.key;
   localStorage.setItem("sessionKey", tab.key);
@@ -1745,7 +1735,6 @@ async function resetTab(tab) {
   const msg = "This will clear the conversation.";
   const ok = await confirmClose(title, msg);
   if (!ok) return;
-  _pendingManualReset = tab.key;
   if (tab.key === state.sessionKey) {
     state.messages = [];
     ui.messagesContainer.innerHTML = "";
@@ -1769,14 +1758,19 @@ async function resetTab(tab) {
 
 async function closeTab(tab, currentKey) {
   if (!state.gateway?.connected || state.tabDeleteInProgress) return;
-  const ok = await confirmClose("Close tab?", `Close "${tab.label}"?`);
+  const ok = await confirmClose("Close tab?", `Close "${tab.label}"? Chat history will be lost.`);
   if (!ok) return;
+  state.tabDeleteInProgress = true;
   delete state.tabCache[tab.key];
-
-  // Mark as closed (session stays on gateway as orphan)
-  addToClosedTabs(tab.key);
-
   finishStream(tab.key);
+
+  // Actually delete the session on the gateway
+  try {
+    await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tab.key}`, true);
+  } catch (err) {
+    console.error("Failed to delete session:", err);
+  }
+
   if (tab.key === currentKey) {
     state.sessionKey = "main";
     localStorage.setItem("sessionKey", "main");
@@ -1784,405 +1778,20 @@ async function closeTab(tab, currentKey) {
     ui.messagesContainer.innerHTML = "";
     await loadChatHistory();
   }
+  state.tabDeleteInProgress = false;
   await renderTabs();
   await updateContextMeter();
-  renderTabHistory();
-}
-
-// ─── Closed Tabs Management (gateway-driven) ────────────────────
-
-function getClosedTabs() {
-  try { return JSON.parse(localStorage.getItem("closedTabs") || "[]"); }
-  catch { return []; }
-}
-
-function saveClosedTabs(keys) {
-  localStorage.setItem("closedTabs", JSON.stringify(keys));
-}
-
-function addToClosedTabs(tabKey) {
-  const closed = getClosedTabs();
-  if (!closed.includes(tabKey)) {
-    closed.push(tabKey);
-    saveClosedTabs(closed);
-  }
-}
-
-function removeFromClosedTabs(tabKey) {
-  const closed = getClosedTabs().filter(k => k !== tabKey);
-  saveClosedTabs(closed);
-}
-
-function isTabClosed(tabKey) {
-  return getClosedTabs().includes(tabKey);
-}
-
-// Get orphan sessions: closed tabs that still exist on the gateway
-function getOrphanSessions() {
-  const prefix = agentPrefix();
-  const closedKeys = new Set(getClosedTabs());
-  const sessions = state._cachedSessions || [];
-
-  const orphans = [];
-  for (const s of sessions) {
-    if (!s.key.startsWith(prefix)) continue;
-    if (s.key.includes(":cron:") || s.key.includes(":subagent:")) continue;
-    const tabKey = s.key.slice(prefix.length);
-    if (tabKey.includes(":")) continue;
-    if (tabKey === "main") continue;
-    if (closedKeys.has(tabKey)) {
-      orphans.push({
-        key: tabKey,
-        fullKey: s.key,
-        label: s.label || s.displayName || tabKey,
-        updatedAt: s.updatedAt || s.createdAt || 0,
-      });
-    }
-  }
-
-  // Clean up closedTabs that no longer exist on gateway
-  // Only clean up if we actually have cached sessions (avoid wiping on early init)
-  if (sessions.length > 0) {
-    const gatewayKeys = new Set(orphans.map(o => o.key));
-    const currentClosed = getClosedTabs();
-    const stillValid = currentClosed.filter(k => gatewayKeys.has(k));
-    if (stillValid.length !== currentClosed.length) saveClosedTabs(stillValid);
-  }
-
-  // Sort by most recently updated first
-  orphans.sort((a, b) => b.updatedAt - a.updatedAt);
-  return orphans;
 }
 
 
-
-function getAutoCloseDays() {
-  return parseInt(localStorage.getItem("autoCloseDays") || "1", 10);
-}
-
-function setAutoClosePolicy(days) {
-  const prev = getAutoCloseDays();
-  localStorage.setItem("autoCloseDays", String(days));
-  renderTabHistory();
-  if (prev !== parseInt(days, 10)) {
-    showRestartToast();
-  }
-}
-
-// ─── Auto-Close Config (Gateway Integration) ────────────────────
-
-function showRestartToast() {
-  const toast = document.getElementById("restart-toast");
-  if (toast) toast.classList.remove("oc-hidden");
-}
-
-function dismissRestartToast() {
-  const toast = document.getElementById("restart-toast");
-  if (toast) toast.classList.add("oc-hidden");
-}
-
-async function applyAutoCloseConfig() {
-  if (!state.gateway?.connected) return;
-  const days = getAutoCloseDays();
-  let configMsg;
-  if (days === 0) {
-    configMsg = "Please run these commands and restart the gateway:\n" +
-      "openclaw config set session.reset.mode idle\n" +
-      "openclaw config set session.reset.idleMinutes 525600\n" +
-      "openclaw gateway restart";
-  } else if (days === 1) {
-    configMsg = "Please run these commands and restart the gateway:\n" +
-      "openclaw config set session.reset.mode daily\n" +
-      "openclaw config set session.reset.atHour 4\n" +
-      "openclaw gateway restart";
-  } else {
-    const idleMinutes = days * 24 * 60;
-    configMsg = "Please run these commands and restart the gateway:\n" +
-      "openclaw config set session.reset.mode idle\n" +
-      `openclaw config set session.reset.idleMinutes ${idleMinutes}\n` +
-      "openclaw gateway restart";
-  }
-
-  // Send as a message to the agent
-  try {
-    await state.gateway.request("chat.send", {
-      sessionKey: `${agentPrefix()}${state.sessionKey}`,
-      message: configMsg,
-    });
-    dismissRestartToast();
-    // Reload to show the sent message
-    await loadChatHistory();
-  } catch (err) {
-    console.error("Failed to send config command:", err);
-  }
-}
-
-function formatAge(timestamp) {
-  const diff = Date.now() - timestamp;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
-}
-
-// ─── Session Reset Detection ─────────────────────────────────────
-
-function getTabFingerprints() {
-  try {
-    return JSON.parse(localStorage.getItem("tabFingerprints") || "{}");
-  } catch { return {}; }
-}
-
-function saveTabFingerprints(fp) {
-  localStorage.setItem("tabFingerprints", JSON.stringify(fp));
-}
-
-// Track manual resets so we can distinguish from auto-resets
-let _pendingManualReset = null;
-
-// Called from _renderTabsInner after sessions.list
-function detectSessionResets(sessions) {
-  const prefix = agentPrefix();
-  const fingerprints = getTabFingerprints();
-  const newFingerprints = {};
-  let anyReset = false;
-
-  for (const s of sessions) {
-    if (!s.key.startsWith(prefix)) continue;
-    const tabKey = s.key.slice(prefix.length);
-    if (tabKey === "main" || tabKey.includes(":")) continue;
-
-    const createdAt = s.createdAt || 0;
-    const sessionId = s.sessionId || "";
-    const prev = fingerprints[tabKey];
-    const prevCreatedAt = typeof prev === "object" ? prev.createdAt : prev;
-    const prevSessionId = typeof prev === "object" ? prev.sessionId : "";
-
-    newFingerprints[tabKey] = { createdAt, sessionId };
-
-    // Check if this tab existed before with a different createdAt
-    if (prevCreatedAt && prevCreatedAt !== createdAt && createdAt > prevCreatedAt) {
-      anyReset = true;
-
-      // If this is the active tab, show banner
-      if (tabKey === state.sessionKey) {
-        const isManual = _pendingManualReset === tabKey;
-        _pendingManualReset = null;
-        showRefreshBanner(tabKey, prevSessionId, isManual);
-      }
-    }
-  }
-
-  // Merge: keep new fingerprints, remove stale ones
-  saveTabFingerprints(newFingerprints);
-  if (anyReset) renderTabHistory();
-}
-
-function showRefreshBanner(tabKey, oldSessionId, isManual) {
-  const banner = document.getElementById("refresh-banner");
-  if (!banner) return;
-
-  const text = document.getElementById("refresh-banner-text");
-  const continueBtn = document.getElementById("refresh-banner-continue");
-  const settingsHint = document.getElementById("refresh-banner-settings");
-
-  if (isManual) {
-    // Manual reset: user just did this intentionally
-    if (text) text.textContent = "Session reset. Your previous conversation is saved on the server.";
-    if (continueBtn) {
-      if (oldSessionId) {
-        continueBtn.textContent = "Recover previous conversation";
-        continueBtn.classList.remove("oc-hidden");
-        continueBtn.onclick = () => {
-          const input = document.getElementById("message-input");
-          if (input) {
-            input.value = `Please read my previous conversation transcript (session ${oldSessionId}.jsonl) and summarize where we left off so we can continue.`;
-            input.focus();
-            input.dispatchEvent(new Event("input", { bubbles: true }));
-          }
-          dismissRefreshBanner();
-        };
-      } else {
-        continueBtn.classList.add("oc-hidden");
-      }
-    }
-    if (settingsHint) settingsHint.classList.add("oc-hidden");
-  } else {
-    // Auto-reset: happened on a timer
-    if (text) text.textContent = "This session was auto-reset. Your previous conversation is saved on the server.";
-    if (continueBtn) {
-      if (oldSessionId) {
-        continueBtn.textContent = "Continue where I left off";
-        continueBtn.classList.remove("oc-hidden");
-        continueBtn.onclick = () => {
-          const input = document.getElementById("message-input");
-          if (input) {
-            input.value = `Please read my previous conversation transcript (session ${oldSessionId}.jsonl) and summarize where we left off so we can continue.`;
-            input.focus();
-            input.dispatchEvent(new Event("input", { bubbles: true }));
-          }
-          dismissRefreshBanner();
-        };
-      } else {
-        continueBtn.classList.add("oc-hidden");
-      }
-    }
-    if (settingsHint) {
-      settingsHint.innerHTML = 'To keep sessions longer, change <em>Auto-reset after</em> in Settings.';
-      settingsHint.classList.remove("oc-hidden");
-    }
-  }
-
-  banner.classList.remove("oc-hidden");
-}
-
-function dismissRefreshBanner() {
-  const banner = document.getElementById("refresh-banner");
-  if (banner) banner.classList.add("oc-hidden");
-}
-
-// ─── Tab History Rendering ───────────────────────────────────────
-
-function renderTabHistory() {
-  const section = document.getElementById("recently-closed-section");
-  const container = document.getElementById("recently-closed-list");
-  const deleteAllBtn = document.getElementById("rc-delete-all-btn");
-  if (!section || !container) return;
-
-  // Set auto-reset dropdown (lives in Settings section)
-  const autoCloseSelect = document.getElementById("rc-autoclose-select");
-  if (autoCloseSelect) autoCloseSelect.value = String(getAutoCloseDays());
-
-  // Get orphan sessions from gateway
-  const orphans = getOrphanSessions();
-
-  container.innerHTML = "";
-
-  // Show empty state or items
-  if (orphans.length === 0) {
-    container.innerHTML = '<div class="hud-empty-hint">No recently closed tabs</div>';
-    if (deleteAllBtn) deleteAllBtn.classList.add("oc-hidden");
-    return;
-  }
-
-  if (deleteAllBtn) deleteAllBtn.classList.remove("oc-hidden");
-
-  for (const item of orphans) {
-    const row = document.createElement("div");
-    row.className = "hud-rc-item";
-    row.title = `Restore "${item.label}"`;
-    row.addEventListener("click", () => restoreOrphan(item));
-
-    const label = document.createElement("span");
-    label.className = "hud-rc-item-label";
-    label.textContent = item.label;
-
-    const badge = document.createElement("span");
-    badge.className = "hud-rc-badge hud-rc-badge-closed";
-    badge.textContent = "closed";
-
-    const age = document.createElement("span");
-    age.className = "hud-rc-item-age";
-    age.textContent = formatAge(item.updatedAt);
-
-    const del = document.createElement("button");
-    del.className = "hud-rc-item-delete";
-    del.textContent = "✕";
-    del.title = "Delete permanently";
-    del.addEventListener("click", (e) => {
-      e.stopPropagation();
-      permanentlyDeleteOrphan(item);
-    });
-
-    row.appendChild(label);
-    row.appendChild(badge);
-    row.appendChild(age);
-    row.appendChild(del);
-    container.appendChild(row);
-  }
-}
-
-async function restoreOrphan(item) {
-  if (!state.gateway?.connected) return;
-
-  // Remove from closed tabs — session is still on gateway, just unhide it
-  removeFromClosedTabs(item.key);
-
-  // Switch to this tab
-  state.sessionKey = item.key;
-  localStorage.setItem("sessionKey", item.key);
-  state.messages = [];
-  ui.messagesContainer.innerHTML = "";
-  await loadChatHistory();
-  await renderTabs();
-  await updateContextMeter();
-  renderTabHistory();
-}
-
-async function permanentlyDeleteOrphan(item) {
-  // Remove from closed tabs
-  removeFromClosedTabs(item.key);
-
-  // Delete from gateway (with transcript)
-  try {
-    if (state.gateway?.connected) {
-      await deleteSessionWithFallback(state.gateway, item.fullKey, true);
-    }
-  } catch { /* best effort */ }
-
-  // Refresh cached sessions
-  try {
-    const result = await state.gateway.request("sessions.list", {});
-    state._cachedSessions = result?.sessions || [];
-    state._cachedSessionsAt = Date.now();
-  } catch { /* use existing cache */ }
-
-  renderTabHistory();
-}
-
-async function clearTabHistory() {
-  const orphans = getOrphanSessions();
-  if (orphans.length === 0) return;
-  const ok = await confirmClose("Delete all?", `Permanently delete ${orphans.length} closed tab(s)?`);
-  if (!ok) return;
-
-  // Delete all orphans from gateway
-  for (const item of orphans) {
-    try {
-      if (state.gateway?.connected) {
-        await deleteSessionWithFallback(state.gateway, item.fullKey, true);
-      }
-    } catch { /* best effort */ }
-  }
-
-  // Clear closed tabs list
-  saveClosedTabs([]);
-
-  // Refresh cached sessions
-  try {
-    const result = await state.gateway.request("sessions.list", {});
-    state._cachedSessions = result?.sessions || [];
-    state._cachedSessionsAt = Date.now();
-  } catch { /* use existing cache */ }
-
-  renderTabHistory();
-}
 
 async function createNewTab() {
   if (!state.gateway?.connected) return;
-  // Collect ALL known tab numbers: visible tabs + closed tabs + gateway sessions
+  // Collect ALL known tab numbers: visible tabs + gateway sessions
   const nums = state.tabSessions
     .map(t => { const m = t.key.match(/^tab-(\d+)$/); return m ? parseInt(m[1]) : NaN; })
     .filter(n => !isNaN(n));
-  // Also include closed tabs and cached gateway sessions to avoid key collisions
-  for (const k of getClosedTabs()) {
-    const m = k.match(/^tab-(\d+)$/);
-    if (m) nums.push(parseInt(m[1]));
-  }
+  // Also include cached gateway sessions to avoid key collisions
   for (const s of (state._cachedSessions || [])) {
     const m = s.key.match(/tab-(\d+)/);
     if (m) nums.push(parseInt(m[1]));
@@ -4304,7 +3913,6 @@ async function fetchServerInfo() {
     loadAgentSwitcher();
     loadAgentFiles();
     loadCronJobs();
-    renderTabHistory();
 
     // Version + Update (from connect snapshot)
     const snap = state.snapshot || {};

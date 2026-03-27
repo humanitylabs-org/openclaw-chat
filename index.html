@@ -1549,20 +1549,6 @@
             </div>
           </div>
 
-          <!-- ═══ Recently Closed ═══ -->
-          <div class="hud-section hud-collapsible" data-section="recently-closed" id="recently-closed-section">
-            <button class="hud-section-toggle" onclick="toggleSection('recently-closed')">
-              <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> RECENTLY CLOSED</span>
-              <span class="hud-section-actions">
-                <span class="hud-section-chevron">›</span>
-              </span>
-            </button>
-            <div class="hud-section-body">
-              <div id="recently-closed-list"></div>
-
-              <button class="hud-rc-delete-all-btn oc-hidden" id="rc-delete-all-btn" onclick="clearTabHistory()">Delete All</button>
-            </div>
-          </div>
 
         </div>
 
@@ -1676,15 +1662,6 @@
                 <button class="hud-server-action" onclick="openTerminalWithCmd('journalctl -u openclaw --no-pager -n 50')" title="View recent logs">📋 logs</button>
               </div>
               <div class="hud-settings-divider"></div>
-              <div class="hud-settings-row">
-                <span class="hud-settings-label">Auto-reset after</span>
-                <select class="hud-rc-retention-select" id="rc-autoclose-select" onchange="setAutoClosePolicy(this.value)">
-                  <option value="1">1 day</option>
-                  <option value="3">3 days</option>
-                  <option value="7">7 days</option>
-                  <option value="0">Never</option>
-                </select>
-              </div>
               <div id="hud-defaults-section" style="margin-top:4px;">
                 <div id="hud-defaults-panel" class="hud-defaults-panel"></div>
               </div>
@@ -1792,21 +1769,6 @@
       <!-- Status banner (hidden) -->
       <div class="openclaw-banner oc-hidden" id="status-banner"></div>
 
-      <!-- Session reset banner (manual + auto) -->
-      <div class="oc-refresh-banner oc-hidden" id="refresh-banner">
-        <div class="oc-refresh-banner-content">
-          <div class="oc-refresh-banner-main">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>
-            <span id="refresh-banner-text"></span>
-            <button class="oc-refresh-banner-close" onclick="dismissRefreshBanner()">✕</button>
-          </div>
-          <div class="oc-refresh-banner-actions">
-            <button class="oc-refresh-banner-btn oc-hidden" id="refresh-banner-continue"></button>
-            <span class="oc-refresh-banner-hint oc-hidden" id="refresh-banner-settings"></span>
-          </div>
-        </div>
-      </div>
-
       <!-- Messages -->
       <div class="openclaw-messages" id="messages"></div>
 
@@ -1905,15 +1867,6 @@
         <button class="oc-confirm-cancel" id="confirm-cancel">Cancel</button>
         <button class="oc-confirm-ok" id="confirm-ok">Close</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Restart required toast -->
-  <div class="oc-restart-toast oc-hidden" id="restart-toast">
-    <div class="oc-restart-toast-content">
-      <span class="oc-restart-toast-text">Restart the gateway for this to take effect.</span>
-      <button class="oc-restart-toast-btn" id="restart-toast-apply" onclick="applyAutoCloseConfig()">Apply &amp; restart</button>
-      <button class="oc-restart-toast-close" onclick="dismissRestartToast()">✕</button>
     </div>
   </div>
 
