@@ -1407,6 +1407,11 @@ async function _renderTabsInner() {
     state.tabSessions.push({ key: sk, label, pct });
   }
 
+  // Ensure the active session always has a tab (race: sessions.list may not have it yet)
+  if (currentKey !== "main" && !state.tabSessions.find(t => t.key === currentKey)) {
+    state.tabSessions.push({ key: currentKey, label: "Untitled", pct: 0 });
+  }
+
   for (const tab of state.tabSessions) {
     const isCurrent = tab.key === currentKey;
     const isHome = tab.key === "main";
@@ -2220,11 +2225,6 @@ async function createNewTab() {
     state.messages = [];
     ui.messagesContainer.innerHTML = "";
     showLoading("Loading…");
-
-    // Ensure new tab appears immediately (don't rely on sessions.list timing)
-    if (!state.tabSessions.find(t => t.key === sessionKey)) {
-      state.tabSessions.push({ key: sessionKey, label: "Untitled", pct: 0 });
-    }
 
     await renderTabs();
     await updateContextMeter();
