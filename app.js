@@ -434,6 +434,9 @@ const state = {
   tabDrafts: JSON.parse(localStorage.getItem('tabDrafts') || '{}'),
   messageQueue: JSON.parse(localStorage.getItem('messageQueue') || '{}'),  // { [sessionKey]: [{ text, images, timestamp }] }
 
+  // Unread tracking
+  unreadCounts: {},  // { [sessionKey]: number }
+
   // Stream state (per-session)
   streams: new Map(),
   runToSession: new Map(),
@@ -449,6 +452,135 @@ const state = {
 
 function agentPrefix() {
   return `agent:${state.activeAgent.id}:`;
+}
+
+// ─── Unread Tracking ─────────────────────────────────────────────────
+
+/** Resolve an event's sessionKey to a tab key (e.g. "main", "tab-5"), or null if not a known tab */
+function resolveTabKey(payloadSessionKey) {
+  if (!payloadSessionKey) return null;
+  const prefix = agentPrefix();
+  const normalized = payloadSessionKey.startsWith(prefix)
+    ? payloadSessionKey.slice(prefix.length)
+    : payloadSessionKey;
+  // Must be a known tab
+  if (state.tabSessions.some(t => t.key === normalized)) return normalized;
+  // Also check un-prefixed match
+  for (const t of state.tabSessions) {
+    if (payloadSessionKey === t.key || payloadSessionKey === `${prefix}${t.key}` || payloadSessionKey.endsWith(`:${t.key}`)) {
+      return t.key;
+    }
+  }
+  return null;
+}
+
+/** Increment unread count for a tab and update all UI indicators */
+function markUnread(sessionKey) {
+  if (!sessionKey || sessionKey === state.sessionKey) return; // active tab — don't mark
+  state.unreadCounts[sessionKey] = (state.unreadCounts[sessionKey] || 0) + 1;
+  updateUnreadBadges();
+  updateDocumentTitle();
+}
+
+/** Clear unread count for a tab and update all UI indicators */
+function clearUnread(sessionKey) {
+  if (!state.unreadCounts[sessionKey]) return;
+  delete state.unreadCounts[sessionKey];
+  updateUnreadBadges();
+  updateDocumentTitle();
+}
+
+/** Total unread across all tabs */
+function totalUnread() {
+  let n = 0;
+  for (const k in state.unreadCounts) n += state.unreadCounts[k];
+  return n;
+}
+
+/** Update document.title with unread count */
+function updateDocumentTitle() {
+  const n = totalUnread();
+  const base = "My Claw";
+  document.title = n > 0 ? `(${n}) ${base}` : base;
+}
+
+/** Update unread dot/badge on all rendered tab elements */
+function updateUnreadBadges() {
+  // Desktop tabs
+  const tabEls = ui.tabBar?.querySelectorAll(".openclaw-tab");
+  if (tabEls) {
+    tabEls.forEach((el, i) => {
+      const tab = state.tabSessions[i];
+      if (!tab) return;
+      let dot = el.querySelector(".oc-unread-dot");
+      const count = state.unreadCounts[tab.key] || 0;
+      if (count > 0) {
+        if (!dot) {
+          dot = document.createElement("span");
+          dot.className = "oc-unread-dot";
+          el.querySelector(".openclaw-tab-row")?.appendChild(dot);
+        }
+        dot.textContent = count > 9 ? "9+" : String(count);
+      } else if (dot) {
+        dot.remove();
+      }
+    });
+  }
+
+  // Mobile tab switcher — show dot next to label if any tab has unread
+  const switcherLabel = document.getElementById("tab-switcher-label");
+  if (switcherLabel) {
+    let switcherDot = switcherLabel.parentElement?.querySelector(".oc-unread-switcher-dot");
+    const n = totalUnread();
+    // Only show if there are unread on OTHER tabs (not the currently displayed one)
+    const otherUnread = n - (state.unreadCounts[state.sessionKey] || 0);
+    if (otherUnread > 0) {
+      if (!switcherDot) {
+        switcherDot = document.createElement("span");
+        switcherDot.className = "oc-unread-switcher-dot";
+        switcherLabel.parentElement?.querySelector(".oc-tab-switcher-row")?.appendChild(switcherDot);
+      }
+      switcherDot.textContent = otherUnread > 9 ? "9+" : String(otherUnread);
+    } else if (switcherDot) {
+      switcherDot.remove();
+    }
+  }
+}
+
+/** Fire an OS notification for a background message */
+function fireNotification(sessionKey, text) {
+  if (!("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+  if (!document.hidden) return; // only when page is backgrounded
+
+  const tab = state.tabSessions.find(t => t.key === sessionKey);
+  const title = tab ? (tab.key === "main" ? "Home" : tab.label || "Untitled") : "New message";
+  const body = text ? text.slice(0, 120) : "New message received";
+
+  try {
+    const n = new Notification(title, {
+      body,
+      icon: "/icon-192.png",
+      tag: `openclaw-${sessionKey}`, // replaces previous notification for same tab
+      renotify: true,
+    });
+    n.onclick = () => {
+      window.focus();
+      const t = state.tabSessions.find(t => t.key === sessionKey);
+      if (t && t.key !== state.sessionKey) switchTab(t);
+      n.close();
+    };
+  } catch {}
+}
+
+/** Request notification permission (called once on first connect) */
+function requestNotificationPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") {
+    // Don't prompt immediately — wait for user interaction
+    // We'll request on first send instead
+    return;
+  }
 }
 
 // ─── UI Elements ─────────────────────────────────────────────────────
@@ -629,6 +761,9 @@ async function startChat() {
       lastHiddenAt = Date.now();
       return;
     }
+    // Page is visible again — clear unread for current tab & update title
+    clearUnread(state.sessionKey);
+
     // Page is visible again — recover
     const awayMs = Date.now() - lastHiddenAt;
     const wasAwayLong = awayMs > 3000; // more than 3 seconds in background
@@ -1045,6 +1180,15 @@ function renderHamburgerDropdown() {
     }
     item.appendChild(label);
 
+    // Unread badge in dropdown
+    const ddUnread = state.unreadCounts[tab.key] || 0;
+    if (ddUnread > 0 && !isCurrent) {
+      const badge = document.createElement("span");
+      badge.className = "oc-unread-dot";
+      badge.textContent = ddUnread > 9 ? "9+" : String(ddUnread);
+      item.appendChild(badge);
+    }
+
     const meter = document.createElement("div");
     meter.className = "oc-dd-meter";
     const fill = document.createElement("div");
@@ -1284,6 +1428,15 @@ async function _renderTabsInner() {
       actionBtn.addEventListener("click", (e) => { e.stopPropagation(); closeTab(tab, currentKey); });
       row.appendChild(actionBtn);
     }
+    // Unread badge
+    const unreadCount = state.unreadCounts[tab.key] || 0;
+    if (unreadCount > 0 && !isCurrent) {
+      const dot = document.createElement("span");
+      dot.className = "oc-unread-dot";
+      dot.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
+      row.appendChild(dot);
+    }
+
     tabEl.appendChild(row);
 
     const meter = document.createElement("div");
@@ -1508,6 +1661,9 @@ async function switchTab(tab) {
 
   state.sessionKey = tab.key;
   localStorage.setItem("sessionKey", tab.key);
+
+  // Clear unread for the tab we're switching to
+  clearUnread(tab.key);
 
   // Visual switch IMMEDIATELY — don't wait for history
   renderTabs();
@@ -3128,7 +3284,21 @@ function handleChatEvent(payload) {
     const active = state.sessionKey;
     if (payloadSk === active || payloadSk === `${prefix}${active}` || payloadSk.endsWith(`:${active}`)) {
       eventSessionKey = active;
-    } else return;
+    } else {
+      // Not the active tab or a known stream — check if it's any known tab (for unread tracking)
+      const tabKey = resolveTabKey(payloadSk);
+      if (tabKey) {
+        const chatState = str(payload.state);
+        if (chatState === "final") {
+          const text = extractDeltaText(payload.message);
+          markUnread(tabKey);
+          fireNotification(tabKey, text || "");
+          // Invalidate cache so next switch loads fresh history
+          delete state.tabCache[tabKey];
+        }
+      }
+      return;
+    }
   }
 
   const ss = state.streams.get(eventSessionKey);
@@ -3141,6 +3311,12 @@ function handleChatEvent(payload) {
       loadChatHistory();
       // Drain queue — stream may have been cleaned up before final arrived
       setTimeout(() => processQueue(), 500);
+    } else {
+      // Non-active tab got a final without a stream — mark unread
+      markUnread(eventSessionKey);
+      const text = extractDeltaText(payload.message);
+      fireNotification(eventSessionKey, text || "");
+      delete state.tabCache[eventSessionKey];
     }
     return;
   }
@@ -3167,6 +3343,11 @@ function handleChatEvent(payload) {
     finishStream(eventSessionKey);
     if (isActiveTab) {
       loadChatHistory().then(() => updateContextMeter());
+    } else {
+      // Non-active tab finished streaming — mark unread
+      markUnread(eventSessionKey);
+      fireNotification(eventSessionKey, ss?.text || "");
+      delete state.tabCache[eventSessionKey];
     }
   } else if (chatState === "aborted") {
     if (isActiveTab && ss?.text) {
@@ -3194,6 +3375,11 @@ async function sendMessage(text) {
   if (!text.trim() && !hasAttachments) return;
   if (state.sending) return;
   if (!state.gateway?.connected) return;
+
+  // Request notification permission on first user interaction
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission().catch(() => {});
+  }
 
   state.sending = true;
   ui.messageInput.value = "";
