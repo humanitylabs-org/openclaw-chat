@@ -13,141 +13,24 @@ function str(v, fallback = "") {
   return typeof v === "string" ? v : fallback;
 }
 
-/** Generate a short tab title from conversation context */
-function generateTabTitle(userText, assistantText) {
-  // Try assistant response first — it's usually a better summary
-  const title = titleFromAssistant(assistantText) || titleFromUser(userText);
-  if (!title || title.length < 2) return null;
-  return title.charAt(0).toUpperCase() + title.slice(1);
-}
-
-function cleanText(text) {
-  return (text || "")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/`[^`]+`/g, "")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/[#*_~>]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function capWords(text, maxWords, maxChars) {
-  const words = text.split(/\s+/);
-  let result = "";
-  for (let i = 0; i < Math.min(words.length, maxWords); i++) {
-    const next = result ? result + " " + words[i] : words[i];
-    if (next.length > maxChars) break;
-    result = next;
-  }
-  return result;
-}
-
-function titleFromAssistant(text) {
-  if (!text) return null;
-  const clean = cleanText(text);
-  if (!clean || clean.length < 5) return null;
-
-  // If assistant starts with a greeting + topic, extract the topic part
-  // e.g. "Hey! Here's the fix for the scroll issue" → "Scroll issue fix"
-  // e.g. "Done. The deployment is live." → "Deployment live"
-  // e.g. "I found 3 issues with..." → "3 issues with..."
-  const sentences = clean.split(/[.!?\n]/).map(s => s.trim()).filter(s => s.length > 3);
-  if (sentences.length === 0) return null;
-
-  // Skip pure greetings as first sentence
-  let sentence = sentences[0];
-  if (/^(hey|hi|hello|sure|ok|okay|got it|alright|no problem|of course|absolutely)/i.test(sentence) && sentences.length > 1) {
-    sentence = sentences[1];
-  }
-
-  // Strip leading filler
-  sentence = sentence
-    .replace(/^(here'?s?|i('ve| have)?|let me|i('ll| will)?|this is|that'?s?|the|so|well|basically|essentially)\s+/i, "")
-    .replace(/^(a |an |the )/i, "")
-    .trim();
-
-  return capWords(sentence, 5, 30) || null;
-}
-
-function titleFromUser(text) {
-  if (!text) return null;
-
-  // Extract URL domain as fallback context
-  const urlMatch = text.match(/https?:\/\/(?:www\.)?([^\/\s]+)/);
-  const clean = cleanText(text.replace(/https?:\/\/\S+/g, "")).trim();
-
-  // If it's just a URL, use the domain
-  if (!clean && urlMatch) {
-    const domain = urlMatch[1].replace(/\.[^.]+$/, ""); // strip TLD
-    return capWords(domain.replace(/[-_]/g, " "), 3, 25) || null;
-  }
-
-  // Handle questions — use the question itself
-  const questionMatch = clean.match(/^(what|how|why|when|where|who|can|could|is|are|do|does|should|would|will)\s+(.+)/i);
-  if (questionMatch) {
-    const qBody = questionMatch[2].replace(/\?.*$/, "").trim();
-    return capWords(qBody, 5, 30) || null;
-  }
-
-  // Handle imperative commands: "fix the scroll", "make it blue", "deploy to prod"
-  const sentence = clean.split(/[.!?\n]/)[0].trim();
-  const stripped = sentence
-    .replace(/^(hey|hi|hello|please|can you|could you|i want to|i need to|i'd like to|let'?s|okay|ok)\s+/i, "")
-    .replace(/^(a |an |the )/i, "")
-    .trim();
-
-  const result = capWords(stripped || sentence, 5, 30);
-  // Add domain context if we have a URL
-  if (result && urlMatch && result.length < 20) {
-    const domain = urlMatch[1].replace(/\.[^.]+$/, "");
-    const combined = result + " — " + domain;
-    if (combined.length <= 30) return combined;
-  }
-  return result || null;
-}
-
-/** Auto-rename an "Untitled" tab — waits for assistant reply for better titles */
+/** Auto-rename an "Untitled" tab — stores user text, waits for assistant reply to trigger LLM */
 async function autoRenameTab(sessionKey, messageText) {
   if (sessionKey === "main") return;
   const tab = state.tabSessions.find(t => t.key === sessionKey);
   if (!tab || tab.label !== "Untitled") return;
 
-  // Quick rename from user message first (instant feedback)
-  const quickTitle = titleFromUser(messageText);
-  if (quickTitle) {
-    try {
-      await state.gateway.request("sessions.patch", {
-        key: `${agentPrefix()}${sessionKey}`,
-        label: quickTitle,
-      });
-      tab.label = quickTitle;
-      renderTabs();
-    } catch { /* non-critical */ }
-  }
-
-  // Store user text so we can upgrade the title when assistant responds
+  // Store user text so we can generate LLM title when assistant responds
   tab._pendingRenameUserText = messageText;
 }
 
-/** Upgrade tab title when assistant's first response arrives */
+/** Upgrade tab title when assistant's first response arrives — uses LLM */
 function upgradeTabTitle(sessionKey, assistantText) {
   const tab = state.tabSessions.find(t => t.key === sessionKey);
   if (!tab || !tab._pendingRenameUserText) return;
   const userText = tab._pendingRenameUserText;
   delete tab._pendingRenameUserText;
 
-  // Apply heuristic title immediately as fallback
-  const betterTitle = generateTabTitle(userText, assistantText);
-  if (betterTitle && betterTitle !== tab.label) {
-    tab.label = betterTitle;
-    renderTabs();
-    state.gateway?.request("sessions.patch", {
-      key: `${agentPrefix()}${sessionKey}`,
-      label: betterTitle,
-    }).catch(() => {});
-  }
-
-  // Fire LLM title generation in background (overwrites heuristic when ready)
+  // Fire LLM title generation
   generateLLMTitle(sessionKey, userText, assistantText).catch(() => {});
 }
 
