@@ -13,159 +13,138 @@ function str(v, fallback = "") {
   return typeof v === "string" ? v : fallback;
 }
 
-/** Auto-rename an "Untitled" tab — stores user text, waits for assistant reply to trigger LLM */
+/** Generate a short tab title from conversation context */
+function generateTabTitle(userText, assistantText) {
+  // Try assistant response first — it's usually a better summary
+  const title = titleFromAssistant(assistantText) || titleFromUser(userText);
+  if (!title || title.length < 2) return null;
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
+function cleanText(text) {
+  return (text || "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]+`/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[#*_~>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function capWords(text, maxWords, maxChars) {
+  const words = text.split(/\s+/);
+  let result = "";
+  for (let i = 0; i < Math.min(words.length, maxWords); i++) {
+    const next = result ? result + " " + words[i] : words[i];
+    if (next.length > maxChars) break;
+    result = next;
+  }
+  return result;
+}
+
+function titleFromAssistant(text) {
+  if (!text) return null;
+  const clean = cleanText(text);
+  if (!clean || clean.length < 5) return null;
+
+  // If assistant starts with a greeting + topic, extract the topic part
+  // e.g. "Hey! Here's the fix for the scroll issue" → "Scroll issue fix"
+  // e.g. "Done. The deployment is live." → "Deployment live"
+  // e.g. "I found 3 issues with..." → "3 issues with..."
+  const sentences = clean.split(/[.!?\n]/).map(s => s.trim()).filter(s => s.length > 3);
+  if (sentences.length === 0) return null;
+
+  // Skip pure greetings as first sentence
+  let sentence = sentences[0];
+  if (/^(hey|hi|hello|sure|ok|okay|got it|alright|no problem|of course|absolutely)/i.test(sentence) && sentences.length > 1) {
+    sentence = sentences[1];
+  }
+
+  // Strip leading filler
+  sentence = sentence
+    .replace(/^(here'?s?|i('ve| have)?|let me|i('ll| will)?|this is|that'?s?|the|so|well|basically|essentially)\s+/i, "")
+    .replace(/^(a |an |the )/i, "")
+    .trim();
+
+  return capWords(sentence, 5, 30) || null;
+}
+
+function titleFromUser(text) {
+  if (!text) return null;
+
+  // Extract URL domain as fallback context
+  const urlMatch = text.match(/https?:\/\/(?:www\.)?([^\/\s]+)/);
+  const clean = cleanText(text.replace(/https?:\/\/\S+/g, "")).trim();
+
+  // If it's just a URL, use the domain
+  if (!clean && urlMatch) {
+    const domain = urlMatch[1].replace(/\.[^.]+$/, ""); // strip TLD
+    return capWords(domain.replace(/[-_]/g, " "), 3, 25) || null;
+  }
+
+  // Handle questions — use the question itself
+  const questionMatch = clean.match(/^(what|how|why|when|where|who|can|could|is|are|do|does|should|would|will)\s+(.+)/i);
+  if (questionMatch) {
+    const qBody = questionMatch[2].replace(/\?.*$/, "").trim();
+    return capWords(qBody, 5, 30) || null;
+  }
+
+  // Handle imperative commands: "fix the scroll", "make it blue", "deploy to prod"
+  const sentence = clean.split(/[.!?\n]/)[0].trim();
+  const stripped = sentence
+    .replace(/^(hey|hi|hello|please|can you|could you|i want to|i need to|i'd like to|let'?s|okay|ok)\s+/i, "")
+    .replace(/^(a |an |the )/i, "")
+    .trim();
+
+  const result = capWords(stripped || sentence, 5, 30);
+  // Add domain context if we have a URL
+  if (result && urlMatch && result.length < 20) {
+    const domain = urlMatch[1].replace(/\.[^.]+$/, "");
+    const combined = result + " — " + domain;
+    if (combined.length <= 30) return combined;
+  }
+  return result || null;
+}
+
+/** Auto-rename an "Untitled" tab — waits for assistant reply for better titles */
 async function autoRenameTab(sessionKey, messageText) {
   if (sessionKey === "main") return;
   const tab = state.tabSessions.find(t => t.key === sessionKey);
   if (!tab || tab.label !== "Untitled") return;
 
-  // Store user text so we can generate LLM title when assistant responds
+  // Quick rename from user message first (instant feedback)
+  const quickTitle = titleFromUser(messageText);
+  if (quickTitle) {
+    try {
+      await state.gateway.request("sessions.patch", {
+        key: `${agentPrefix()}${sessionKey}`,
+        label: quickTitle,
+      });
+      tab.label = quickTitle;
+      renderTabs();
+    } catch { /* non-critical */ }
+  }
+
+  // Store user text so we can upgrade the title when assistant responds
   tab._pendingRenameUserText = messageText;
 }
 
-/** Upgrade tab title when assistant's first response arrives — uses LLM */
+/** Upgrade tab title when assistant's first response arrives */
 function upgradeTabTitle(sessionKey, assistantText) {
   const tab = state.tabSessions.find(t => t.key === sessionKey);
   if (!tab || !tab._pendingRenameUserText) return;
   const userText = tab._pendingRenameUserText;
   delete tab._pendingRenameUserText;
 
-  // Fire LLM title generation
-  generateLLMTitle(sessionKey, userText, assistantText).catch(() => {});
-}
+  const betterTitle = generateTabTitle(userText, assistantText);
+  if (!betterTitle || betterTitle === tab.label) return;
 
-// ─── LLM Tab Title Generation ────────────────────────────────────────
-
-/** Rank models by estimated cost (lower = cheaper) */
-function modelCostRank(id) {
-  const l = (id || "").toLowerCase();
-  if (l.includes("haiku")) return 1;
-  if (l.includes("4o-mini") || l.includes("4o_mini")) return 2;
-  if (l.includes("flash") && !l.includes("pro")) return 3;
-  if (l.includes("mini")) return 4;
-  if (l.includes("small")) return 5;
-  if (l.includes("lite")) return 6;
-  if (l.includes("flash")) return 7;
-  if (l.includes("sonnet")) return 10;
-  if (l.includes("4o") && !l.includes("mini")) return 11;
-  if (l.includes("pro")) return 15;
-  if (l.includes("opus")) return 20;
-  if (l.includes("4.5") || l.includes("o1") || l.includes("o3")) return 22;
-  return 50; // unknown — treat as mid-tier
-}
-
-/** Pick the cheapest model from the gateway's model list (cached) */
-async function pickCheapestModel() {
-  if (state._cheapModelId !== null) return state._cheapModelId || null;
-  try {
-    const result = await state.gateway?.request("models.list", {});
-    const models = result?.models || [];
-    if (models.length === 0) { state._cheapModelId = false; return null; }
-    if (models.length === 1) { state._cheapModelId = false; return null; } // only one model, no point overriding
-    const sorted = [...models].sort((a, b) => {
-      const idA = a.provider ? `${a.provider}/${a.id}` : a.id;
-      const idB = b.provider ? `${b.provider}/${b.id}` : b.id;
-      return modelCostRank(idA) - modelCostRank(idB);
-    });
-    const cheapest = sorted[0];
-    const fullId = cheapest.provider ? `${cheapest.provider}/${cheapest.id}` : cheapest.id;
-    // Only use it if it's actually cheaper than the default
-    const defaultModel = state.currentModel || state.defaults.model || "";
-    if (modelCostRank(fullId) >= modelCostRank(defaultModel)) {
-      state._cheapModelId = false;
-      return null;
-    }
-    state._cheapModelId = fullId;
-    return fullId;
-  } catch {
-    state._cheapModelId = false;
-    return null;
-  }
-}
-
-/** Validate an LLM-generated title */
-function validateLLMTitle(text) {
-  if (!text) return null;
-  let title = text.trim()
-    .replace(/^["']|["']$/g, "")  // strip wrapping quotes
-    .replace(/\.+$/, "")           // strip trailing periods
-    .trim();
-  // Must be 1-8 words, under 50 chars, no weird formatting
-  const words = title.split(/\s+/);
-  if (words.length < 1 || words.length > 8) return null;
-  if (title.length > 50) title = title.slice(0, 50).trim();
-  if (title.length < 2) return null;
-  // Reject if it looks like the LLM is explaining instead of titling
-  if (/^(here|this|the title|i would|sure|okay)/i.test(title)) return null;
-  return title;
-}
-
-/** Generate a tab title using the cheapest available LLM */
-async function generateLLMTitle(tabKey, userText, assistantText) {
-  if (!state.gateway?.connected) return;
-  if (tabKey === "main") return;
-
-  const prefix = agentPrefix();
-  const titleSessionKey = `${prefix}title:${Date.now()}`;
-
-  const userSnippet = (userText || "").slice(0, 300).trim();
-  const assistantSnippet = (assistantText || "").slice(0, 300).trim();
-  if (!userSnippet) return;
-
-  const prompt = `Title this conversation in 2-5 words. Reply with ONLY the title, nothing else. No quotes, no punctuation, no explanation.
-
-User: "${userSnippet}"${assistantSnippet ? `\nAssistant: "${assistantSnippet}"` : ""}`;
-
-  // Set up response listener
-  const titlePromise = new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      state.pendingTitleGens.delete(titleSessionKey);
-      resolve(null);
-    }, 20000); // 20s timeout
-
-    state.pendingTitleGens.set(titleSessionKey, { tabKey, resolve, timer });
-  });
-
-  try {
-    // Configure throwaway session: cheapest model, no thinking
-    const cheapModel = await pickCheapestModel();
-    const patchParams = { key: titleSessionKey, thinkingLevel: "off" };
-    if (cheapModel) patchParams.model = cheapModel;
-    await state.gateway.request("sessions.patch", patchParams).catch(() => {});
-
-    // Send the title prompt
-    await state.gateway.request("chat.send", {
-      sessionKey: titleSessionKey,
-      message: prompt,
-      thinking: "off",
-      idempotencyKey: `title-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    });
-
-    // Wait for response
-    const rawTitle = await titlePromise;
-    const title = validateLLMTitle(rawTitle);
-
-    if (title) {
-      const tab = state.tabSessions.find(t => t.key === tabKey);
-      if (tab) {
-        tab.label = title;
-        renderTabs();
-        state.gateway.request("sessions.patch", {
-          key: `${prefix}${tabKey}`,
-          label: title,
-        }).catch(() => {});
-      }
-    }
-  } catch {
-    // LLM title failed — heuristic title stays
-  } finally {
-    // Clean up throwaway session
-    state.pendingTitleGens.delete(titleSessionKey);
-    state.gateway?.request("sessions.delete", {
-      key: titleSessionKey,
-      deleteTranscript: true,
-    }).catch(() => {});
-  }
+  tab.label = betterTitle;
+  renderTabs();
+  state.gateway?.request("sessions.patch", {
+    key: `${agentPrefix()}${sessionKey}`,
+    label: betterTitle,
+  }).catch(() => {});
 }
 
 function normalizeGatewayUrl(raw) {
@@ -458,10 +437,6 @@ const state = {
   // Unread tracking
   unreadCounts: {},  // { [sessionKey]: number }
 
-  // LLM title generation
-  pendingTitleGens: new Map(),  // fullSessionKey -> { tabKey, resolve, timer }
-  _cheapModelId: null,          // cached cheapest model id (or false if checked & none found)
-
   // Stream state (per-session)
   streams: new Map(),
   runToSession: new Map(),
@@ -726,7 +701,6 @@ async function connectToGateway() {
         helloReceived = true;
         localStorage.setItem("deviceApproved", "true");
         state.snapshot = payload?.snapshot || {};
-        state._cheapModelId = null; // reset model cache on reconnect
         state.serverVersion = payload?.server?.version || '';
 
         document.getElementById("pairing-banner")?.remove();
@@ -1407,7 +1381,7 @@ async function _renderTabsInner() {
     state.tabSessions.push({ key: sk, label, pct });
   }
 
-  // Ensure the active session always has a tab (race: sessions.list may not have it yet)
+  // Ensure the active session always has a tab (sessions.list race condition)
   if (currentKey !== "main" && !state.tabSessions.find(t => t.key === currentKey)) {
     state.tabSessions.push({ key: currentKey, label: "Untitled", pct: 0 });
   }
@@ -2225,7 +2199,6 @@ async function createNewTab() {
     state.messages = [];
     ui.messagesContainer.innerHTML = "";
     showLoading("Loading…");
-
     await renderTabs();
     await updateContextMeter();
   } catch (err) {
@@ -3317,19 +3290,10 @@ function handleChatEvent(payload) {
     if (payloadSk === active || payloadSk === `${prefix}${active}` || payloadSk.endsWith(`:${active}`)) {
       eventSessionKey = active;
     } else {
-      // Check if this is a title generation response
-      const chatState = str(payload.state);
-      const titleGen = state.pendingTitleGens.get(payloadSk);
-      if (titleGen && chatState === "final") {
-        const text = extractDeltaText(payload.message);
-        if (titleGen.timer) clearTimeout(titleGen.timer);
-        titleGen.resolve(text || null);
-        return;
-      }
-
       // Not the active tab or a known stream — check if it's any known tab (for unread tracking)
       const tabKey = resolveTabKey(payloadSk);
       if (tabKey) {
+        const chatState = str(payload.state);
         if (chatState === "final") {
           const text = extractDeltaText(payload.message);
           markUnread(tabKey);
