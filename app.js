@@ -2220,6 +2220,12 @@ async function createNewTab() {
     state.messages = [];
     ui.messagesContainer.innerHTML = "";
     showLoading("Loading…");
+
+    // Ensure new tab appears immediately (don't rely on sessions.list timing)
+    if (!state.tabSessions.find(t => t.key === sessionKey)) {
+      state.tabSessions.push({ key: sessionKey, label: "Untitled", pct: 0 });
+    }
+
     await renderTabs();
     await updateContextMeter();
   } catch (err) {
