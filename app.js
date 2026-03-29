@@ -21,7 +21,7 @@ function generateTabTitle(userText, assistantText) {
   return title.charAt(0).toUpperCase() + title.slice(1);
 }
 
-function cleanText(text) {
+function cleanTextForTitle(text) {
   return (text || "")
     .replace(/```[\s\S]*?```/g, "")
     .replace(/`[^`]+`/g, "")
@@ -44,7 +44,7 @@ function capWords(text, maxWords, maxChars) {
 
 function titleFromAssistant(text) {
   if (!text) return null;
-  const clean = cleanText(text);
+  const clean = cleanTextForTitle(text);
   if (!clean || clean.length < 5) return null;
 
   // If assistant starts with a greeting + topic, extract the topic part
@@ -74,7 +74,7 @@ function titleFromUser(text) {
 
   // Extract URL domain as fallback context
   const urlMatch = text.match(/https?:\/\/(?:www\.)?([^\/\s]+)/);
-  const clean = cleanText(text.replace(/https?:\/\/\S+/g, "")).trim();
+  const clean = cleanTextForTitle(text.replace(/https?:\/\/\S+/g, "")).trim();
 
   // If it's just a URL, use the domain
   if (!clean && urlMatch) {
@@ -748,6 +748,12 @@ async function startChat() {
   renderQueuedMessages();
   // Drain any queued messages from a previous session/page load
   setTimeout(() => processQueue(), 1000);
+  // Immediately sync model from server (don't wait for first 15s interval)
+  updateContextMeter();
+
+  // Guard: only set up recurring timers/listeners once
+  if (!state._chatInitialized) {
+    state._chatInitialized = true;
 
   setInterval(() => updateContextMeter(), 15000);
 
@@ -803,6 +809,8 @@ async function startChat() {
       updateContextMeter();
     }
   });
+
+  } // end _chatInitialized guard
 }
 
 function updateConnectionStatus(connected) {
@@ -1856,7 +1864,7 @@ async function updateContextMeter() {
     if (!session) return;
 
     const fullModel = session.model || "";
-    const modelCooldown = Date.now() - state.currentModelSetAt < 15000;
+    const modelCooldown = Date.now() - state.currentModelSetAt < 5000;
     if (fullModel && fullModel !== state.currentModel && !modelCooldown) {
       state.currentModel = fullModel;
       localStorage.setItem("currentModel", fullModel);
@@ -1900,8 +1908,8 @@ async function updateContextMeter() {
       await renderTabs();
     }
     
-    // Update subagents panel from same sessions data
-    loadSubagents();
+    // Update subagents panel from same sessions data (reuse fetched sessions)
+    loadSubagents(sessions);
   } catch { /* ignore */ }
 }
 
@@ -2471,8 +2479,8 @@ function formatMarkdown(text) {
   let processed = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
     const idx = codeBlocks.length;
     const langLabel = lang ? `<div style="font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:10px;color:var(--text-faint,#666);padding:4px 10px 0;letter-spacing:0.06em;text-transform:uppercase">${lang}</div>` : "";
-    const copyBtn = `<button onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').innerText).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="position:absolute;top:4px;right:4px;padding:2px 8px;font-size:11px;background:var(--background-modifier-hover,rgba(255,255,255,0.1));border:1px solid var(--background-modifier-border,rgba(255,255,255,0.1));border-radius:3px;color:var(--text-muted,#999);cursor:pointer;opacity:0;transition:opacity 0.15s">Copy</button>`;
-    codeBlocks.push(`<pre style="position:relative;margin:6px 0;background:var(--background-secondary,#141416);border:1px solid var(--background-modifier-border,rgba(255,255,255,0.06));border-radius:4px;overflow-x:auto" onmouseenter="this.querySelector('button').style.opacity='1'" onmouseleave="this.querySelector('button').style.opacity='0'">${langLabel}${copyBtn}<code style="display:block;padding:8px 12px;font-size:12px;line-height:1.6;background:none">${escapeHtmlChat(code)}</code></pre>`);
+    const copyBtn = `<button class="oc-code-copy" style="position:absolute;top:4px;right:4px;padding:2px 8px;font-size:11px;background:var(--background-modifier-hover,rgba(255,255,255,0.1));border:1px solid var(--background-modifier-border,rgba(255,255,255,0.1));border-radius:3px;color:var(--text-muted,#999);cursor:pointer;opacity:0;transition:opacity 0.15s">Copy</button>`;
+    codeBlocks.push(`<pre class="oc-code-block" style="position:relative;margin:6px 0;background:var(--background-secondary,#141416);border:1px solid var(--background-modifier-border,rgba(255,255,255,0.06));border-radius:4px;overflow-x:auto">${langLabel}${copyBtn}<code style="display:block;padding:8px 12px;font-size:12px;line-height:1.6;background:none">${escapeHtmlChat(code)}</code></pre>`);
     return `\x00CB${idx}\x00`;
   });
 
@@ -2526,9 +2534,9 @@ function formatMarkdown(text) {
 
   html = html.replace(/~~(.+?)~~/g, "<del>$1</del>");
 
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:4px">');
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => safeImage(alt, url));
 
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => safeLink(text, url));
 
   html = html.replace(/^[\-\*]\s+(.+)$/gm, "<li>$1</li>");
 
@@ -2567,6 +2575,42 @@ function escapeHtmlChat(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+/** Sanitize a URL — only allow http(s), mailto, and # (anchor) protocols */
+function sanitizeUrl(url) {
+  const trimmed = url.trim();
+  if (trimmed.startsWith("#")) return trimmed;
+  try {
+    const parsed = new URL(trimmed, window.location.origin);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:" || parsed.protocol === "mailto:") {
+      return trimmed;
+    }
+  } catch {}
+  return "";
+}
+
+/** Build a safe <a> element and return its outerHTML */
+function safeLink(text, url) {
+  const sanitized = sanitizeUrl(url);
+  if (!sanitized) return escapeHtmlChat(text);
+  const a = document.createElement("a");
+  a.href = sanitized;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.textContent = text;
+  return a.outerHTML;
+}
+
+/** Build a safe <img> element and return its outerHTML */
+function safeImage(alt, url) {
+  const sanitized = sanitizeUrl(url);
+  if (!sanitized) return escapeHtmlChat(alt || "");
+  const img = document.createElement("img");
+  img.src = sanitized;
+  img.alt = alt || "";
+  img.style.cssText = "max-width:100%;border-radius:4px";
+  return img.outerHTML;
 }
 
 function scrollToBottom() {
@@ -3399,6 +3443,32 @@ function handleSendOrQueue() {
 
 ui.sendBtn.addEventListener("click", handleSendOrQueue);
 
+// ─── Code block event delegation (replaces inline handlers) ──────
+ui.messagesContainer.addEventListener("click", (e) => {
+  const copyBtn = e.target.closest(".oc-code-copy");
+  if (!copyBtn) return;
+  const pre = copyBtn.closest("pre");
+  if (!pre) return;
+  const code = pre.querySelector("code");
+  if (!code) return;
+  navigator.clipboard.writeText(code.innerText).then(() => {
+    copyBtn.textContent = "Copied!";
+    setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+  }).catch(() => {});
+});
+ui.messagesContainer.addEventListener("mouseenter", (e) => {
+  if (e.target.classList?.contains("oc-code-block")) {
+    const btn = e.target.querySelector(".oc-code-copy");
+    if (btn) btn.style.opacity = "1";
+  }
+}, true);
+ui.messagesContainer.addEventListener("mouseleave", (e) => {
+  if (e.target.classList?.contains("oc-code-block")) {
+    const btn = e.target.querySelector(".oc-code-copy");
+    if (btn) btn.style.opacity = "0";
+  }
+}, true);
+
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 768;
 state.isMobile = isMobile;
 
@@ -4123,7 +4193,11 @@ async function viewAgentFile(filename, label) {
 
   } catch (err) {
     console.error('agents.files.get failed:', err);
-    body.innerHTML = `<p style="color:var(--text-faint);text-align:center;padding:30px;">Failed to load: ${err.message || 'unknown error'}</p>`;
+    const errP = document.createElement("p");
+    errP.style.cssText = "color:var(--text-faint);text-align:center;padding:30px;";
+    errP.textContent = `Failed to load: ${err.message || 'unknown error'}`;
+    body.innerHTML = "";
+    body.appendChild(errP);
   }
 }
 
@@ -4956,7 +5030,7 @@ function updateSubagentsPanel() {
   }
 }
 
-async function loadSubagents() {
+async function loadSubagents(prefetchedSessions) {
   const container = document.getElementById("hud-subagents-list");
   if (!container || !state.gateway?.connected) return;
   
@@ -4965,8 +5039,13 @@ async function loadSubagents() {
   if (!current) container.innerHTML = '<div class="hud-empty-hint hud-searching">checking…</div>';
   
   try {
-    const result = await state.gateway.request("sessions.list", {});
-    const sessions = result?.sessions || [];
+    let sessions;
+    if (prefetchedSessions) {
+      sessions = prefetchedSessions;
+    } else {
+      const result = await state.gateway.request("sessions.list", {});
+      sessions = result?.sessions || [];
+    }
     const prefix = agentPrefix();
     const subs = sessions.filter(s => s.key.startsWith(prefix) && s.key.includes(":subagent:"));
     
@@ -5138,7 +5217,7 @@ function closeDashboard() {
   // Overlay click to close
   document.getElementById('dashboard-overlay')?.addEventListener('click', closeDashboard);
 
-  // Connect button
+  // Connect button — runs full bootstrap (not just connectToGateway)
   document.getElementById('dash-connect-btn')?.addEventListener('click', () => {
     const url = document.getElementById('dash-gateway-url')?.value.trim();
     const token = document.getElementById('dash-token')?.value.trim();
@@ -5146,7 +5225,7 @@ function closeDashboard() {
     state.gatewayUrl = url;
     state.token = token;
     localStorage.setItem('connection', JSON.stringify({ gatewayUrl: url, token: token }));
-    connectToGateway().catch(err => console.error('Connect failed:', err));
+    startChat().catch(err => console.error('Connect failed:', err));
     updateDashboard();
   });
 
@@ -5597,7 +5676,7 @@ function closeDashboard() {
 
 initApp();
 
-if ("serviceWorker" in navigator && localStorage.getItem("connection")) {
+if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
     .then((reg) => {
       reg.update().catch(() => {});
