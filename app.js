@@ -997,7 +997,7 @@ function updateTabMode() {
   const tabBar = ui.tabBar;
   const hamburgerBar = document.getElementById("hamburger-bar");
   if (!tabBar || !hamburgerBar) return;
-  const isMobile = window.innerWidth <= 1024;
+  const isMobile = window.innerWidth <= 900;
   const tabCount = state.tabSessions.length + 1;
   const barWidth = tabBar.parentElement?.offsetWidth || 400;
   const perTab = barWidth / tabCount;
@@ -5188,30 +5188,69 @@ function openTerminalWithCmd(cmd) {
   sendControlAction('Run this command and show me the output: ' + cmd);
 }
 
+function isMobileViewport() {
+  return window.innerWidth <= 768;
+}
+
+function setDesktopDashboardCollapsed(collapsed, persist = true) {
+  const dashboard = document.getElementById('dashboard');
+  if (!dashboard || isMobileViewport()) return;
+  dashboard.classList.toggle('oc-collapsed', !!collapsed);
+  if (persist) {
+    localStorage.setItem('dashboardCollapsedDesktop', collapsed ? 'true' : 'false');
+  }
+  updateDashboardToggleButtons();
+}
+
+function updateDashboardToggleButtons() {
+  const collapsed = document.getElementById('dashboard')?.classList.contains('oc-collapsed');
+  const mobile = isMobileViewport();
+  const dashBtn = document.getElementById('dash-menu-btn');
+  const burgerBtn = document.getElementById('hamburger-dash-btn');
+  if (dashBtn) {
+    dashBtn.title = mobile ? 'Menu' : (collapsed ? 'Show control panel' : 'Hide control panel');
+  }
+  if (burgerBtn) {
+    burgerBtn.title = mobile ? 'Dashboard' : (collapsed ? 'Show control panel' : 'Hide control panel');
+  }
+}
+
 function openDashboard() {
   document.getElementById('dashboard')?.classList.add('open');
   document.getElementById('dashboard-overlay')?.classList.add('open');
+  updateDashboardToggleButtons();
 }
 
 function closeDashboard() {
   document.getElementById('dashboard')?.classList.remove('open');
   document.getElementById('dashboard-overlay')?.classList.remove('open');
+  updateDashboardToggleButtons();
 }
 
 // Dashboard event listeners (runs immediately)
 (function initDashboard() {
-  // Mobile menu button (desktop)
+  // Menu button: mobile opens drawer, desktop toggles collapsed side panel
   document.getElementById('dash-menu-btn')?.addEventListener('click', () => {
     const dash = document.getElementById('dashboard');
-    if (dash?.classList.contains('open')) closeDashboard();
-    else openDashboard();
+    if (isMobileViewport()) {
+      if (dash?.classList.contains('open')) closeDashboard();
+      else openDashboard();
+      return;
+    }
+    const collapsed = dash?.classList.contains('oc-collapsed');
+    setDesktopDashboardCollapsed(!collapsed);
   });
 
-  // Mobile hamburger bar dashboard button
+  // Hamburger bar dashboard button: same behavior as main menu button
   document.getElementById('hamburger-dash-btn')?.addEventListener('click', () => {
     const dash = document.getElementById('dashboard');
-    if (dash?.classList.contains('open')) closeDashboard();
-    else openDashboard();
+    if (isMobileViewport()) {
+      if (dash?.classList.contains('open')) closeDashboard();
+      else openDashboard();
+      return;
+    }
+    const collapsed = dash?.classList.contains('oc-collapsed');
+    setDesktopDashboardCollapsed(!collapsed);
   });
 
   // Overlay click to close
@@ -5267,18 +5306,28 @@ function closeDashboard() {
   const saved = JSON.parse(localStorage.getItem('dashSettings') || '{}');
   applyDashSettings(saved);
 
-  // Responsive: show/hide menu button
+  // Responsive: mobile drawer vs desktop collapsible panel
   function updateDashLayout() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = isMobileViewport();
     state.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || isMobile;
     const menuBtn = document.getElementById('dash-menu-btn');
     const dashboard = document.getElementById('dashboard');
-    if (menuBtn) menuBtn.style.display = isMobile ? '' : 'none';
-    // On desktop, always show dashboard; on mobile, it's controlled by open/close
-    if (!isMobile) {
+    const collapsedPref = localStorage.getItem('dashboardCollapsedDesktop') === 'true';
+
+    // Show menu button on desktop too (acts as collapse toggle)
+    if (menuBtn) menuBtn.style.display = isMobile ? '' : 'flex';
+
+    if (isMobile) {
+      // Mobile always uses drawer behavior; collapsed desktop state is ignored
+      dashboard?.classList.remove('oc-collapsed');
+    } else {
+      // Desktop: keep drawer closed and apply persisted collapsed state
       dashboard?.classList.remove('open');
       document.getElementById('dashboard-overlay')?.classList.remove('open');
+      dashboard?.classList.toggle('oc-collapsed', collapsedPref);
     }
+
+    updateDashboardToggleButtons();
   }
   window.addEventListener('resize', updateDashLayout);
   updateDashLayout();

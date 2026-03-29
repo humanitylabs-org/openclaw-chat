@@ -260,6 +260,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
+  transition: width 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dashboard-scroll {
@@ -2635,6 +2637,19 @@
 @media (min-width: 769px) {
   .dashboard {
     position: relative;
+  }
+
+  /* Desktop/tablet: optional collapsed side panel for more chat/tab width */
+  .dashboard.oc-collapsed {
+    width: 0;
+    box-shadow: none;
+  }
+
+  .dashboard.oc-collapsed .dashboard-scroll,
+  .dashboard.oc-collapsed .dashboard-skeleton,
+  .dashboard.oc-collapsed .hud-bottom-utility {
+    opacity: 0;
+    pointer-events: none;
   }
 }
 
