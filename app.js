@@ -993,15 +993,14 @@ function startTabRename(labelEl, tab) {
   input.addEventListener("blur", () => finish(true));
 }
 
+const MOBILE_TAB_MENU_BREAKPOINT = 768; // <= this uses mobile tab switcher
+
 function updateTabMode() {
   const tabBar = ui.tabBar;
   const hamburgerBar = document.getElementById("hamburger-bar");
   if (!tabBar || !hamburgerBar) return;
-  const isMobile = window.innerWidth <= 900;
-  const tabCount = state.tabSessions.length + 1;
-  const barWidth = tabBar.parentElement?.offsetWidth || 400;
-  const perTab = barWidth / tabCount;
-  if (isMobile || perTab < 60) {
+  const useMobileTabs = window.innerWidth <= MOBILE_TAB_MENU_BREAKPOINT;
+  if (useMobileTabs) {
     tabBar.classList.add("oc-hamburger-mode");
     hamburgerBar.classList.add("oc-visible");
     renderMobileTabSwitcher();
@@ -5188,17 +5187,17 @@ function openTerminalWithCmd(cmd) {
   sendControlAction('Run this command and show me the output: ' + cmd);
 }
 
+const MOBILE_DRAWER_BREAKPOINT = 768;           // <= this: dashboard is overlay drawer
+const DESKTOP_EXPANDED_BREAKPOINT = 1200;       // > this: dashboard default expanded
+
 function isMobileViewport() {
-  return window.innerWidth <= 768;
+  return window.innerWidth <= MOBILE_DRAWER_BREAKPOINT;
 }
 
-function setDesktopDashboardCollapsed(collapsed, persist = true) {
+function setDesktopDashboardCollapsed(collapsed) {
   const dashboard = document.getElementById('dashboard');
   if (!dashboard || isMobileViewport()) return;
   dashboard.classList.toggle('oc-collapsed', !!collapsed);
-  if (persist) {
-    localStorage.setItem('dashboardCollapsedDesktop', collapsed ? 'true' : 'false');
-  }
   updateDashboardToggleButtons();
 }
 
@@ -5229,6 +5228,8 @@ function closeDashboard() {
 
 // Dashboard event listeners (runs immediately)
 (function initDashboard() {
+  let lastDashMode = null; // "mobile" or "desktop"
+
   // Menu button: mobile opens drawer, desktop toggles collapsed side panel
   document.getElementById('dash-menu-btn')?.addEventListener('click', () => {
     const dash = document.getElementById('dashboard');
@@ -5306,31 +5307,49 @@ function closeDashboard() {
   const saved = JSON.parse(localStorage.getItem('dashSettings') || '{}');
   applyDashSettings(saved);
 
-  // Responsive: mobile drawer vs desktop collapsible panel
-  function updateDashLayout() {
+  // Responsive: simple rules
+  // - Tabs:   <= MOBILE_TAB_MENU_BREAKPOINT => mobile tab switcher, else desktop tabs
+  // - Panel:  <= MOBILE_DRAWER_BREAKPOINT => drawer (collapsed by default)
+  //           >  MOBILE_DRAWER_BREAKPOINT => inline panel (collapsed by default on tablet,
+  //                                          expanded by default on desktop > DESKTOP_EXPANDED_BREAKPOINT)
+  function updateDashLayout(initial = false) {
+    const width = window.innerWidth;
     const isMobile = isMobileViewport();
+    const mode = isMobile ? 'mobile' : 'desktop';
+
     state.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || isMobile;
+
     const menuBtn = document.getElementById('dash-menu-btn');
     const dashboard = document.getElementById('dashboard');
-    const collapsedPref = localStorage.getItem('dashboardCollapsedDesktop') === 'true';
+    const overlay = document.getElementById('dashboard-overlay');
 
-    // Show menu button on desktop too (acts as collapse toggle)
-    if (menuBtn) menuBtn.style.display = isMobile ? '' : 'flex';
+    // Menu/toggle button is always available; CSS handles hamburger-specific hiding
+    if (menuBtn) menuBtn.style.display = 'flex';
 
-    if (isMobile) {
-      // Mobile always uses drawer behavior; collapsed desktop state is ignored
+    if (mode === 'mobile') {
+      // Drawer mode: collapsed by default
       dashboard?.classList.remove('oc-collapsed');
+      if (initial || lastDashMode !== 'mobile') {
+        dashboard?.classList.remove('open');
+        overlay?.classList.remove('open');
+      }
     } else {
-      // Desktop: keep drawer closed and apply persisted collapsed state
+      // Inline panel mode: default based on viewport class
       dashboard?.classList.remove('open');
-      document.getElementById('dashboard-overlay')?.classList.remove('open');
-      dashboard?.classList.toggle('oc-collapsed', collapsedPref);
+      overlay?.classList.remove('open');
+
+      if (initial || lastDashMode !== 'desktop') {
+        const shouldBeExpandedByDefault = width > DESKTOP_EXPANDED_BREAKPOINT;
+        dashboard?.classList.toggle('oc-collapsed', !shouldBeExpandedByDefault);
+      }
     }
 
+    lastDashMode = mode;
+    updateTabMode(); // keep tab mode synced with viewport changes
     updateDashboardToggleButtons();
   }
-  window.addEventListener('resize', updateDashLayout);
-  updateDashLayout();
+  window.addEventListener('resize', () => updateDashLayout(false));
+  updateDashLayout(true);
 })();
 
 // ─── Embed Panels (Browser + Terminal) ───────────────────────────────
