@@ -4168,21 +4168,15 @@ function updateServerPanel() {
     (uptimeDisplay ? '<div class="hud-settings-row"><span class="hud-settings-label">Uptime</span><span class="hud-settings-value">' + uptimeDisplay + '</span></div>' : '') +
   // Session breakdown
   const bd = state._sessionBreakdown;
-  let sessionDetail = sessionCount + ' active';
-  if (bd) {
-    const parts = [];
-    if (bd.tabs) parts.push(bd.tabs + ' chat');
-    if (bd.telegram) parts.push(bd.telegram + ' telegram');
-    if (bd.cron) parts.push(bd.cron + ' cron');
-    if (bd.subagent) parts.push(bd.subagent + ' sub-agent');
-    if (bd.other) parts.push(bd.other + ' other');
-    if (parts.length) sessionDetail = parts.join(', ');
-  }
+  const activeSessions = bd ? (bd.tabs + bd.telegram) : sessionCount;
+  const bgSessions = bd ? (bd.cron + bd.subagent + bd.other) : 0;
 
   html +=
     '<div class="hud-settings-row">' +
       '<span class="hud-settings-label">Sessions</span>' +
-      '<span class="hud-settings-value">' + sessionDetail + '</span>' +
+      '<span class="hud-settings-value">' + activeSessions + ' active' +
+        (bgSessions > 0 ? ' · <span style="opacity:0.5">' + bgSessions + ' background</span>' : '') +
+      '</span>' +
     '</div>' +
     '<div class="hud-settings-row">' +
       '<span class="hud-settings-label">Channels</span>' +
