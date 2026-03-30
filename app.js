@@ -4167,18 +4167,41 @@ function updateServerPanel() {
     versionHtml +
     (uptimeDisplay ? '<div class="hud-settings-row"><span class="hud-settings-label">Uptime</span><span class="hud-settings-value">' + uptimeDisplay + '</span></div>' : '');
 
-  // Session breakdown
+  // Session breakdown — grouped into active vs background
   const bd = state._sessionBreakdown;
-  const activeSessions = bd ? (bd.tabs + bd.telegram) : sessionCount;
-  const bgSessions = bd ? (bd.cron + bd.subagent + bd.other) : 0;
 
-  html +=
-    '<div class="hud-settings-row">' +
-      '<span class="hud-settings-label">Sessions</span>' +
-      '<span class="hud-settings-value">' + activeSessions + ' active' +
-        (bgSessions > 0 ? ' · <span style="opacity:0.5">' + bgSessions + ' background</span>' : '') +
-      '</span>' +
-    '</div>' +
+  if (bd) {
+    // Active conversations
+    const activeParts = [];
+    if (bd.tabs) activeParts.push(bd.tabs + ' webchat');
+    if (bd.telegram) activeParts.push(bd.telegram + ' telegram');
+    const activeStr = activeParts.length ? activeParts.join(', ') : '0';
+
+    // Background processes
+    const bgParts = [];
+    if (bd.cron) bgParts.push(bd.cron + ' cron');
+    if (bd.subagent) bgParts.push(bd.subagent + ' sub-agent');
+    if (bd.other) bgParts.push(bd.other + ' other');
+
+    html +=
+      '<div class="hud-settings-row">' +
+        '<span class="hud-settings-label">Chats</span>' +
+        '<span class="hud-settings-value">' + activeStr + '</span>' +
+      '</div>';
+    if (bgParts.length) {
+      html +=
+        '<div class="hud-settings-row">' +
+          '<span class="hud-settings-label">Background</span>' +
+          '<span class="hud-settings-value" style="opacity:0.6">' + bgParts.join(', ') + '</span>' +
+        '</div>';
+    }
+  } else {
+    html +=
+      '<div class="hud-settings-row">' +
+        '<span class="hud-settings-label">Sessions</span>' +
+        '<span class="hud-settings-value">' + sessionCount + ' active</span>' +
+      '</div>';
+  } +
     '<div class="hud-settings-row">' +
       '<span class="hud-settings-label">Channels</span>' +
       '<span class="hud-settings-value hud-server-chips">' + channelChips + '</span>' +
