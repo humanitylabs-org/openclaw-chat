@@ -1585,9 +1585,34 @@
         </div>
 
         <!-- ═══ Settings ═══ -->
-        <div class="hud-section hud-collapsible" data-section="server-settings">
-          <button class="hud-section-toggle" onclick="toggleSection('server-settings')">
-            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> SETTINGS</span>
+        <!-- ═══ AI Model ═══ -->
+        <div class="hud-section hud-collapsible" data-section="ai-model">
+          <button class="hud-section-toggle" onclick="toggleSection('ai-model')">
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M16 14h.01"/><path d="M8 14h.01"/><path d="M12 17v3"/><path d="M7 20h10"/><rect x="5" y="10" width="14" height="8" rx="2"/></svg> AI MODEL</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div id="hud-defaults-section">
+              <div id="hud-defaults-panel" class="hud-defaults-panel"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Schedule ═══ -->
+        <div class="hud-section hud-collapsible" data-section="schedule">
+          <button class="hud-section-toggle" onclick="toggleSection('schedule')">
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> SCHEDULE</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div id="hud-schedule-panel" class="hud-defaults-panel"></div>
+          </div>
+        </div>
+
+        <!-- ═══ Voice & Display ═══ -->
+        <div class="hud-section hud-collapsible" data-section="voice-display">
+          <button class="hud-section-toggle" onclick="toggleSection('voice-display')">
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg> VOICE & DISPLAY</span>
             <span class="hud-section-chevron">›</span>
           </button>
           <div class="hud-section-body">
@@ -1600,6 +1625,7 @@
                   <button class="hud-chip" data-textsize="large" onclick="setTextSize('large')">L</button>
                 </div>
               </div>
+              <div class="hud-settings-divider"></div>
               <div class="hud-settings-row">
                 <span class="hud-settings-label">Dictation</span>
                 <label class="hud-toggle"><input type="checkbox" id="dash-stt-toggle"><span class="hud-toggle-track"></span></label>
@@ -1632,9 +1658,20 @@
                     <input type="password" class="hud-settings-input" id="dash-tts-key" placeholder="sk-...">
                   </div>
                 </div>
-                <button class="hud-defaults-apply" id="dash-tts-apply" style="display:none" onclick="applyTTSConfig()">restart to apply</button>
+                <button class="hud-defaults-apply" id="dash-tts-apply" style="display:none" onclick="applyTTSConfig()">save voice settings</button>
               </div>
-              <div class="hud-settings-divider"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Server ═══ -->
+        <div class="hud-section hud-collapsible" data-section="server-settings">
+          <button class="hud-section-toggle" onclick="toggleSection('server-settings')">
+            <span class="hud-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;vertical-align:-1px"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg> SERVER</span>
+            <span class="hud-section-chevron">›</span>
+          </button>
+          <div class="hud-section-body">
+            <div class="hud-settings-panel">
               <div class="hud-settings-row">
                 <span class="hud-settings-label">Status</span>
                 <span class="hud-settings-value" id="hud-conn-status">—</span>
@@ -1660,10 +1697,6 @@
               <div class="hud-settings-actions">
                 <button class="hud-server-action" onclick="openTerminalPanel()" title="Open terminal">⌨ terminal</button>
                 <button class="hud-server-action" onclick="openTerminalWithCmd('journalctl -u openclaw --no-pager -n 50')" title="View recent logs">📋 logs</button>
-              </div>
-              <div class="hud-settings-divider"></div>
-              <div id="hud-defaults-section" style="margin-top:4px;">
-                <div id="hud-defaults-panel" class="hud-defaults-panel"></div>
               </div>
             </div>
           </div>
