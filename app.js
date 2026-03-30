@@ -4165,7 +4165,8 @@ function updateServerPanel() {
       '<span class="hud-settings-value hud-text-truncate" title="' + escapeHtmlChat(hostFull) + '">' + escapeHtmlChat(hostDisplay) + '</span>' +
     '</div>' +
     versionHtml +
-    (uptimeDisplay ? '<div class="hud-settings-row"><span class="hud-settings-label">Uptime</span><span class="hud-settings-value">' + uptimeDisplay + '</span></div>' : '') +
+    (uptimeDisplay ? '<div class="hud-settings-row"><span class="hud-settings-label">Uptime</span><span class="hud-settings-value">' + uptimeDisplay + '</span></div>' : '');
+
   // Session breakdown
   const bd = state._sessionBreakdown;
   const activeSessions = bd ? (bd.tabs + bd.telegram) : sessionCount;
