@@ -534,6 +534,28 @@
   cursor: pointer;
 }
 
+/* ── Server panel chips & update hint ─────────────────── */
+.hud-server-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.hud-server-chip {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(76,175,80,0.9);
+  background: rgba(76,175,80,0.08);
+  border: 1px solid rgba(76,175,80,0.15);
+  border-radius: 8px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+.hud-server-chip-none {
+  color: var(--text-faint);
+  background: rgba(128,128,128,0.08);
+  border-color: rgba(128,128,128,0.12);
+}
+.hud-server-update-hint {
+  color: rgba(76,175,80,0.8);
+  font-size: 11px;
+}
+
 /* ── Timeline (schedule) ─────────────────────────────── */
 
 .hud-timeline {
@@ -1992,6 +2014,9 @@
 [data-theme="light"] .hud-agent-dropdown-add .add-icon { border-color: rgba(0,0,0,0.15); }
 [data-theme="light"] .hud-server-action { color: #888; }
 [data-theme="light"] .hud-server-action:hover { color: #333; background: rgba(0,0,0,0.06); }
+[data-theme="light"] .hud-server-chip { color: #2e7d32; background: rgba(76,175,80,0.08); border-color: rgba(76,175,80,0.2); }
+[data-theme="light"] .hud-server-chip-none { color: #999; background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .hud-server-update-hint { color: #2e7d32; }
 [data-theme="light"] .hud-server-sep { color: rgba(0,0,0,0.1); }
 [data-theme="light"] .hud-server-ver { color: #aaa; }
 [data-theme="light"] .hud-defaults-select {

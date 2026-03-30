@@ -3980,31 +3980,8 @@ function updateDashboard() {
 
 
 
-  // Connection info
-  const connStatus = document.getElementById('hud-conn-status');
-  const connUrl = document.getElementById('hud-conn-url');
-  if (connStatus) {
-    if (connected) {
-      connStatus.textContent = 'Connected';
-      connStatus.className = 'hud-defaults-value hud-conn-status-on';
-    } else if (state.gatewayUrl) {
-      connStatus.textContent = 'Disconnected';
-      connStatus.className = 'hud-defaults-value hud-conn-status-off';
-    } else {
-      connStatus.textContent = '—';
-      connStatus.className = 'hud-defaults-value';
-    }
-  }
-  if (connUrl && state.gatewayUrl) {
-    try {
-      const hostname = new URL(state.gatewayUrl.replace(/^ws/, 'http')).hostname;
-      const short = hostname.split('.')[0];
-      connUrl.textContent = short;
-      connUrl.title = hostname;
-    } catch {
-      connUrl.textContent = state.gatewayUrl.replace(/^wss?:\/\//, '').replace(/\/+$/, '');
-    }
-  }
+  // Refresh server panel on connection change
+  updateServerPanel();
 
   // Show connect form or dashboard content
   const connectForm = document.getElementById('dash-connect-form');
@@ -4038,46 +4015,56 @@ async function fetchServerInfo() {
   if (!state.gateway?.connected) return;
   try {
     const health = await state.gateway.request('health', {});
-    const alerts = [];
 
     // Load dynamic sections
     loadAgentSwitcher();
     loadAgentFiles();
     loadCronJobs();
 
-    // Version + Update (from connect snapshot)
-    const snap = state.snapshot || {};
+    // Store health data for server panel
+    state._health = health || {};
 
-    // Version
-    const vEl = document.getElementById('hud-version-val');
-    if (vEl && state.serverVersion) vEl.textContent = 'v' + state.serverVersion;
+    // Gather session count
+    try {
+      const sessResult = await state.gateway.request("sessions.list", {});
+      state._sessionCount = sessResult?.sessions?.length || 0;
+    } catch { state._sessionCount = state._cachedSessions?.length || 0; }
 
-    // Update available
-    const upd = snap.updateAvailable;
-    const updateEl = document.getElementById('hud-update-badge');
-    const updateRow = document.getElementById('hud-update-row');
-    if (updateEl && upd && upd.latestVersion && upd.currentVersion !== upd.latestVersion) {
-      if (updateRow) updateRow.style.display = '';
-      updateEl.textContent = 'v' + upd.latestVersion + ' available';
-    }
+    // Gather channel status
+    try {
+      const chResult = await state.gateway.request('channels.status', {});
+      const channels = chResult?.channels || chResult || {};
+      const entries = Object.entries(channels).filter(([, v]) => v && typeof v === 'object');
+      state._channels = entries.map(([key, ch]) => ({
+        name: ch.label || ch.name || key,
+        connected: ch.connected || ch.status === 'connected' || ch.status === 'ok',
+      }));
+    } catch { state._channels = []; }
 
-    // Check for update (compare versions) — show subtly near version
+    // Check for update — npm registry
     const currentVersion = state.serverVersion;
+    state._latestVersion = null;
     if (currentVersion) {
+      const snap = state.snapshot || {};
+      const upd = snap.updateAvailable;
+      if (upd?.latestVersion && upd.latestVersion !== currentVersion) {
+        state._latestVersion = upd.latestVersion;
+      }
       try {
         const resp = await fetch('https://registry.npmjs.org/openclaw/latest', { signal: AbortSignal.timeout(5000) });
         if (resp.ok) {
           const pkg = await resp.json();
-          const latest = pkg.version;
-          if (latest && latest !== currentVersion) {
-            const updateRow = document.getElementById('hud-update-row');
-            const updateBadge = document.getElementById('hud-update-badge');
-            if (updateRow) updateRow.style.display = '';
-            if (updateBadge) updateBadge.textContent = 'v' + latest + ' available';
+          if (pkg.version && pkg.version !== currentVersion) {
+            state._latestVersion = pkg.version;
+          } else {
+            state._latestVersion = null;
           }
         }
-      } catch (e) { /* can't check, skip */ }
+      } catch { /* use snapshot result */ }
     }
+
+    // Render the server panel
+    updateServerPanel();
 
     // Clear top alerts (no longer used)
     const alertsEl = document.getElementById('hud-alerts');
@@ -4095,13 +4082,104 @@ async function fetchServerInfo() {
 
   } catch (err) {
     console.warn('Failed to fetch server info:', err);
-    // Still mark loaded on error to show what we have
+    updateServerPanel(); // render what we have
     const dash = document.getElementById('dashboard');
     if (dash) {
       dash.classList.remove('dash-loading');
       dash.classList.add('dash-loaded');
     }
   }
+}
+
+function updateServerPanel() {
+  const el = document.getElementById('hud-server-panel');
+  if (!el) return;
+
+  const connected = state.gateway?.connected;
+  const version = state.serverVersion;
+  const latest = state._latestVersion;
+  const sessionCount = state._sessionCount || 0;
+  const channels = state._channels || [];
+  const connectedChannels = channels.filter(c => c.connected);
+
+  // Host
+  let hostDisplay = '—';
+  let hostFull = '';
+  if (state.gatewayUrl) {
+    try {
+      const hostname = new URL(state.gatewayUrl.replace(/^ws/, 'http')).hostname;
+      hostDisplay = hostname.split('.')[0];
+      hostFull = hostname;
+    } catch {
+      hostDisplay = state.gatewayUrl.replace(/^wss?:\/\//, '').replace(/\/+$/, '');
+    }
+  }
+
+  // Uptime from health
+  let uptimeDisplay = '';
+  const health = state._health || {};
+  if (health.uptime || health.uptimeSeconds) {
+    const secs = health.uptime || health.uptimeSeconds;
+    if (secs > 86400) uptimeDisplay = Math.floor(secs / 86400) + 'd ' + Math.floor((secs % 86400) / 3600) + 'h';
+    else if (secs > 3600) uptimeDisplay = Math.floor(secs / 3600) + 'h ' + Math.floor((secs % 3600) / 60) + 'm';
+    else uptimeDisplay = Math.floor(secs / 60) + 'm';
+  }
+
+  // Channel chips
+  const channelChips = connectedChannels.length > 0
+    ? connectedChannels.map(c => '<span class="hud-server-chip">' + escapeHtmlChat(c.name) + '</span>').join(' ')
+    : '<span class="hud-server-chip hud-server-chip-none">webchat only</span>';
+
+  // Version row
+  let versionHtml = '';
+  if (version) {
+    versionHtml = '<div class="hud-settings-row">' +
+      '<span class="hud-settings-label">Version</span>' +
+      '<span class="hud-settings-value">v' + escapeHtmlChat(version);
+    if (latest) {
+      versionHtml += ' · <span class="hud-server-update-hint">v' + escapeHtmlChat(latest) + '</span>';
+    } else {
+      versionHtml += ' <span style="opacity:0.4">✓</span>';
+    }
+    versionHtml += '</span></div>';
+  }
+
+  let html =
+    '<div class="hud-settings-row">' +
+      '<span class="hud-settings-label">Host</span>' +
+      '<span class="hud-settings-value hud-text-truncate" title="' + escapeHtmlChat(hostFull) + '">' + escapeHtmlChat(hostDisplay) + '</span>' +
+    '</div>' +
+    versionHtml +
+    (uptimeDisplay ? '<div class="hud-settings-row"><span class="hud-settings-label">Uptime</span><span class="hud-settings-value">' + uptimeDisplay + '</span></div>' : '') +
+    '<div class="hud-settings-row">' +
+      '<span class="hud-settings-label">Sessions</span>' +
+      '<span class="hud-settings-value">' + sessionCount + ' active</span>' +
+    '</div>' +
+    '<div class="hud-settings-row">' +
+      '<span class="hud-settings-label">Channels</span>' +
+      '<span class="hud-settings-value hud-server-chips">' + channelChips + '</span>' +
+    '</div>';
+
+  // Update button (only if update available)
+  if (latest) {
+    html += '<button class="hud-defaults-apply" onclick="sendControlAction(\'Check for OpenClaw updates. If available, update and restart.\')">update to v' + escapeHtmlChat(latest) + '</button>';
+  }
+
+  html += '<div class="hud-settings-divider"></div>';
+
+  // Action buttons
+  html +=
+    '<div class="hud-settings-actions">' +
+      '<button class="hud-server-action" onclick="sendControlAction(\'Run openclaw doctor. Summarize results.\')" title="Health check">🩺 check-up</button>' +
+      '<button class="hud-server-action" onclick="sendControlAction(\'Security audit: firewall, SSH, ports, updates. Brief summary.\')">🛡️ security</button>' +
+      '<button class="hud-server-action" onclick="sendControlAction(\'Restart the gateway. Confirm when back.\')">restart</button>' +
+    '</div>' +
+    '<div class="hud-settings-actions">' +
+      '<button class="hud-server-action" onclick="openTerminalPanel()" title="Open terminal">⌨ terminal</button>' +
+      '<button class="hud-server-action" onclick="openTerminalWithCmd(\'journalctl -u openclaw --no-pager -n 50\')" title="View recent logs">📋 logs</button>' +
+    '</div>';
+
+  el.innerHTML = html;
 }
 
 // ─── Agent File List + Viewer ─────────────────────────────────────
