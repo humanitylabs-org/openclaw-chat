@@ -1704,11 +1704,7 @@
     padding: 6px 10px;
   }
 
-  /* Export button */
-  .oc-topbar-action {
-    min-width: 44px;
-    min-height: 44px;
-  }
+
 }
 
 /* ── Hide dash-menu-btn when hamburger bar is visible ───── */
@@ -3468,26 +3464,61 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
    Top Bar Action Buttons (export, etc.)
    ══════════════════════════════════════════════════════════════ */
 
-.oc-topbar-action {
-  background: none;
-  border: none;
+/* ── Floating export button (inside chat area) ───────── */
+.oc-float-export {
+  position: absolute;
+  top: calc(var(--header-height) + 8px);
+  right: 12px;
+  z-index: 10;
+  background: var(--background-secondary, #2a2a2a);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   color: var(--text-faint);
   cursor: pointer;
-  padding: 0 10px;
+  padding: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  min-height: var(--header-height);
-  transition: color 0.15s;
-  opacity: 0.5;
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.15s ease, background 0.15s ease;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
-.oc-topbar-action:hover { color: var(--text-normal); opacity: 1; }
-.oc-topbar-action:active { opacity: 0.8; }
+.oc-float-export:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover, #333);
+  opacity: 1 !important;
+}
+.oc-float-export:active { opacity: 0.7 !important; }
+.oc-float-export svg { pointer-events: none; }
 
-/* Hide on mobile when hamburger is visible */
-.openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) > .oc-topbar-action {
-  display: none;
+/* Show on hover over chat area or when messages are scrolled up */
+.openclaw-chat-container:hover .oc-float-export,
+.openclaw-chat-container:focus-within .oc-float-export {
+  opacity: 0.5;
+  pointer-events: auto;
+}
+
+/* Mobile: always subtly visible (no hover) */
+@media (max-width: 768px) {
+  .oc-float-export {
+    opacity: 0.4;
+    pointer-events: auto;
+    top: calc(var(--header-height) + 6px);
+    right: 8px;
+    padding: 6px;
+  }
+}
+
+[data-theme="light"] .oc-float-export {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .oc-float-export:hover {
+  background: rgba(255, 255, 255, 0.95);
 }
 
 /* ══════════════════════════════════════════════════════════════
