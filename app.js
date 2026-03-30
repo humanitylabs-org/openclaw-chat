@@ -413,8 +413,16 @@ const state = {
   reasoningLevel: "",  // off|on|stream
   verboseLevel: "",    // off|on|full
 
-  // Agent defaults (from config)
-  defaults: { model: "", thinking: "", reasoning: "", verbose: "" },
+  // Agent/session defaults (from config)
+  defaults: {
+    model: "",
+    thinking: "",
+    reasoning: "",
+    verbose: "",
+    resetMode: "daily",
+    resetAtHour: 4,
+    resetIdleMinutes: 240,
+  },
   
   // Pending default changes (not yet applied to config)
   pendingDefaults: {},
@@ -845,7 +853,23 @@ async function loadDefaults() {
     const thinking = ad?.thinkingDefault || "";
     const reasoning = ad?.reasoningDefault || "";
     const verbose = ad?.verboseDefault || "";
-    state.defaults = { model: typeof model === "string" ? model : "", thinking, reasoning, verbose };
+
+    const resetCfg = parsed?.session?.reset || cfg?.session?.reset || {};
+    const resetMode = resetCfg?.mode === "idle" ? "idle" : "daily";
+    const parsedAtHour = Number(resetCfg?.atHour);
+    const parsedIdleMinutes = Number(resetCfg?.idleMinutes);
+    const resetAtHour = Number.isFinite(parsedAtHour) ? Math.max(0, Math.min(23, Math.round(parsedAtHour))) : 4;
+    const resetIdleMinutes = Number.isFinite(parsedIdleMinutes) && parsedIdleMinutes > 0 ? Math.round(parsedIdleMinutes) : 240;
+
+    state.defaults = {
+      model: typeof model === "string" ? model : "",
+      thinking,
+      reasoning,
+      verbose,
+      resetMode,
+      resetAtHour,
+      resetIdleMinutes,
+    };
     
     // Parse TTS config
     const tts = parsed?.messages?.tts || cfg?.messages?.tts || {};
@@ -1739,7 +1763,7 @@ async function resetTab(tab) {
   delete state.tabCache[tab.key];
   const isHome = tab.key === "main";
   const title = isHome ? "Reset Home?" : `Reset "${tab.label}"?`;
-  const msg = "This will clear the conversation.";
+  const msg = "You will be briefly disconnected while resetting. Just wait a few moments.";
   const ok = await confirmClose(title, msg);
   if (!ok) return;
   if (tab.key === state.sessionKey) {
@@ -4618,6 +4642,8 @@ const DEFAULT_OPTIONS = {
   verbose: ["not set", "off", "on", "full"],
 };
 
+const RESET_IDLE_MINUTES_OPTIONS = [60, 120, 240, 480, 720, 1440, 2880, 10080];
+
 function updateDefaultsPanel() {
   const el = document.getElementById("hud-defaults-panel");
   const section = document.getElementById("hud-defaults-section");
@@ -4626,11 +4652,23 @@ function updateDefaultsPanel() {
   // Hide defaults subsection when no model info available
   if (section) section.style.display = d.model ? "" : "none";
   if (!d.model) return;
-  
+
   const pendingModel = state.pendingDefaults.model;
   const modelDisplay = shortModelName(pendingModel || d.model);
   const modelPending = pendingModel && pendingModel !== d.model;
-  
+
+  const pendingResetMode = state.pendingDefaults.resetMode;
+  const pendingResetAtHour = state.pendingDefaults.resetAtHour;
+  const pendingResetIdle = state.pendingDefaults.resetIdleMinutes;
+
+  const resetMode = (pendingResetMode ?? d.resetMode) === "idle" ? "idle" : "daily";
+  const resetAtHour = Number.isFinite(Number(pendingResetAtHour ?? d.resetAtHour))
+    ? Math.max(0, Math.min(23, Math.round(Number(pendingResetAtHour ?? d.resetAtHour))))
+    : 4;
+  const resetIdleMinutes = Number.isFinite(Number(pendingResetIdle ?? d.resetIdleMinutes)) && Number(pendingResetIdle ?? d.resetIdleMinutes) > 0
+    ? Math.round(Number(pendingResetIdle ?? d.resetIdleMinutes))
+    : 240;
+
   function renderSelect(key, label) {
     const isPending = key in state.pendingDefaults;
     const current = isPending ? (state.pendingDefaults[key] || "") : (d[key] || "");
@@ -4646,21 +4684,58 @@ function updateDefaultsPanel() {
       '<select class="hud-defaults-select' + cls + '" data-default-key="' + key + '">' + optionsHtml + '</select>' +
     '</div>';
   }
-  
+
+  const resetModePending = "resetMode" in state.pendingDefaults;
+  const resetHourPending = "resetAtHour" in state.pendingDefaults;
+  const resetIdlePending = "resetIdleMinutes" in state.pendingDefaults;
+
+  const resetModeHtml =
+    '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">Auto reset</span>' +
+      '<select class="hud-defaults-select' + (resetModePending ? ' hud-defaults-pending' : '') + '" data-default-key="resetMode">' +
+        '<option value="daily"' + (resetMode === 'daily' ? ' selected' : '') + '>daily</option>' +
+        '<option value="idle"' + (resetMode === 'idle' ? ' selected' : '') + '>idle only</option>' +
+      '</select>' +
+    '</div>';
+
+  const resetDetailHtml = resetMode === 'daily'
+    ? '<div class="hud-defaults-row">' +
+        '<span class="hud-defaults-label">Reset hour</span>' +
+        '<select class="hud-defaults-select' + (resetHourPending ? ' hud-defaults-pending' : '') + '" data-default-key="resetAtHour">' +
+          Array.from({ length: 24 }, (_, h) => {
+            const hh = String(h).padStart(2, '0') + ':00';
+            return '<option value="' + h + '"' + (h === resetAtHour ? ' selected' : '') + '>' + hh + '</option>';
+          }).join('') +
+        '</select>' +
+      '</div>'
+    : '<div class="hud-defaults-row">' +
+        '<span class="hud-defaults-label">Idle minutes</span>' +
+        '<select class="hud-defaults-select' + (resetIdlePending ? ' hud-defaults-pending' : '') + '" data-default-key="resetIdleMinutes">' +
+          RESET_IDLE_MINUTES_OPTIONS.map(mins => {
+            const label = mins >= 1440
+              ? (mins % 1440 === 0 ? (mins / 1440) + 'd' : mins + 'm')
+              : mins + 'm';
+            return '<option value="' + mins + '"' + (mins === resetIdleMinutes ? ' selected' : '') + '>' + label + '</option>';
+          }).join('') +
+        '</select>' +
+      '</div>';
+
   let html =
     '<div class="hud-defaults-row">' +
       '<span class="hud-defaults-label">Model</span>' +
       '<span class="hud-defaults-value hud-defaults-editable' + (modelPending ? ' hud-defaults-pending' : '') + '" id="hud-default-model">' + modelDisplay + '</span>' +
     '</div>' +
     renderSelect("thinking", "Think") +
-    renderSelect("verbose", "Verbose");
-  
+    renderSelect("verbose", "Verbose") +
+    resetModeHtml +
+    resetDetailHtml;
+
   if (hasPendingDefaults()) {
-    html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">restart to apply</button>';
+    html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">reset now to apply</button>';
   }
-  
+
   el.innerHTML = html;
-  
+
   // Wire up model click
   document.getElementById("hud-default-model")?.addEventListener("click", () => {
     openModelPicker({
@@ -4676,18 +4751,29 @@ function updateDefaultsPanel() {
       }
     });
   });
-  
+
   // Wire up select pickers
   el.querySelectorAll('.hud-defaults-select').forEach(sel => {
     sel.addEventListener('change', () => {
       const key = sel.dataset.defaultKey;
-      const val = sel.value;
-  
-      if (val === (state.defaults[key] || "")) {
+      const numericKeys = new Set(["resetAtHour", "resetIdleMinutes"]);
+      const val = numericKeys.has(key) ? Number(sel.value) : sel.value;
+      const cur = state.defaults[key];
+      const same = numericKeys.has(key)
+        ? Number(val) === Number(cur)
+        : String(val ?? "") === String(cur ?? "");
+
+      if (same) {
         delete state.pendingDefaults[key];
       } else {
         state.pendingDefaults[key] = val;
       }
+
+      if (key === "resetMode") {
+        if (val === "daily") delete state.pendingDefaults.resetIdleMinutes;
+        if (val === "idle") delete state.pendingDefaults.resetAtHour;
+      }
+
       updateDefaultsPanel();
       updateBarControls();
     });
@@ -4700,49 +4786,107 @@ function hasPendingDefaults() {
 
 async function applyPendingDefaults() {
   if (!hasPendingDefaults() || !state.gateway?.connected) return;
-  
+
+  const ok = await confirmClose(
+    "Reset now to apply?",
+    "You will be briefly disconnected while resetting. Just wait a few moments."
+  );
+  if (!ok) return;
+
   // Only thinkingDefault and verboseDefault exist in config (reasoning has no default)
   const configKeys = {
     thinking: "thinkingDefault",
     verbose: "verboseDefault",
   };
-  
+
   const applyBtn = document.getElementById("hud-defaults-apply");
   if (applyBtn) {
     applyBtn.disabled = true;
     applyBtn.textContent = "applying...";
   }
-  
+
   try {
     const getResult = await state.gateway.request("config.get", {});
     const hash = getResult?.hash || "";
-    
-    const patch = {};
+
+    const agentDefaultsPatch = {};
     for (const [key, val] of Object.entries(state.pendingDefaults)) {
-      if (configKeys[key]) patch[configKeys[key]] = val || null;
+      if (configKeys[key]) agentDefaultsPatch[configKeys[key]] = val || null;
     }
     // Handle model change
     if (state.pendingDefaults.model) {
-      patch.model = { primary: state.pendingDefaults.model };
+      agentDefaultsPatch.model = { primary: state.pendingDefaults.model };
     }
-    
-    const raw = JSON.stringify({ agents: { defaults: patch } });
+
+    const hasResetPending = ["resetMode", "resetAtHour", "resetIdleMinutes"].some(k => k in state.pendingDefaults);
+    const resetMode = (state.pendingDefaults.resetMode ?? state.defaults.resetMode) === "idle" ? "idle" : "daily";
+    const resetAtHour = Number.isFinite(Number(state.pendingDefaults.resetAtHour ?? state.defaults.resetAtHour))
+      ? Math.max(0, Math.min(23, Math.round(Number(state.pendingDefaults.resetAtHour ?? state.defaults.resetAtHour))))
+      : 4;
+    const resetIdleMinutes = Number.isFinite(Number(state.pendingDefaults.resetIdleMinutes ?? state.defaults.resetIdleMinutes)) && Number(state.pendingDefaults.resetIdleMinutes ?? state.defaults.resetIdleMinutes) > 0
+      ? Math.round(Number(state.pendingDefaults.resetIdleMinutes ?? state.defaults.resetIdleMinutes))
+      : 240;
+
+    const rawPatch = {};
+    if (Object.keys(agentDefaultsPatch).length > 0) {
+      rawPatch.agents = { defaults: agentDefaultsPatch };
+    }
+    if (hasResetPending) {
+      rawPatch.session = {
+        reset: resetMode === "daily"
+          ? { mode: "daily", atHour: resetAtHour }
+          : { mode: "idle", idleMinutes: resetIdleMinutes }
+      };
+    }
+
+    if (Object.keys(rawPatch).length === 0) {
+      if (applyBtn) {
+        applyBtn.disabled = false;
+        applyBtn.textContent = "reset now to apply";
+      }
+      return;
+    }
+
+    const raw = JSON.stringify(rawPatch);
     await state.gateway.request("config.patch", { raw, baseHash: hash });
-    
+
     // Update local state
     for (const [key, val] of Object.entries(state.pendingDefaults)) {
       state.defaults[key] = val;
     }
+    if (hasResetPending) {
+      state.defaults.resetMode = resetMode;
+      state.defaults.resetAtHour = resetAtHour;
+      state.defaults.resetIdleMinutes = resetIdleMinutes;
+    }
+
     // Clear pending
     for (const key in state.pendingDefaults) delete state.pendingDefaults[key];
-    
+
+    // Reset active session immediately so defaults apply now
+    const activeTab = state.sessionKey || "main";
+    delete state.tabCache[activeTab];
+    state.messages = [];
+    ui.messagesContainer.innerHTML = "";
+    showLoading("Resetting…");
+    await state.gateway.request("chat.send", {
+      sessionKey: `${agentPrefix()}${activeTab}`,
+      message: "/reset",
+      deliver: false,
+      idempotencyKey: "reset-defaults-" + Date.now(),
+    });
+    hideLoading();
+    await updateContextMeter();
+    await renderTabs();
+
     updateDefaultsPanel();
     updateBarControls();
   } catch (err) {
+    hideLoading();
     console.warn("Failed to apply defaults:", err);
     if (applyBtn) {
       applyBtn.disabled = false;
-      applyBtn.textContent = "restart to apply";
+      applyBtn.textContent = "reset now to apply";
     }
   }
 }
@@ -5203,14 +5347,13 @@ function setDesktopDashboardCollapsed(collapsed) {
 
 function updateDashboardToggleButtons() {
   const collapsed = document.getElementById('dashboard')?.classList.contains('oc-collapsed');
-  const mobile = isMobileViewport();
   const dashBtn = document.getElementById('dash-menu-btn');
   const burgerBtn = document.getElementById('hamburger-dash-btn');
   if (dashBtn) {
-    dashBtn.title = mobile ? 'Menu' : (collapsed ? 'Show control panel' : 'Hide control panel');
+    dashBtn.title = collapsed ? 'Show control panel' : 'Hide control panel';
   }
   if (burgerBtn) {
-    burgerBtn.title = mobile ? 'Dashboard' : (collapsed ? 'Show control panel' : 'Hide control panel');
+    burgerBtn.title = collapsed ? 'Show control panel' : 'Hide control panel';
   }
 }
 

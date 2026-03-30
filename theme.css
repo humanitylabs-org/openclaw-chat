@@ -1494,6 +1494,28 @@
 .dash-menu-btn:hover { color: var(--text-normal); }
 .dash-menu-btn svg { pointer-events: none; }
 
+/* Desktop: keep control-panel toggle anchored in one spot */
+@media (min-width: 769px) {
+  .dash-menu-btn {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1101;
+    height: var(--header-height);
+    border-right: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+  }
+
+  .openclaw-top-bar {
+    padding-left: 44px;
+  }
+
+  .openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) {
+    padding-left: 0;
+  }
+}
+
 /* Dashboard overlay (mobile) */
 .dashboard-overlay {
   display: none;
