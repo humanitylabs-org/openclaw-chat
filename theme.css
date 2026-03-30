@@ -3501,12 +3501,12 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   pointer-events: auto;
 }
 
-/* Mobile: always subtly visible (no hover) */
+/* Mobile: always subtly visible (no hover), pushed below header */
 @media (max-width: 768px) {
   .oc-float-export {
     opacity: 0.4;
     pointer-events: auto;
-    top: calc(var(--header-height) + 6px);
+    top: calc(var(--header-height) + 36px);
     right: 8px;
     padding: 6px;
   }

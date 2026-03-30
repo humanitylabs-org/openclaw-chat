@@ -4161,7 +4161,7 @@ function restoreCollapsibleState() {
   localStorage.removeItem('terminalPanelOpen');
   localStorage.removeItem('mindfeedPanelOpen');
 
-  const openId = localStorage.getItem('openSection') || 'agent-browser';
+  const openId = localStorage.getItem('openSection') || '';
   if (openId) {
     const el = document.querySelector(`.hud-collapsible[data-section="${openId}"]`);
     if (el) el.classList.add('hud-open');
