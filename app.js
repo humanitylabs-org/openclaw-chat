@@ -1237,7 +1237,7 @@ function renderHamburgerDropdown() {
     const label = document.createElement("span");
     label.className = "oc-dd-label";
     if (isHome) {
-      label.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;opacity:0.7"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg> Home';
+      label.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;opacity:0.7"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Home';
     } else {
       label.textContent = tab.label;
       label.title = "Double-click to rename";
@@ -1463,7 +1463,7 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
 
     if (isHome) {
-      label.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
+      label.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
       label.classList.add('openclaw-tab-home-label');
     } else {
       label.textContent = tab.label;

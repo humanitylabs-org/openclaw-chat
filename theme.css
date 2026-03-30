@@ -768,6 +768,18 @@
   opacity: 0.6;
 }
 
+/* ── Widgets area (pinned to bottom) ──────────────────── */
+.hud-widgets-spacer {
+  flex: 1;
+  min-height: 8px;
+}
+.hud-widgets-area {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 4px;
+  margin-top: 4px;
+}
+
 /* ── Bottom Controls ──────────────────────────────────── */
 
 .hud-bottom {
@@ -1481,7 +1493,7 @@
   display: none;
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-faint);
   cursor: pointer;
   padding: 0 12px;
   align-items: center;
@@ -1489,9 +1501,11 @@
   flex-shrink: 0;
   min-width: 44px;
   min-height: 44px;
+  transition: color 0.15s ease, opacity 0.15s ease;
+  opacity: 0.7;
 }
 
-.dash-menu-btn:hover { color: var(--text-normal); }
+.dash-menu-btn:hover { color: var(--text-normal); opacity: 1; }
 .dash-menu-btn svg { pointer-events: none; }
 
 /* ── Reconnect banner ─────────────────────────────────── */
@@ -1516,8 +1530,7 @@
     left: 0;
     z-index: 1101;
     height: var(--header-height);
-    border-right: 1px solid var(--background-modifier-border);
-    background: var(--background-primary);
+    background: transparent;
   }
 
   /* Push dashboard content below the fixed toggle button */
@@ -1962,6 +1975,14 @@
 [data-theme="light"] .dashboard {
   background: #f5f5f7;
   box-shadow: 1px 0 12px rgba(0, 0, 0, 0.06);
+}
+[data-theme="light"] .hud-widgets-area {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .oc-reconnect-banner {
+  background: rgba(200, 120, 0, 0.1);
+  color: #b37400;
+  border-bottom-color: rgba(200, 120, 0, 0.15);
 }
 
 [data-theme="light"] .hud-section { border-top-color: rgba(0, 0, 0, 0.08); }
