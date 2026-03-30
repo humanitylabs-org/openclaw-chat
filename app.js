@@ -4024,11 +4024,26 @@ async function fetchServerInfo() {
     // Store health data for server panel
     state._health = health || {};
 
-    // Gather session count
+    // Gather session list
     try {
       const sessResult = await state.gateway.request("sessions.list", {});
-      state._sessionCount = sessResult?.sessions?.length || 0;
-    } catch { state._sessionCount = state._cachedSessions?.length || 0; }
+      const sessions = sessResult?.sessions || [];
+      state._sessionCount = sessions.length;
+      // Categorize sessions
+      let tabs = 0, cron = 0, telegram = 0, subagent = 0, other = 0;
+      for (const s of sessions) {
+        const k = s.key || '';
+        if (k.includes(':tab-') || k.endsWith(':main')) tabs++;
+        else if (k.includes(':cron:')) cron++;
+        else if (k.includes(':telegram:')) telegram++;
+        else if (k.includes(':subagent:')) subagent++;
+        else other++;
+      }
+      state._sessionBreakdown = { tabs, cron, telegram, subagent, other };
+    } catch {
+      state._sessionCount = state._cachedSessions?.length || 0;
+      state._sessionBreakdown = null;
+    }
 
     // Gather channel status
     try {
@@ -4037,7 +4052,7 @@ async function fetchServerInfo() {
       const entries = Object.entries(channels).filter(([, v]) => v && typeof v === 'object');
       state._channels = entries.map(([key, ch]) => ({
         name: ch.label || ch.name || key,
-        connected: ch.connected || ch.status === 'connected' || ch.status === 'ok',
+        connected: !!(ch.connected || ch.enabled || /^(connected|ok)$/i.test(ch.status || '') || /^(connected|ok)$/i.test(ch.state || '')),
       }));
     } catch { state._channels = []; }
 
@@ -4151,9 +4166,23 @@ function updateServerPanel() {
     '</div>' +
     versionHtml +
     (uptimeDisplay ? '<div class="hud-settings-row"><span class="hud-settings-label">Uptime</span><span class="hud-settings-value">' + uptimeDisplay + '</span></div>' : '') +
+  // Session breakdown
+  const bd = state._sessionBreakdown;
+  let sessionDetail = sessionCount + ' active';
+  if (bd) {
+    const parts = [];
+    if (bd.tabs) parts.push(bd.tabs + ' chat');
+    if (bd.telegram) parts.push(bd.telegram + ' telegram');
+    if (bd.cron) parts.push(bd.cron + ' cron');
+    if (bd.subagent) parts.push(bd.subagent + ' sub-agent');
+    if (bd.other) parts.push(bd.other + ' other');
+    if (parts.length) sessionDetail = parts.join(', ');
+  }
+
+  html +=
     '<div class="hud-settings-row">' +
       '<span class="hud-settings-label">Sessions</span>' +
-      '<span class="hud-settings-value">' + sessionCount + ' active</span>' +
+      '<span class="hud-settings-value">' + sessionDetail + '</span>' +
     '</div>' +
     '<div class="hud-settings-row">' +
       '<span class="hud-settings-label">Channels</span>' +
@@ -4175,6 +4204,7 @@ function updateServerPanel() {
       '<button class="hud-server-action" onclick="sendControlAction(\'Restart the gateway. Confirm when back.\')">restart</button>' +
     '</div>' +
     '<div class="hud-settings-actions">' +
+      '<button class="hud-server-action" onclick="sendControlAction(\'Optimize my agent startup speed. Audit AGENTS.md startup sequence — remove instructions to re-read files already injected in the system prompt (SOUL.md, USER.md, TOOLS.md, IDENTITY.md, HEARTBEAT.md). Then check MEMORY.md size — if over 16k chars, restructure it: move deep project details to memory/projects/ files, keep concise summaries in MEMORY.md. Goal: MEMORY.md under 16k so it fits in the system prompt without truncation, eliminating the need to re-read it. Report what you changed and the before/after size.\')" title="Speed up session boot time">⚡ optimize</button>' +
       '<button class="hud-server-action" onclick="openTerminalPanel()" title="Open terminal">⌨ terminal</button>' +
       '<button class="hud-server-action" onclick="openTerminalWithCmd(\'journalctl -u openclaw --no-pager -n 50\')" title="View recent logs">📋 logs</button>' +
     '</div>';
