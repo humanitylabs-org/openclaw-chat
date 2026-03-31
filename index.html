@@ -1838,38 +1838,77 @@
       const app = document.querySelector('.app');
       const hasCredentials = !!localStorage.getItem('connection');
 
-      function showApp() {
-        landing.style.display = 'none';
-        app.style.display = '';
+      var modal = document.getElementById('connect-modal-overlay');
+
+      function openConnectModal() {
+        modal.classList.add('open');
+        var urlInput = document.getElementById('connect-modal-url');
+        if (urlInput) setTimeout(function() { urlInput.focus(); }, 100);
       }
 
-      function showConnect() {
-        showApp();
-        var dash = document.getElementById('dashboard');
-        var overlay = document.getElementById('dashboard-overlay');
-        var form = document.getElementById('dash-connect-form');
-        if (dash) {
-          dash.classList.add('open');
-          dash.classList.remove('dash-loading');
-          dash.classList.add('dash-loaded');
-        }
-        if (overlay) overlay.classList.add('open');
-        // Show connect form, hide all dashboard content sections
-        if (form) form.style.display = '';
-        var sections = document.querySelectorAll('#dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section');
-        sections.forEach(function(s) { s.style.display = 'none'; });
+      function closeConnectModal() {
+        modal.classList.remove('open');
       }
 
       if (hasCredentials) {
-        showApp();
+        landing.style.display = 'none';
+        app.style.display = '';
       } else {
         landing.style.display = '';
         app.style.display = 'none';
-        document.getElementById('landing-connect-btn').addEventListener('click', showConnect);
-        document.getElementById('landing-connect-btn-2').addEventListener('click', showConnect);
+        document.getElementById('landing-connect-btn').addEventListener('click', openConnectModal);
+        document.getElementById('landing-connect-btn-2').addEventListener('click', openConnectModal);
       }
+
+      // Close modal
+      document.getElementById('connect-modal-close').addEventListener('click', closeConnectModal);
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeConnectModal();
+      });
+
+      // Connect button in modal
+      document.getElementById('connect-modal-btn').addEventListener('click', function() {
+        var url = (document.getElementById('connect-modal-url').value || '').trim();
+        var token = (document.getElementById('connect-modal-token').value || '').trim();
+        if (!url || !token) return;
+        // Save credentials
+        localStorage.setItem('connection', JSON.stringify({ gatewayUrl: url, token: token }));
+        // Switch to app
+        landing.style.display = 'none';
+        app.style.display = '';
+        closeConnectModal();
+        // Trigger connection
+        if (typeof state !== 'undefined') {
+          state.gatewayUrl = url;
+          state.token = token;
+          startChat().then(function() { updateDashboard(); }).catch(function(err) { console.error('Connect failed:', err); });
+        }
+      });
     })();
   </script>
+  <!-- Connect Modal -->
+  <div class="connect-modal-overlay" id="connect-modal-overlay">
+    <div class="connect-modal">
+      <button class="connect-modal-close" id="connect-modal-close">&times;</button>
+      <div class="connect-modal-header">
+        <img src="/logo-64.png" width="36" height="36" alt="" style="border-radius:8px;">
+        <h2>Connect to your OpenClaw</h2>
+      </div>
+      <div class="connect-modal-body">
+        <div class="connect-modal-field">
+          <label for="connect-modal-url">Gateway URL</label>
+          <input type="text" id="connect-modal-url" placeholder="https://your-server.tail1234.ts.net" autocomplete="url" autocapitalize="none" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="connect-modal-field">
+          <label for="connect-modal-token">Auth Token</label>
+          <input type="password" id="connect-modal-token" placeholder="Paste your token" autocomplete="off">
+        </div>
+        <button class="connect-modal-btn" id="connect-modal-btn">Connect</button>
+        <p class="connect-modal-hint">Stored locally on this device only.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- File Viewer Overlay -->
   <div class="oc-file-viewer-overlay" id="file-viewer-overlay">
     <div class="oc-file-viewer">
