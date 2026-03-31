@@ -3725,6 +3725,11 @@ ui.tabBar.addEventListener("wheel", (e) => {
     }
     chatArea.removeChild(swipeWrapper);
     swipeWrapper = null;
+    // Ensure top-bar stays first child (swipe DOM shuffling can displace it)
+    const topBar = chatArea.querySelector(".openclaw-top-bar");
+    if (topBar && topBar !== chatArea.firstElementChild) {
+      chatArea.insertBefore(topBar, chatArea.firstElementChild);
+    }
   }
 
   function createIncomingPane(tab, fromRight) {
