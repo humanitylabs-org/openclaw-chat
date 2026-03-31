@@ -61,6 +61,9 @@
       display: flex;
       flex-direction: row;
       overflow: hidden;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      box-sizing: border-box;
     }
 
     .hidden { display: none !important; }
@@ -87,7 +90,6 @@
       gap: 0;
       flex-shrink: 0;
       min-height: var(--header-height);
-      padding-top: env(safe-area-inset-top, 0px);
       border-bottom: 1px solid var(--background-modifier-border);
       box-sizing: content-box;
     }
@@ -338,7 +340,6 @@
       min-width: 0;
       align-items: stretch;
       padding: 0;
-      padding-top: env(safe-area-inset-top, 0px);
       border-bottom: 1px solid var(--background-modifier-border);
       gap: 0;
       min-height: var(--header-height);
@@ -902,7 +903,6 @@
     .openclaw-input-area {
       flex-shrink: 0;
       padding: 0;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     .openclaw-input-area-inner {
       max-width: 820px;
