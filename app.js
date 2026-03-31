@@ -1055,7 +1055,7 @@ function startTabRename(labelEl, tab) {
   input.addEventListener("blur", () => finish(true));
 }
 
-const MOBILE_TAB_MENU_BREAKPOINT = 0; // disabled — always use desktop tab bar
+const MOBILE_TAB_MENU_BREAKPOINT = 768; // <= this uses mobile tab switcher
 
 function updateTabMode() {
   const tabBar = ui.tabBar;
