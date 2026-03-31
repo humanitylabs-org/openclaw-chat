@@ -1838,23 +1838,30 @@
       const app = document.querySelector('.app');
       const hasCredentials = !!localStorage.getItem('connection');
 
-      function showApp() {
+      function showApp(openDash) {
         landing.style.display = 'none';
         app.style.display = '';
+        if (openDash) {
+          // Auto-open dashboard so the connect form is visible
+          var dash = document.getElementById('dashboard');
+          var overlay = document.getElementById('dashboard-overlay');
+          if (dash) dash.classList.add('open');
+          if (overlay) overlay.classList.add('open');
+        }
       }
 
       if (hasCredentials) {
         // Returning user — skip landing, go straight to app
-        showApp();
+        showApp(false);
       } else {
         // New user — show landing page
         landing.style.display = '';
         app.style.display = 'none';
         document.getElementById('landing-connect-btn').addEventListener('click', function() {
-          showApp();
+          showApp(true);
         });
         document.getElementById('landing-connect-btn-2').addEventListener('click', function() {
-          showApp();
+          showApp(true);
         });
       }
     })();
