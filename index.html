@@ -1350,7 +1350,7 @@
           Your OpenClaw bot is a personal AI that's on 24/7. It remembers everything, handles tasks on its own, and keeps working while you sleep. But in Telegram, all you see is messages. This app shows you the full picture.
         </p>
         <div class="landing-cta-row">
-          <button class="landing-cta-primary" id="landing-connect-btn">Connect to your OpenClaw <span class="cta-arrow">→</span></button>
+          <button class="landing-cta-primary" id="landing-connect-btn" onclick="document.getElementById('connect-modal-overlay').classList.add('open');setTimeout(function(){document.getElementById('connect-modal-url').focus()},150)">Connect to your OpenClaw <span class="cta-arrow">→</span></button>
           <a href="https://botsetupguide.com" target="_blank" rel="noopener" class="landing-cta-secondary">Don't have OpenClaw yet? Set it up →</a>
         </div>
       </main>
@@ -1434,7 +1434,7 @@
       </section>
 
       <section class="landing-bottom-cta">
-        <button class="landing-cta-primary" id="landing-connect-btn-2">Connect to your OpenClaw <span class="cta-arrow">→</span></button>
+        <button class="landing-cta-primary" id="landing-connect-btn-2" onclick="document.getElementById('connect-modal-overlay').classList.add('open');setTimeout(function(){document.getElementById('connect-modal-url').focus()},150)">Connect to your OpenClaw <span class="cta-arrow">→</span></button>
       </section>
 
       <footer class="landing-footer">
@@ -1831,21 +1831,41 @@
   </div>
 
   <script src="/app.js?v=96"></script>
-  <!-- Connect Modal -->
-  <div class="connect-modal-overlay" id="connect-modal-overlay">
+  <!-- Connect Modal (styles inlined to avoid cache issues) -->
+  <style>
+    #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
+    #connect-modal-overlay.open{display:flex}
+    .connect-modal{width:100%;max-width:400px;background:#1a1a1c;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:32px 28px 28px;position:relative;animation:cmi .2s ease}
+    @keyframes cmi{from{opacity:0;transform:scale(.95) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+    .connect-modal-close{position:absolute;top:12px;right:16px;background:none;border:none;color:#999;font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;border-radius:6px}
+    .connect-modal-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+    .connect-modal-header h2{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:17px;font-weight:500;color:#dcddde;margin:0}
+    .connect-modal-field{margin-bottom:16px}
+    .connect-modal-field label{display:block;font-size:11px;color:#999;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+    .connect-modal-field input{width:100%;padding:14px;font-size:15px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#dcddde;outline:none;box-sizing:border-box;min-height:50px;-webkit-appearance:none}
+    .connect-modal-field input:focus{border-color:rgba(255,255,255,.25)}
+    .connect-modal-btn{width:100%;margin-top:8px;padding:14px;font-size:15px;font-weight:500;background:#f2f2f2;color:#0B0B0D;border:none;border-radius:10px;cursor:pointer;min-height:50px}
+    .connect-modal-btn:active{opacity:.7}
+    .connect-modal-hint{font-size:10px;color:#666;text-align:center;margin-top:12px;margin-bottom:0}
+    [data-theme="light"] .connect-modal{background:#fff;border-color:rgba(0,0,0,.1)}
+    [data-theme="light"] .connect-modal-header h2{color:#1a1a1a}
+    [data-theme="light"] .connect-modal-field input{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.12);color:#1a1a1a}
+    [data-theme="light"] .connect-modal-btn{background:#1a1a1a;color:#f2f2f2}
+  </style>
+  <div id="connect-modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
     <div class="connect-modal">
-      <button class="connect-modal-close" id="connect-modal-close">&times;</button>
+      <button class="connect-modal-close" onclick="document.getElementById('connect-modal-overlay').classList.remove('open')">&times;</button>
       <div class="connect-modal-header">
         <img src="/logo-64.png" width="36" height="36" alt="" style="border-radius:8px;">
         <h2>Connect to your OpenClaw</h2>
       </div>
       <div class="connect-modal-body">
         <div class="connect-modal-field">
-          <label for="connect-modal-url">Gateway URL</label>
+          <label>Gateway URL</label>
           <input type="text" id="connect-modal-url" placeholder="https://your-server.tail1234.ts.net" autocomplete="url" autocapitalize="none" autocorrect="off" spellcheck="false">
         </div>
         <div class="connect-modal-field">
-          <label for="connect-modal-token">Auth Token</label>
+          <label>Auth Token</label>
           <input type="password" id="connect-modal-token" placeholder="Paste your token" autocomplete="off">
         </div>
         <button class="connect-modal-btn" id="connect-modal-btn">Connect</button>
@@ -1856,50 +1876,25 @@
   <script>
     // Landing page logic
     (function() {
-      const landing = document.getElementById('landing');
-      const app = document.querySelector('.app');
-      const hasCredentials = !!localStorage.getItem('connection');
-
-      var modal = document.getElementById('connect-modal-overlay');
-
-      function openConnectModal() {
-        modal.classList.add('open');
-        var urlInput = document.getElementById('connect-modal-url');
-        if (urlInput) setTimeout(function() { urlInput.focus(); }, 100);
-      }
-
-      function closeConnectModal() {
-        modal.classList.remove('open');
-      }
-
-      if (hasCredentials) {
+      var landing = document.getElementById('landing');
+      var app = document.querySelector('.app');
+      if (localStorage.getItem('connection')) {
         landing.style.display = 'none';
         app.style.display = '';
       } else {
         landing.style.display = '';
         app.style.display = 'none';
-        document.getElementById('landing-connect-btn').addEventListener('click', openConnectModal);
-        document.getElementById('landing-connect-btn-2').addEventListener('click', openConnectModal);
       }
-
-      // Close modal
-      document.getElementById('connect-modal-close').addEventListener('click', closeConnectModal);
-      modal.addEventListener('click', function(e) {
-        if (e.target === modal) closeConnectModal();
-      });
 
       // Connect button in modal
       document.getElementById('connect-modal-btn').addEventListener('click', function() {
         var url = (document.getElementById('connect-modal-url').value || '').trim();
         var token = (document.getElementById('connect-modal-token').value || '').trim();
         if (!url || !token) return;
-        // Save credentials
         localStorage.setItem('connection', JSON.stringify({ gatewayUrl: url, token: token }));
-        // Switch to app
         landing.style.display = 'none';
         app.style.display = '';
-        closeConnectModal();
-        // Trigger connection
+        document.getElementById('connect-modal-overlay').classList.remove('open');
         if (typeof state !== 'undefined') {
           state.gatewayUrl = url;
           state.token = token;
