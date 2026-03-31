@@ -6154,13 +6154,9 @@ initApp().catch((err) => {
   updateDashboard();
 });
 
+// Unregister any existing service worker (was causing stale cache issues)
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
-    .then((reg) => {
-      reg.update().catch(() => {});
-      setInterval(() => reg.update().catch(() => {}), 60000);
-    })
-    .catch((err) => {
-      console.error("Service worker registration failed:", err);
-    });
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((r) => r.unregister());
+  });
 }
