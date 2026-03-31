@@ -3466,8 +3466,13 @@ async function handleMicClick() {
 }
 
 function autoResize() {
-  ui.messageInput.style.height = "auto";
-  ui.messageInput.style.height = Math.min(ui.messageInput.scrollHeight, 120) + "px";
+  const el = ui.messageInput;
+  // Avoid iOS flicker: don't set height="auto" (causes momentary collapse + repaint).
+  // Instead, temporarily shrink to 1px to measure natural scrollHeight, then restore.
+  const currentHeight = el.style.height;
+  el.style.height = "1px";
+  const newHeight = Math.min(el.scrollHeight, 120) + "px";
+  el.style.height = newHeight;
 }
 
 // ─── Input Handlers ──────────────────────────────────────────────────
@@ -3549,7 +3554,11 @@ if (isMobile && window.visualViewport) {
     const keyboardOpen = vv.height < window.innerHeight * 0.75;
     if (keyboardOpen) {
       // Keyboard is open: constrain chat to visible viewport
-      inputArea.style.paddingBottom = '0px';
+      // iOS Safari/PWA shows a 44px form accessory bar (arrows + checkmark)
+      // above the keyboard that overlaps our input — account for it
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      const accessoryBarHeight = isIOS ? 44 : 0;
+      inputArea.style.paddingBottom = accessoryBarHeight ? accessoryBarHeight + 'px' : '0px';
       chatContainer.style.height = vv.height + 'px';
       // Prevent browser from scrolling the page down (causes blank space on Android)
       window.scrollTo(0, 0);
