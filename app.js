@@ -1058,18 +1058,24 @@ function startTabRename(labelEl, tab) {
 const MOBILE_TAB_MENU_BREAKPOINT = 768; // <= this uses mobile tab switcher
 
 function updateTabMode() {
-  const tabBar = ui.tabBar;
-  const hamburgerBar = document.getElementById("hamburger-bar");
-  if (!tabBar || !hamburgerBar) return;
-  const useMobileTabs = window.innerWidth <= MOBILE_TAB_MENU_BREAKPOINT;
-  if (useMobileTabs) {
-    tabBar.classList.add("oc-hamburger-mode");
-    hamburgerBar.classList.add("oc-visible");
-    renderMobileTabSwitcher();
-  } else {
-    tabBar.classList.remove("oc-hamburger-mode");
-    hamburgerBar.classList.remove("oc-visible");
-  }
+  // Defer to next frame — on iOS PWA cold start, layout isn't ready yet
+  requestAnimationFrame(() => {
+    const tabBar = ui.tabBar;
+    const hamburgerBar = document.getElementById("hamburger-bar");
+    const chatContainer = document.getElementById("chat-container");
+    if (!tabBar || !hamburgerBar) return;
+    const useMobileTabs = window.innerWidth > 0 && window.innerWidth <= MOBILE_TAB_MENU_BREAKPOINT;
+    if (useMobileTabs) {
+      tabBar.classList.add("oc-hamburger-mode");
+      hamburgerBar.classList.add("oc-visible");
+      chatContainer?.classList.add("oc-mobile-tabs");
+      renderMobileTabSwitcher();
+    } else {
+      tabBar.classList.remove("oc-hamburger-mode");
+      hamburgerBar.classList.remove("oc-visible");
+      chatContainer?.classList.remove("oc-mobile-tabs");
+    }
+  });
 }
 
 function renderMobileTabSwitcher() {

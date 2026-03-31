@@ -1731,7 +1731,7 @@
     padding-left: 44px;
   }
 
-  .openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) {
+  .oc-mobile-tabs .openclaw-top-bar {
     padding-left: 0;
   }
 }
@@ -1896,8 +1896,8 @@
 
 }
 
-/* ── Hide dash-menu-btn when hamburger bar is visible ───── */
-.openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) > .dash-menu-btn {
+/* ── Hide dash-menu-btn when mobile tabs active ───── */
+.oc-mobile-tabs .openclaw-top-bar > .dash-menu-btn {
   display: none !important;
 }
 

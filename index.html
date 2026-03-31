@@ -93,13 +93,13 @@
       border-bottom: 1px solid var(--background-modifier-border);
       box-sizing: content-box;
     }
-    /* When hamburger bar is visible, hide the desktop tab bar and let hamburger handle layout */
-    .openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) {
+    /* When mobile tabs active, hide the desktop tab bar and let hamburger handle layout */
+    .oc-mobile-tabs .openclaw-top-bar {
       padding-top: 0;
       min-height: 0;
       border-bottom: none;
     }
-    .openclaw-top-bar:has(.oc-hamburger-bar.oc-visible) > .openclaw-tab-bar#tab-bar {
+    .oc-mobile-tabs .openclaw-top-bar > .openclaw-tab-bar#tab-bar {
       display: none;
     }
     .openclaw-top-bar .openclaw-tab-bar {
