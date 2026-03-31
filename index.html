@@ -1842,10 +1842,15 @@
         landing.style.display = 'none';
         app.style.display = '';
         if (openDash) {
-          // Auto-open dashboard so the connect form is visible
+          // Auto-open dashboard with connect form visible
           var dash = document.getElementById('dashboard');
           var overlay = document.getElementById('dashboard-overlay');
-          if (dash) dash.classList.add('open');
+          if (dash) {
+            dash.classList.add('open');
+            // Skip skeleton — no credentials means nothing to load
+            dash.classList.remove('dash-loading');
+            dash.classList.add('dash-loaded');
+          }
           if (overlay) overlay.classList.add('open');
         }
       }
