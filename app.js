@@ -6147,7 +6147,11 @@ function closeDashboard() {
 
 // ─── Initialize ──────────────────────────────────────────────────────
 
-initApp();
+initApp().catch((err) => {
+  console.error("initApp failed:", err);
+  // Show connect UI so the page isn't a blank white screen
+  updateConnectionStatus(false);
+});
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
