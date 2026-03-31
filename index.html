@@ -1831,6 +1831,28 @@
   </div>
 
   <script src="/app.js?v=96"></script>
+  <!-- Connect Modal -->
+  <div class="connect-modal-overlay" id="connect-modal-overlay">
+    <div class="connect-modal">
+      <button class="connect-modal-close" id="connect-modal-close">&times;</button>
+      <div class="connect-modal-header">
+        <img src="/logo-64.png" width="36" height="36" alt="" style="border-radius:8px;">
+        <h2>Connect to your OpenClaw</h2>
+      </div>
+      <div class="connect-modal-body">
+        <div class="connect-modal-field">
+          <label for="connect-modal-url">Gateway URL</label>
+          <input type="text" id="connect-modal-url" placeholder="https://your-server.tail1234.ts.net" autocomplete="url" autocapitalize="none" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="connect-modal-field">
+          <label for="connect-modal-token">Auth Token</label>
+          <input type="password" id="connect-modal-token" placeholder="Paste your token" autocomplete="off">
+        </div>
+        <button class="connect-modal-btn" id="connect-modal-btn">Connect</button>
+        <p class="connect-modal-hint">Stored locally on this device only.</p>
+      </div>
+    </div>
+  </div>
   <script>
     // Landing page logic
     (function() {
@@ -1886,29 +1908,6 @@
       });
     })();
   </script>
-  <!-- Connect Modal -->
-  <div class="connect-modal-overlay" id="connect-modal-overlay">
-    <div class="connect-modal">
-      <button class="connect-modal-close" id="connect-modal-close">&times;</button>
-      <div class="connect-modal-header">
-        <img src="/logo-64.png" width="36" height="36" alt="" style="border-radius:8px;">
-        <h2>Connect to your OpenClaw</h2>
-      </div>
-      <div class="connect-modal-body">
-        <div class="connect-modal-field">
-          <label for="connect-modal-url">Gateway URL</label>
-          <input type="text" id="connect-modal-url" placeholder="https://your-server.tail1234.ts.net" autocomplete="url" autocapitalize="none" autocorrect="off" spellcheck="false">
-        </div>
-        <div class="connect-modal-field">
-          <label for="connect-modal-token">Auth Token</label>
-          <input type="password" id="connect-modal-token" placeholder="Paste your token" autocomplete="off">
-        </div>
-        <button class="connect-modal-btn" id="connect-modal-btn">Connect</button>
-        <p class="connect-modal-hint">Stored locally on this device only.</p>
-      </div>
-    </div>
-  </div>
-
   <!-- File Viewer Overlay -->
   <div class="oc-file-viewer-overlay" id="file-viewer-overlay">
     <div class="oc-file-viewer">
