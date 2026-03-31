@@ -3773,9 +3773,9 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 .oc-queue-bar.oc-queue-expanded .oc-queue-list { display: flex; }
 .oc-queue-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  padding: 5px 10px;
+  padding: 8px 10px;
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 .oc-queue-item:last-child { border-bottom: none; }
@@ -3788,17 +3788,24 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   border-radius: 3px;
   padding: 1px 5px;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 .oc-queue-text {
   font-size: 12px;
+  line-height: 1.5;
   color: var(--text-muted);
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
-.oc-queue-remove {
+.oc-queue-item-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+.oc-queue-copy, .oc-queue-remove {
   background: none;
   border: none;
   color: var(--text-faint);
@@ -3815,6 +3822,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   align-items: center;
   justify-content: center;
 }
+.oc-queue-copy:hover { opacity: 1; background: rgba(255,255,255,0.06); }
 .oc-queue-remove:hover { color: #ef4444; background: rgba(239,68,68,0.1); opacity: 1; }
 @keyframes queueSlideIn {
   from { opacity: 0; transform: translateY(4px); }

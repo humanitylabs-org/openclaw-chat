@@ -1668,13 +1668,12 @@ function renderQueuedMessages() {
   list.className = 'oc-queue-list';
 
   queue.forEach((msg, i) => {
-    let preview = msg.text || '';
+    let fullText = msg.text || '';
     if (msg.attachments && msg.attachments.length > 0) {
       const names = msg.attachments.map(a => a.name).join(', ');
-      preview = preview ? `📎 ${names} — ${preview}` : `📎 ${names}`;
+      fullText = fullText ? `📎 ${names} — ${fullText}` : `📎 ${names}`;
     }
-    if (preview.length > 100) preview = preview.slice(0, 100) + '…';
-    const esc = preview.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const esc = fullText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 
     const item = document.createElement('div');
     item.className = 'oc-queue-item';
@@ -1682,6 +1681,22 @@ function renderQueuedMessages() {
       <span class="oc-queue-num">${i + 1}</span>
       <span class="oc-queue-text">${esc}</span>
     `;
+    const itemActions = document.createElement('span');
+    itemActions.className = 'oc-queue-item-actions';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'oc-queue-copy';
+    copyBtn.textContent = '📋';
+    copyBtn.title = 'Copy to clipboard';
+    copyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(msg.text || '').then(() => {
+        copyBtn.textContent = '✓';
+        setTimeout(() => { copyBtn.textContent = '📋'; }, 1500);
+      }).catch(() => {});
+    });
+    itemActions.appendChild(copyBtn);
+
     const removeBtn = document.createElement('button');
     removeBtn.className = 'oc-queue-remove';
     removeBtn.textContent = '✕';
@@ -1690,7 +1705,8 @@ function renderQueuedMessages() {
       e.stopPropagation();
       removeQueuedMessage(key, i);
     });
-    item.appendChild(removeBtn);
+    itemActions.appendChild(removeBtn);
+    item.appendChild(itemActions);
     list.appendChild(item);
   });
 
