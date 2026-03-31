@@ -1055,7 +1055,7 @@ function startTabRename(labelEl, tab) {
   input.addEventListener("blur", () => finish(true));
 }
 
-const MOBILE_TAB_MENU_BREAKPOINT = 768; // <= this uses mobile tab switcher
+const MOBILE_TAB_MENU_BREAKPOINT = 0; // disabled — always use desktop tab bar
 
 function updateTabMode() {
   const tabBar = ui.tabBar;
@@ -6154,9 +6154,11 @@ initApp().catch((err) => {
   updateDashboard();
 });
 
-// Unregister any existing service worker (was causing stale cache issues)
+// Clean up any old service worker (was causing stale cache issues)
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((r) => r.unregister());
+    if (regs.length > 0) {
+      regs.forEach((r) => r.unregister());
+    }
   });
 }

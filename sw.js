@@ -1,13 +1,7 @@
-// Self-destructing service worker — cleans up old caches and unregisters.
-// This app requires a live WebSocket; offline caching adds no value and causes stale-file bugs.
-
+// No-op service worker. Exists only to replace any previously installed SW.
+// Immediately activates and unregisters itself. Does not cache or intercept anything.
 self.addEventListener("install", () => self.skipWaiting());
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((names) => Promise.all(names.map((n) => caches.delete(n))))
-      .then(() => self.registration.unregister())
-      .then(() => self.clients.matchAll())
-      .then((clients) => clients.forEach((c) => c.navigate(c.url)))
-  );
+self.addEventListener("activate", () => {
+  caches.keys().then((n) => n.forEach((k) => caches.delete(k)));
+  self.registration.unregister();
 });
