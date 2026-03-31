@@ -1838,36 +1838,35 @@
       const app = document.querySelector('.app');
       const hasCredentials = !!localStorage.getItem('connection');
 
-      function showApp(openDash) {
+      function showApp() {
         landing.style.display = 'none';
         app.style.display = '';
-        if (openDash) {
-          // Auto-open dashboard with connect form visible
-          var dash = document.getElementById('dashboard');
-          var overlay = document.getElementById('dashboard-overlay');
-          if (dash) {
-            dash.classList.add('open');
-            // Skip skeleton — no credentials means nothing to load
-            dash.classList.remove('dash-loading');
-            dash.classList.add('dash-loaded');
-          }
-          if (overlay) overlay.classList.add('open');
+      }
+
+      function showConnect() {
+        showApp();
+        var dash = document.getElementById('dashboard');
+        var overlay = document.getElementById('dashboard-overlay');
+        var form = document.getElementById('dash-connect-form');
+        if (dash) {
+          dash.classList.add('open');
+          dash.classList.remove('dash-loading');
+          dash.classList.add('dash-loaded');
         }
+        if (overlay) overlay.classList.add('open');
+        // Show connect form, hide all dashboard content sections
+        if (form) form.style.display = '';
+        var sections = document.querySelectorAll('#dashboard .hud-identity, #dashboard .hud-alerts, #dashboard .hud-next, #dashboard .hud-timeline, #dashboard .hud-files-row, #dashboard .hud-inline-setting, #dashboard .hud-section');
+        sections.forEach(function(s) { s.style.display = 'none'; });
       }
 
       if (hasCredentials) {
-        // Returning user — skip landing, go straight to app
-        showApp(false);
+        showApp();
       } else {
-        // New user — show landing page
         landing.style.display = '';
         app.style.display = 'none';
-        document.getElementById('landing-connect-btn').addEventListener('click', function() {
-          showApp(true);
-        });
-        document.getElementById('landing-connect-btn-2').addEventListener('click', function() {
-          showApp(true);
-        });
+        document.getElementById('landing-connect-btn').addEventListener('click', showConnect);
+        document.getElementById('landing-connect-btn-2').addEventListener('click', showConnect);
       }
     })();
   </script>
