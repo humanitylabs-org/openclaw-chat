@@ -1462,7 +1462,6 @@ async function _renderTabsInner() {
     const isHome = tab.key === "main";
     const tabEl = document.createElement("div");
     tabEl.className = `openclaw-tab${isCurrent ? " active" : ""}${isHome ? " openclaw-tab-home" : ""}`;
-    tabEl.dataset.tabKey = tab.key;
 
     const row = document.createElement("div");
     row.className = "openclaw-tab-row";
@@ -1525,21 +1524,15 @@ async function _renderTabsInner() {
     tabEl.appendChild(meter);
 
     if (!isHome) {
-      // Drag handle — only this element is draggable, not the whole tab
-      const grip = document.createElement("span");
-      grip.className = "openclaw-tab-grip";
-      grip.textContent = "⠿";
-      grip.title = "Drag to reorder";
-      grip.draggable = true;
-      grip.addEventListener("dragstart", (e) => {
+      tabEl.draggable = true;
+      tabEl.addEventListener("dragstart", (e) => {
         e.dataTransfer.setData("text/plain", tab.key);
         tabEl.classList.add("oc-dragging");
       });
-      grip.addEventListener("dragend", () => {
+      tabEl.addEventListener("dragend", () => {
         tabEl.classList.remove("oc-dragging");
         document.querySelectorAll(".oc-drag-over").forEach(el => el.classList.remove("oc-drag-over"));
       });
-      // Drop targets are the whole tab
       tabEl.addEventListener("dragover", (e) => {
         e.preventDefault();
         tabEl.classList.add("oc-drag-over");
@@ -1555,7 +1548,6 @@ async function _renderTabsInner() {
           reorderTabs(draggedKey, tab.key);
         }
       });
-      row.insertBefore(grip, row.firstChild);
     }
 
     if (!isCurrent) {
