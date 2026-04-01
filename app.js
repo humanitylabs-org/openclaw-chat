@@ -2817,7 +2817,11 @@ function resolveStreamSession(payload) {
     const prefix = agentPrefix();
     const normalized = sk.startsWith(prefix) ? sk.slice(prefix.length) : sk;
     if (state.streams.has(normalized)) return normalized;
+    // sessionKey is explicit but no matching stream — don't guess
+    // (prevents heartbeat/background events from leaking into the active tab)
+    return null;
   }
+  // No sessionKey — try runId, then single-stream fallback
   const data = payload.data;
   const runId = str(payload.runId, str(data?.runId));
   if (runId && state.runToSession.has(runId)) return state.runToSession.get(runId);
@@ -3047,8 +3051,11 @@ function handleChatEvent(payload) {
         const chatState = str(payload.state);
         if (chatState === "final") {
           const text = extractDeltaText(payload.message);
-          markUnread(tabKey);
-          fireNotification(tabKey, text || "");
+          const silent = !text || text.trim() === "HEARTBEAT_OK" || text.trim() === "NO_REPLY";
+          if (!silent) {
+            markUnread(tabKey);
+            fireNotification(tabKey, text);
+          }
           // Invalidate cache so next switch loads fresh history
           delete state.tabCache[tabKey];
         }
@@ -3068,10 +3075,13 @@ function handleChatEvent(payload) {
       // Drain queue — stream may have been cleaned up before final arrived
       setTimeout(() => processQueue(), 500);
     } else {
-      // Non-active tab got a final without a stream — mark unread
-      markUnread(eventSessionKey);
+      // Non-active tab got a final without a stream — mark unread (unless heartbeat/silent)
       const text = extractDeltaText(payload.message);
-      fireNotification(eventSessionKey, text || "");
+      const silent = !text || text.trim() === "HEARTBEAT_OK" || text.trim() === "NO_REPLY";
+      if (!silent) {
+        markUnread(eventSessionKey);
+        fireNotification(eventSessionKey, text);
+      }
       delete state.tabCache[eventSessionKey];
     }
     return;
@@ -3100,9 +3110,13 @@ function handleChatEvent(payload) {
     if (isActiveTab) {
       loadChatHistory().then(() => updateContextMeter());
     } else {
-      // Non-active tab finished streaming — mark unread
-      markUnread(eventSessionKey);
-      fireNotification(eventSessionKey, ss?.text || "");
+      // Non-active tab finished streaming — mark unread (unless heartbeat/silent)
+      const finalText = ss?.text || "";
+      const silent = !finalText || finalText.trim() === "HEARTBEAT_OK" || finalText.trim() === "NO_REPLY";
+      if (!silent) {
+        markUnread(eventSessionKey);
+        fireNotification(eventSessionKey, finalText);
+      }
       delete state.tabCache[eventSessionKey];
     }
   } else if (chatState === "aborted") {
