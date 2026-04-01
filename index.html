@@ -229,6 +229,29 @@
     .openclaw-tab-add:hover { opacity: 1; background: rgba(128,128,128,0.06); }
     .openclaw-tab-add .openclaw-tab-meter { display: none; }
 
+    /* Drag grip — only visible on hover, only element that initiates drag */
+    .openclaw-tab-grip {
+      font-size: 10px;
+      line-height: 1;
+      cursor: grab;
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      transition: all 0.15s;
+      flex-shrink: 0;
+      color: var(--text-faint);
+      user-select: none;
+      letter-spacing: -1px;
+    }
+    .openclaw-tab:hover .openclaw-tab-grip,
+    .openclaw-tab.active .openclaw-tab-grip {
+      opacity: 0.4;
+      width: auto;
+      padding-right: 2px;
+    }
+    .openclaw-tab-grip:hover { opacity: 0.8 !important; }
+    .openclaw-tab-grip:active { cursor: grabbing; }
+
     /* Reset button on non-home tabs (shows alongside ×) */
     .openclaw-tab-reset {
       margin-left: auto;

@@ -1525,56 +1525,40 @@ async function _renderTabsInner() {
     tabEl.appendChild(meter);
 
     if (!isHome) {
-      // Custom drag with distance threshold (15px) to prevent accidental reorder on click
-      let dragState = null;
-      tabEl.addEventListener("pointerdown", (e) => {
-        if (e.button !== 0) return;
-        dragState = { key: tab.key, startX: e.clientX, startY: e.clientY, active: false, el: tabEl };
-        tabEl.setPointerCapture(e.pointerId);
+      // Drag handle — only this element is draggable, not the whole tab
+      const grip = document.createElement("span");
+      grip.className = "openclaw-tab-grip";
+      grip.textContent = "⠿";
+      grip.title = "Drag to reorder";
+      grip.draggable = true;
+      grip.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", tab.key);
+        tabEl.classList.add("oc-dragging");
       });
-      tabEl.addEventListener("pointermove", (e) => {
-        if (!dragState) return;
-        const dx = e.clientX - dragState.startX;
-        const dy = e.clientY - dragState.startY;
-        if (!dragState.active && Math.sqrt(dx * dx + dy * dy) >= 15) {
-          dragState.active = true;
-          tabEl.classList.add("oc-dragging");
-        }
-        if (dragState.active) {
-          // Find the tab element under the pointer
-          const target = document.elementFromPoint(e.clientX, e.clientY)?.closest?.(".openclaw-tab:not(.openclaw-tab-add)");
-          document.querySelectorAll(".oc-drag-over").forEach(el => el.classList.remove("oc-drag-over"));
-          if (target && target !== tabEl) target.classList.add("oc-drag-over");
-        }
-      });
-      tabEl.addEventListener("pointerup", (e) => {
-        if (!dragState) return;
-        const wasDrag = dragState.active;
+      grip.addEventListener("dragend", () => {
         tabEl.classList.remove("oc-dragging");
         document.querySelectorAll(".oc-drag-over").forEach(el => el.classList.remove("oc-drag-over"));
-        if (wasDrag) {
-          const target = document.elementFromPoint(e.clientX, e.clientY)?.closest?.(".openclaw-tab:not(.openclaw-tab-add)");
-          const targetKey = target?.dataset?.tabKey;
-          if (targetKey && targetKey !== tab.key) {
-            reorderTabs(tab.key, targetKey);
-          }
-        } else if (!isCurrent) {
-          switchTab(tab);
-        }
-        dragState = null;
       });
-      tabEl.addEventListener("pointercancel", () => {
-        if (dragState) {
-          tabEl.classList.remove("oc-dragging");
-          document.querySelectorAll(".oc-drag-over").forEach(el => el.classList.remove("oc-drag-over"));
-          dragState = null;
+      // Drop targets are the whole tab
+      tabEl.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        tabEl.classList.add("oc-drag-over");
+      });
+      tabEl.addEventListener("dragleave", () => {
+        tabEl.classList.remove("oc-drag-over");
+      });
+      tabEl.addEventListener("drop", (e) => {
+        e.preventDefault();
+        tabEl.classList.remove("oc-drag-over");
+        const draggedKey = e.dataTransfer.getData("text/plain");
+        if (draggedKey && draggedKey !== tab.key) {
+          reorderTabs(draggedKey, tab.key);
         }
       });
-      // Prevent native drag
-      tabEl.addEventListener("dragstart", (e) => e.preventDefault());
+      row.insertBefore(grip, row.firstChild);
     }
 
-    if (!isCurrent && isHome) {
+    if (!isCurrent) {
       tabEl.addEventListener("click", () => switchTab(tab));
     }
 
