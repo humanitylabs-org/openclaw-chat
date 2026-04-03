@@ -3859,7 +3859,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 
 /* ── Sidebar container ────────────────────────────────── */
 .dashboard {
-  width: 260px !important;
+  width: 260px;
   background: var(--cal-bg-secondary) !important;
   border-right: 1px solid var(--cal-border) !important;
   box-shadow: none !important;
@@ -4253,10 +4253,20 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 
 
 /* ══════════════════════════════════════════════════════════════
-   SPACING & LAYOUT FIXES — match mockup exactly
+   NUCLEAR SPACING & LAYOUT OVERRIDE
+   Forces exact mockup spacing. Every property !important.
    ══════════════════════════════════════════════════════════════ */
 
-/* ── Desktop: move toggle button INTO the tab bar ─────── */
+/* ── Dashboard width: no !important so oc-collapsed works ─ */
+.dashboard { width: 260px; }
+.dashboard.oc-collapsed { width: 0 !important; }
+.dashboard.oc-collapsed .dashboard-scroll,
+.dashboard.oc-collapsed .hud-bottom-utility {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ── Desktop toggle button: inside tab bar, not fixed ─── */
 @media (min-width: 769px) {
   .dash-menu-btn {
     position: static !important;
@@ -4271,96 +4281,168 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
     padding: 0 10px !important;
     opacity: 0.6 !important;
     flex-shrink: 0 !important;
-    border: none !important;
     color: var(--text-muted) !important;
+    min-width: 36px !important;
   }
-  .dash-menu-btn:hover {
-    opacity: 1 !important;
-    color: var(--text-normal) !important;
-  }
+  .dash-menu-btn:hover { opacity: 1 !important; }
 
-  /* Remove the extra padding that was compensating for fixed position */
-  .dashboard-scroll {
-    padding-top: 12px !important;
-  }
-
-  /* Remove the left padding on tab bar that was making room for fixed button */
-  .openclaw-top-bar {
-    padding-left: 0 !important;
-  }
+  .dashboard-scroll { padding-top: 12px !important; }
+  .openclaw-top-bar { padding-left: 0 !important; }
 }
 
-/* ── Tighten spacing between sections ─────────────────── */
+/* ══ SECTION SPACING — NUCLEAR RESET ══════════════════════
+   The old CSS has dozens of rules adding padding, margin,
+   and borders to .hud-section. Kill them ALL, then rebuild
+   with exact mockup values.
+   ═══════════════════════════════════════════════════════ */
 
-/* Remove all margin-top gaps that cause double spacing */
-.hud-section {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-/* Agent card sections — zero gap */
-.hud-agent-card .hud-section {
+/* Step 1: Kill everything on the section wrapper */
+.hud-section,
+.hud-section.hud-collapsible,
+.hud-section.hud-collapsible.hud-open,
+.hud-section:first-of-type,
+.hud-section.hud-collapsible.hud-open[data-section="tasks"],
+div.hud-section {
+  background: transparent !important;
+  border: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   margin: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Step 2: Rebuild the toggle button with exact mockup values */
+/* Mockup .s-item: padding: 8px 12px; font-size: 14px; gap: 10px */
+.hud-section-toggle,
+.hud-section .hud-section-toggle,
+.hud-collapsible .hud-section-toggle,
+button.hud-section-toggle {
+  padding: 8px 10px !important;
+  min-height: 0 !important;  /* Let content determine height, ~36px */
+  border-radius: 6px !important;
+  background: transparent !important;
+  transition: background 0.12s !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  margin: 1px 0 !important;
+}
+
+.hud-section-toggle:hover,
+.hud-section .hud-section-toggle:hover {
+  background: rgba(255,255,255,0.04) !important;
+}
+
+[data-theme="light"] .hud-section-toggle:hover,
+[data-theme="light"] .hud-section .hud-section-toggle:hover {
+  background: rgba(0,0,0,0.03) !important;
+}
+
+/* Agent card items — no horizontal margin, slight indent */
+.hud-agent-card .hud-section {
   padding: 0 4px !important;
 }
 
-/* Gateway sections outside the card — minimal gap */
-.hud-section + .hud-section {
-  margin-top: 0 !important;
-}
-
-/* Section toggle — tighter padding to match mockup */
-.hud-section .hud-section-toggle {
-  padding: 7px 8px !important;
-  min-height: 38px !important;
-}
-
-/* Agent card items — even tighter, like mockup */
 .hud-agent-card .hud-section .hud-section-toggle {
-  padding: 8px 8px !important;
-  min-height: 38px !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
 }
 
-/* ── Online dots closer to label (not pushed far right) ── */
+.hud-agent-card .hud-section:last-child .hud-section-toggle {
+  border-radius: 0 0 8px 8px !important;
+}
 
+/* Gateway sections — slight horizontal padding */
+.dashboard-scroll > .hud-section {
+  padding: 0 4px !important;
+}
+
+/* Section body when open — tight */
+.hud-section-body,
+.hud-collapsible .hud-section-body,
+.hud-collapsible.hud-open .hud-section-body {
+  padding: 0 0 4px 0 !important;
+}
+
+/* Override the flex/height rules from tasks section */
+.hud-section.hud-collapsible.hud-open[data-section="tasks"] > .hud-section-body {
+  flex: none !important;
+}
+
+/* ── Section labels — exact mockup: 14px, flex layout ─── */
+/* The label needs flex:1 to push dots/chevrons to the right */
+.hud-section-label {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+/* The label-row (Browser/Terminal) also needs flex:1 */  
+.hud-section-label-row {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+/* Online dot positioning — pushed right by flex:1 label */
 .hud-embed-dot {
-  margin-left: 6px !important;
+  margin-left: auto !important;
 }
 
-/* ── Group labels — consistent with mockup ────────────── */
+/* Section actions container */
+.hud-section-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  flex-shrink: 0 !important;
+}
+
+/* ── Group labels ─────────────────────────────────────── */
 .hud-group-label {
   padding: 14px 12px 4px !important;
   margin: 0 !important;
 }
 
-/* ── Sidebar scroll — exact mockup padding ────────────── */
-.dashboard-scroll {
-  padding: 12px 10px !important;
+/* ── File chip container ──────────────────────────────── */
+.hud-files-row {
+  padding: 4px 8px 4px !important;
+  gap: 5px !important;
 }
 
-/* ── Embed panel section actions — keep chevron alignment */
-.hud-section-actions {
-  gap: 2px !important;
+/* ── Timeline/cron container ──────────────────────────── */
+.hud-timeline {
+  padding: 0 !important;
+  border-bottom: none !important;
 }
 
-/* ── Agent card agent-card-identity — less padding ────── */
+/* ── Agent card identity ──────────────────────────────── */
 .hud-agent-card-identity {
   padding: 0 !important;
 }
 
-/* ── Files row — less bottom padding ──────────────────── */
-.hud-files-row {
-  padding: 4px 8px 6px !important;
-  gap: 5px !important;
+/* ── Sidebar scroll ───────────────────────────────────── */
+.dashboard-scroll {
+  padding: 12px 10px !important;
+  gap: 0 !important;
 }
 
-/* ── Cron list — tighter ──────────────────────────────── */
-.hud-timeline {
-  padding: 0 !important;
+/* ── Widgets area spacing ─────────────────────────────── */
+.hud-widgets-spacer {
+  min-height: 8px !important;
 }
 
-/* ── Section body — less padding when open ────────────── */
-.hud-collapsible.hud-open .hud-section-body {
-  padding-bottom: 4px !important;
+/* ── Embed panel body ─────────────────────────────────── */
+.hud-embed-panel.hud-open .hud-embed-body {
+  aspect-ratio: 16/9 !important;
+  min-height: 0 !important;
+}
+
+/* ── Mobile adjustments ───────────────────────────────── */
+@media (max-width: 768px) {
+  .hud-section-toggle,
+  .hud-section .hud-section-toggle {
+    min-height: 44px !important;  /* Touch target */
+    padding: 8px 10px !important;
+  }
 }
