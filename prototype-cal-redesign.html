@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>usemyclaw.com — Redesign Prototype v3 (Feature-Complete)</title>
+  <title>usemyclaw.com — Redesign Prototype v4 (Final)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -140,7 +140,6 @@
     .s-label { flex: 1; min-width: 0; }
     .s-count { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
     .s-chevron { font-size: 12px; color: var(--text-muted); flex-shrink: 0; transition: transform 0.2s; }
-    .s-meta { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
     .s-badge {
       font-size: 11px; font-weight: 500; padding: 1px 7px; border-radius: 10px;
       background: var(--green-subtle); color: var(--green); flex-shrink: 0;
@@ -228,7 +227,7 @@
     /* Embed accordion */
     .embed-expand {
       display: grid; grid-template-rows: 0fr;
-      transition: grid-template-rows 0.3s ease;
+      transition: grid-template-rows 0.25s ease;
       margin: 0 2px;
     }
     .embed-expand.open { grid-template-rows: 1fr; }
@@ -264,16 +263,16 @@
     }
     .settings-expand.open { grid-template-rows: 1fr; }
     .settings-expand-inner { overflow: hidden; }
-    .settings-body { padding: 4px 12px 10px; }
+    .settings-body { padding: 4px 14px 10px; }
 
     .set-row {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 0; border-bottom: 1px solid var(--border-subtle);
+      padding: 9px 0; border-bottom: 1px solid var(--border-subtle);
       min-height: 40px;
     }
     .set-row:last-child { border-bottom: none; }
     .set-label { font-size: 13px; color: var(--text-default); }
-    .set-value { font-size: 12px; color: var(--text-subtle); }
+    .set-value { font-size: 13px; color: var(--text-subtle); }
     .set-value.clickable {
       cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm);
       transition: background 0.12s, color 0.12s;
@@ -282,13 +281,13 @@
 
     /* Select */
     .set-select {
-      font-family: var(--font); font-size: 12px; color: var(--text-subtle);
+      font-family: var(--font); font-size: 12px; color: var(--text-default);
       background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: var(--radius-md); padding: 6px 22px 6px 8px;
+      border-radius: var(--radius-md); padding: 6px 24px 6px 10px;
       cursor: pointer; outline: none; appearance: none; -webkit-appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23888' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 6px center;
-      min-height: 32px;
+      background-repeat: no-repeat; background-position: right 8px center;
+      min-height: 34px;
     }
     .set-select:hover { border-color: rgba(255,255,255,0.15); }
     .set-select.pending { color: var(--accent); border-color: rgba(59,130,246,0.3); }
@@ -311,12 +310,12 @@
     /* Chip group */
     .chip-group { display: flex; gap: 3px; }
     .chip {
-      font-family: var(--font); font-size: 11px; color: var(--text-muted);
+      font-family: var(--font); font-size: 12px; color: var(--text-subtle);
       background: none; border: 1px solid rgba(255,255,255,0.08);
-      border-radius: var(--radius-sm); padding: 4px 8px;
+      border-radius: var(--radius-sm); padding: 5px 10px;
       cursor: pointer; transition: all 0.12s; white-space: nowrap;
     }
-    .chip:hover { background: rgba(255,255,255,0.04); color: var(--text-subtle); }
+    .chip:hover { background: rgba(255,255,255,0.04); color: var(--text-default); }
     .chip.active { color: var(--accent); background: var(--accent-subtle); border-color: rgba(59,130,246,0.25); }
 
     /* Apply button */
@@ -335,9 +334,9 @@
     /* Action buttons row (server) */
     .action-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0; }
     .action-btn {
-      font-family: var(--font); font-size: 11px; color: var(--text-subtle);
+      font-family: var(--font); font-size: 12px; color: var(--text-subtle);
       background: none; border: 1px solid var(--border-default);
-      border-radius: var(--radius-sm); padding: 5px 10px;
+      border-radius: var(--radius-sm); padding: 6px 10px;
       cursor: pointer; transition: background 0.12s, color 0.12s;
       white-space: nowrap;
     }
@@ -514,6 +513,11 @@
     [data-theme="light"] .chip.active { color: #2563eb; background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.2); }
     [data-theme="light"] .action-btn { border-color: rgba(0,0,0,0.08); color: #8C8C8C; }
     [data-theme="light"] .action-btn:hover { background: rgba(0,0,0,0.03); color: #0A0A0A; }
+    [data-theme="light"] .set-label { color: #525252; }
+    [data-theme="light"] .set-value { color: #8C8C8C; }
+    [data-theme="light"] .chip:hover { background: rgba(0,0,0,0.04); color: #525252; }
+    [data-theme="light"] .set-toggle-track { background: rgba(0,0,0,0.08); }
+    [data-theme="light"] .set-toggle-track::before { background: #B0B0B0; }
     [data-theme="light"] .server-chip { color: #16a34a; background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.15); }
 
     .proto-banner { background: var(--accent-subtle); color: var(--accent); text-align: center; padding: 6px 12px; font-size: 12px; font-weight: 500; flex-shrink: 0; border-bottom: 1px solid rgba(59,130,246,0.15); }
@@ -653,7 +657,6 @@
       <div class="s-item" onclick="tog('model')" style="border-radius:var(--radius-md)">
         <svg class="s-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2z"/></svg>
         <span class="s-label">AI Model</span>
-        <span class="s-meta">Sonnet</span>
         <span class="s-chevron" id="model-chev">›</span>
       </div>
       <div class="settings-expand" id="model-exp">
@@ -800,7 +803,7 @@
   <!-- MAIN                                       -->
   <!-- ══════════════════════════════════════════ -->
   <div class="main">
-    <div class="proto-banner">🎨 Prototype v3 — feature-complete control panel redesign. All real options present.</div>
+    <div class="proto-banner">🎨 Prototype v4 — final review. All fixes applied.</div>
 
     <div class="mobile-bar">
       <button class="mobile-dash-btn" onclick="openMobileSidebar()">
@@ -864,19 +867,11 @@
     el.classList.toggle('open', !open);
     if (ch) ch.style.transform = open ? '' : 'rotate(90deg)';
   }
+  // Embeds use same simple toggle — no accordion
   function togEmbed(id) {
     const el = document.getElementById(id + '-emb');
     const ch = document.getElementById(id + '-chev');
     if (!el) return;
-    // Close other embed
-    ['browser','terminal'].forEach(k => {
-      if (k !== id) {
-        const o = document.getElementById(k + '-emb');
-        const oc = document.getElementById(k + '-chev');
-        if (o) o.classList.remove('open');
-        if (oc) oc.style.transform = '';
-      }
-    });
     const open = el.classList.contains('open');
     el.classList.toggle('open', !open);
     if (ch) ch.style.transform = open ? '' : 'rotate(90deg)';
