@@ -4279,3 +4279,40 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 [data-theme="light"] .hud-toggle-track::before {
   background: #B0B0B0;
 }
+
+/* ── Group Labels (TOOLS, SETTINGS) ───────────────────── */
+
+.hud-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint, #525252);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 14px 12px 6px;
+}
+
+[data-theme="light"] .hud-group-label {
+  color: #999;
+}
+
+/* ── Section label row (Browser/Terminal) — match flat style ── */
+
+.hud-section-label-row {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted, #B0B0B0);
+}
+
+.hud-section .hud-section-toggle:hover .hud-section-label-row {
+  color: var(--text-normal, #dcddde);
+}
+
+[data-theme="light"] .hud-section-label-row {
+  color: #525252;
+}
+
+[data-theme="light"] .hud-section .hud-section-toggle:hover .hud-section-label-row {
+  color: #0A0A0A;
+}
