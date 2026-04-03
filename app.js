@@ -4307,39 +4307,36 @@ function toggleSection(sectionId) {
   if (!el) return;
   const wasOpen = el.classList.contains('hud-open');
 
-  // Accordion: close all other sections first
-  document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
-    if (other !== el) {
-      other.classList.remove('hud-open');
-      // If it's an embed panel, also destroy its iframe
-      const otherSection = other.dataset.section;
-      if (otherSection === 'agent-browser' || otherSection === 'agent-terminal') {
-        const evt = new CustomEvent('panel-close', { detail: otherSection });
-        document.dispatchEvent(evt);
-      }
-    }
-  });
-
-  // Toggle the clicked section
-  const isOpen = wasOpen ? false : true;
+  // Simple toggle — no accordion, all sections independent
+  const isOpen = !wasOpen;
   if (isOpen) el.classList.add('hud-open');
   else el.classList.remove('hud-open');
 
-  // Remember which section is open (only one at a time)
+  // Remember open sections
+  const openSections = JSON.parse(localStorage.getItem('openSectionsSet') || '[]');
+  const set = new Set(openSections);
+  if (isOpen) set.add(sectionId); else set.delete(sectionId);
+  localStorage.setItem('openSectionsSet', JSON.stringify([...set]));
+  // Keep legacy key for compat
   localStorage.setItem('openSection', isOpen ? sectionId : '');
 }
 
 function restoreCollapsibleState() {
-  // Migrate from old multi-open format
+  // Migrate from old formats
   const legacy = localStorage.getItem('openSections');
   if (legacy) localStorage.removeItem('openSections');
   localStorage.removeItem('browserPanelOpen');
   localStorage.removeItem('terminalPanelOpen');
   localStorage.removeItem('mindfeedPanelOpen');
 
-  const openId = localStorage.getItem('openSection') || '';
-  if (openId) {
-    const el = document.querySelector(`.hud-collapsible[data-section="${openId}"]`);
+  // Restore multiple open sections
+  const openSet = JSON.parse(localStorage.getItem('openSectionsSet') || '[]');
+  // Also check legacy single key
+  const legacySingle = localStorage.getItem('openSection') || '';
+  const allOpen = new Set([...openSet, ...(legacySingle ? [legacySingle] : [])]);
+
+  for (const id of allOpen) {
+    const el = document.querySelector(`.hud-collapsible[data-section="${id}"]`);
     if (el) el.classList.add('hud-open');
   }
 }
@@ -5975,21 +5972,12 @@ function closeDashboard() {
   function toggle(cfg) {
     const st = getState(cfg);
     if (st === 'closed') {
-      // Accordion: close all other sections first
-      document.querySelectorAll('.hud-collapsible.hud-open').forEach(other => {
-        if (other.id !== cfg.id) {
-          other.classList.remove('hud-open');
-        }
-      });
-
+      // Simple toggle — no accordion
       setState(cfg, 'open');
       if (!cfg.iframe) preloadIframe(cfg);
       else if (cfg.iframe) { cfg.iframe.src = cfg.iframe.src; } // refresh on open
-      const sectionMap = { 'browser-panel': 'agent-browser', 'terminal-panel': 'agent-terminal' };
-      localStorage.setItem('openSection', sectionMap[cfg.id] || cfg.id);
     } else {
       setState(cfg, 'closed');
-      localStorage.setItem('openSection', '');
     }
   }
 

@@ -3832,3 +3832,450 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 [data-theme="light"] .oc-queue-list { border-top-color: rgba(0,0,0,0.06); }
 [data-theme="light"] .oc-queue-item { border-bottom-color: rgba(0,0,0,0.04); }
 [data-theme="light"] .oc-queue-num { background: rgba(0,0,0,0.06); }
+
+/* ══════════════════════════════════════════════════════════════
+   Cal.com-Inspired Control Panel Redesign — April 2026
+   Override layer: reskins dashboard/control panel only.
+   Chat, messages, tabs, input area are untouched.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── New Design Tokens ────────────────────────────────── */
+
+:root {
+  --accent: #3B82F6;
+  --accent-rgb: 59, 130, 246;
+}
+
+/* ── Dashboard / Sidebar — cleaner background ─────────── */
+
+.dashboard {
+  background: #151515;
+  border-right: 1px solid #2E2E2E;
+  box-shadow: none;
+}
+
+[data-theme="light"] .dashboard {
+  background: #F7F7F8;
+  border-right-color: #E3E3E5;
+  box-shadow: none;
+}
+
+/* ── Kill all decorative animations ──────────────────── */
+
+.hud-orb::after { animation: none !important; }
+.hud-orb.online .hud-orb-glow {
+  animation: none !important;
+  background: none !important;
+}
+.hud-orb-glow { background: none !important; }
+
+.hud-file-chip { animation: none !important; opacity: 1 !important; }
+.hud-tl-item { animation: none !important; opacity: 1 !important; }
+.dashboard-scroll { animation: none !important; }
+
+/* ── Identity — simplified, no orb glow ──────────────── */
+
+.hud-orb {
+  width: 32px;
+  height: 32px;
+  background: #262626;
+  transition: none;
+}
+
+[data-theme="light"] .hud-orb {
+  background: #E8E8EA;
+}
+
+.hud-orb-emoji {
+  font-size: 16px;
+  transition: none;
+}
+
+.hud-orb:not(.online) .hud-orb-emoji { opacity: 0.5; }
+
+.hud-agent-name {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.hud-status-line {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.hud-status-line.online {
+  color: #22C55E !important;
+  opacity: 1;
+}
+
+.hud-disconnect-link {
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+/* ── Agent Card — subtle container ────────────────────── */
+
+.hud-agent-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  margin: 4px 4px 8px;
+  padding: 0;
+}
+
+.hud-agent-card-identity {
+  padding: 12px 12px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="light"] .hud-agent-card {
+  background: rgba(0, 0, 0, 0.015);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .hud-agent-card-identity {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+/* ── Section toggle — Cal-style flat nav items ────────── */
+
+.hud-section {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
+  padding: 0 4px !important;
+  margin-top: 0 !important;
+  box-shadow: none !important;
+}
+
+.hud-section .hud-section-toggle {
+  padding: 8px 8px;
+  min-height: 40px;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.hud-section .hud-section-toggle:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="light"] .hud-section .hud-section-toggle:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.hud-section-label {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted, #B0B0B0);
+}
+
+.hud-section .hud-section-toggle:hover .hud-section-label {
+  color: var(--text-normal, #dcddde);
+}
+
+[data-theme="light"] .hud-section-label {
+  color: #525252;
+}
+
+.hud-section-label svg {
+  opacity: 0.45;
+}
+
+.hud-section .hud-section-toggle:hover .hud-section-label svg {
+  opacity: 0.7;
+}
+
+.hud-section-chevron {
+  font-size: 12px;
+  opacity: 0.3;
+  font-weight: 400;
+}
+
+.hud-collapsible.hud-open .hud-section-chevron {
+  opacity: 0.5;
+}
+
+/* ── Sections inside agent card — match card styling ──── */
+
+.hud-agent-card .hud-section {
+  border-bottom: none !important;
+}
+
+.hud-agent-card .hud-section .hud-section-toggle {
+  padding: 8px 8px;
+  border-radius: 0;
+}
+
+.hud-agent-card .hud-section:last-child .hud-section-toggle {
+  border-radius: 0 0 8px 8px;
+}
+
+/* ── Section body content ─────────────────────────────── */
+
+.hud-collapsible.hud-open .hud-section-body {
+  padding-bottom: 8px;
+}
+
+/* ── File chips — consistent with new design ──────────── */
+
+.hud-file-chip {
+  font-size: 12px;
+  font-weight: 400;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 6px 12px;
+  transition: all 0.15s;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.hud-file-chip:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: var(--text-normal) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+[data-theme="light"] .hud-file-chip {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  color: #525252 !important;
+}
+
+[data-theme="light"] .hud-file-chip:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #0A0A0A !important;
+  box-shadow: none !important;
+}
+
+/* ── Cron/task items — cleaner ────────────────────────── */
+
+.hud-tl-item {
+  border-radius: 4px;
+}
+
+.hud-tl-name {
+  font-size: 13px;
+}
+
+.hud-tl-when {
+  font-size: 11px;
+}
+
+/* ── Settings rows — Cal spacing ──────────────────────── */
+
+.hud-settings-row {
+  min-height: 40px;
+}
+
+.hud-settings-label {
+  font-size: 13px;
+}
+
+.hud-settings-value {
+  font-size: 13px;
+}
+
+.hud-defaults-row {
+  min-height: 40px;
+}
+
+.hud-defaults-label {
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted, #B0B0B0);
+}
+
+[data-theme="light"] .hud-defaults-label {
+  color: #525252;
+}
+
+.hud-defaults-value {
+  font-size: 13px;
+}
+
+/* ── Select dropdowns — more readable ─────────────────── */
+
+.hud-defaults-select {
+  font-size: 12px;
+  color: var(--text-muted, #B0B0B0);
+  padding: 6px 24px 6px 10px;
+  min-height: 34px;
+  border-radius: 6px;
+  background-position: right 8px center;
+}
+
+[data-theme="light"] .hud-defaults-select {
+  color: #525252;
+}
+
+/* ── Chip buttons — consistent sizing ─────────────────── */
+
+.hud-chip {
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+/* ── Action buttons — consistent sizing ───────────────── */
+
+.hud-server-action {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+/* ── Toggle switches — green accent ───────────────────── */
+
+.hud-toggle input:checked + .hud-toggle-track {
+  background: rgba(34, 197, 94, 0.15) !important;
+}
+
+.hud-toggle input:checked + .hud-toggle-track::before {
+  background: #22C55E !important;
+}
+
+/* ── Panel dividers — softer ──────────────────────────── */
+
+.hud-panel-divider {
+  margin: 8px 8px 2px;
+}
+
+.hud-panel-divider-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0.5;
+}
+
+/* ── Online dots — green glow for accent ──────────────── */
+
+.hud-embed-dot.connected {
+  background: #22C55E;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+}
+
+/* ── Accent color harmonization ───────────────────────── */
+
+.hud-chip.active {
+  color: var(--accent) !important;
+  background: rgba(var(--accent-rgb), 0.1) !important;
+  border-color: rgba(var(--accent-rgb), 0.25) !important;
+}
+
+.hud-defaults-apply {
+  color: var(--accent) !important;
+  background: rgba(var(--accent-rgb), 0.08) !important;
+  border-color: rgba(var(--accent-rgb), 0.2) !important;
+}
+
+.hud-defaults-apply:hover {
+  background: rgba(var(--accent-rgb), 0.15) !important;
+}
+
+.hud-defaults-pending {
+  color: var(--accent) !important;
+}
+
+.hud-defaults-select.hud-defaults-pending {
+  color: var(--accent) !important;
+  border-color: rgba(var(--accent-rgb), 0.3) !important;
+}
+
+/* ── Status dots — new accent ─────────────────────────── */
+
+.openclaw-status-dot.connected {
+  background: #22C55E !important;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+}
+
+.dash-dot.connected {
+  background: #22C55E !important;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+}
+
+/* ── Server chips ─────────────────────────────────────── */
+
+.hud-server-chip {
+  color: #22C55E;
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.15);
+}
+
+[data-theme="light"] .hud-server-chip {
+  color: #16a34a;
+  background: rgba(34, 197, 94, 0.06);
+}
+
+/* ── Alert colors ─────────────────────────────────────── */
+
+.hud-alert-info {
+  background: rgba(var(--accent-rgb), 0.06) !important;
+  border-color: rgba(var(--accent-rgb), 0.12) !important;
+  color: var(--accent) !important;
+}
+
+.hud-update-badge {
+  color: #22C55E !important;
+  background: rgba(34, 197, 94, 0.08) !important;
+  border-color: rgba(34, 197, 94, 0.15) !important;
+}
+
+/* ── Agent dropdown ───────────────────────────────────── */
+
+.hud-agent-dropdown-item .agent-dot {
+  background: rgba(34, 197, 94, 0.6) !important;
+}
+
+.hud-agent-dropdown-item.active .agent-dot {
+  background: #22C55E !important;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+}
+
+/* ── Light theme: accent overrides ────────────────────── */
+
+[data-theme="light"] {
+  --accent: #2563EB;
+  --accent-rgb: 37, 99, 235;
+}
+
+[data-theme="light"] .hud-section .hud-section-toggle:hover .hud-section-label {
+  color: #0A0A0A;
+}
+
+/* ── Sidebar footer — just theme toggle ───────────────── */
+
+.hud-bottom-utility {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="light"] .hud-bottom-utility {
+  border-top-color: rgba(0, 0, 0, 0.04);
+}
+
+/* ── Widgets area ─────────────────────────────────────── */
+
+.hud-widgets-area {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="light"] .hud-widgets-area {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+/* ── Light mode toggle track fix ──────────────────────── */
+
+[data-theme="light"] .hud-toggle-track {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .hud-toggle-track::before {
+  background: #B0B0B0;
+}
