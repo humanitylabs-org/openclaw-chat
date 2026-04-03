@@ -4313,14 +4313,18 @@ div.hud-section {
   box-shadow: none !important;
 }
 
-/* Step 2: Rebuild the toggle button with exact mockup values */
-/* Mockup .s-item: padding: 8px 12px; font-size: 14px; gap: 10px */
+/* Step 2: Rebuild toggle — target every selector that could apply */
 .hud-section-toggle,
 .hud-section .hud-section-toggle,
 .hud-collapsible .hud-section-toggle,
-button.hud-section-toggle {
-  padding: 8px 10px !important;
-  min-height: 0 !important;  /* Let content determine height, ~36px */
+.hud-collapsible.hud-open .hud-section-toggle,
+button.hud-section-toggle,
+.dashboard .hud-section-toggle,
+.dashboard-scroll .hud-section-toggle,
+.hud-agent-card .hud-section-toggle {
+  padding: 6px 10px !important;
+  min-height: 0 !important;
+  height: auto !important;
   border-radius: 6px !important;
   background: transparent !important;
   transition: background 0.12s !important;
@@ -4328,7 +4332,8 @@ button.hud-section-toggle {
   align-items: center !important;
   justify-content: space-between !important;
   width: 100% !important;
-  margin: 1px 0 !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
 }
 
 .hud-section-toggle:hover,
@@ -4361,10 +4366,22 @@ button.hud-section-toggle {
 }
 
 /* Section body when open — tight */
-.hud-section-body,
-.hud-collapsible .hud-section-body,
+/* Collapsed body: zero space */
+.hud-collapsible .hud-section-body {
+  display: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+/* Open body: show with minimal padding */
 .hud-collapsible.hud-open .hud-section-body {
+  display: flex !important;
+  flex-direction: column !important;
   padding: 0 0 4px 0 !important;
+  margin: 0 !important;
+  height: auto !important;
+  overflow: visible !important;
 }
 
 /* Override the flex/height rules from tasks section */
