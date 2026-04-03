@@ -3835,162 +3835,118 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 
 /* ══════════════════════════════════════════════════════════════
    Cal.com-Inspired Control Panel Redesign — April 2026
-   Override layer: reskins dashboard/control panel only.
-   Chat, messages, tabs, input area are untouched.
+   DEFINITIVE override layer. Exact values from prototype.
    ══════════════════════════════════════════════════════════════ */
 
-/* ── New Design Tokens ────────────────────────────────── */
-
+/* ── Design Tokens ────────────────────────────────────── */
 :root {
   --accent: #3B82F6;
   --accent-rgb: 59, 130, 246;
+  --cal-bg-secondary: #151515;
+  --cal-bg-emphasis: #262626;
+  --cal-bg-hover: rgba(255,255,255,0.04);
+  --cal-text-emphasis: #F5F5F5;
+  --cal-text-default: #B0B0B0;
+  --cal-text-subtle: #737373;
+  --cal-text-muted: #525252;
+  --cal-border: #2E2E2E;
+  --cal-border-subtle: #232323;
+  --cal-green: #22C55E;
+  --cal-green-subtle: rgba(34,197,94,0.1);
+  --cal-agent-bg: rgba(255,255,255,0.02);
+  --cal-agent-border: rgba(255,255,255,0.06);
 }
 
-/* ── Dashboard / Sidebar ──────────────────────────────── */
-
+/* ── Sidebar container ────────────────────────────────── */
 .dashboard {
-  width: 260px;
-  background: #151515;
-  border-right: 1px solid #2E2E2E;
-  box-shadow: none;
+  width: 260px !important;
+  background: var(--cal-bg-secondary) !important;
+  border-right: 1px solid var(--cal-border) !important;
+  box-shadow: none !important;
 }
-
 .dashboard-scroll {
-  padding: 12px 10px;
+  padding: 12px 10px !important;
   animation: none !important;
-  gap: 0;
+  gap: 0 !important;
 }
-
 [data-theme="light"] .dashboard {
-  background: #F7F7F8;
-  border-right-color: #E3E3E5;
-  box-shadow: none;
+  background: #F7F7F8 !important;
+  border-right-color: #E3E3E5 !important;
 }
 
 /* ── Kill ALL decorative animations ──────────────────── */
-
-.hud-orb::after,
-.hud-orb.online .hud-orb-glow,
-.hud-orb-glow { animation: none !important; background: none !important; }
-.hud-file-chip,
+.hud-orb::after { animation: none !important; border-color: transparent !important; }
+.hud-orb.online::after { animation: none !important; }
+.hud-orb.online .hud-orb-glow { animation: none !important; background: none !important; }
+.hud-orb-glow { background: none !important; }
+.hud-file-chip { animation: none !important; opacity: 1 !important; }
 .hud-tl-item { animation: none !important; opacity: 1 !important; }
 .dashboard-scroll { animation: none !important; }
 
-/* ── Identity — clean, simple ─────────────────────────── */
-
-.hud-identity-row {
-  padding: 0;
-}
-
+/* ── Identity row ─────────────────────────────────────── */
+.hud-identity-row { padding: 0 !important; gap: 0 !important; }
 .hud-identity {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 12px 10px;
-  border-radius: 8px 8px 0 0;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px 12px 10px !important;
+  border-radius: 8px 8px 0 0 !important;
 }
-
 .hud-orb {
-  width: 32px;
-  height: 32px;
-  background: #262626;
-  transition: none;
+  width: 32px !important; height: 32px !important;
+  background: var(--cal-bg-emphasis) !important;
+  transition: none !important;
 }
-
-[data-theme="light"] .hud-orb {
-  background: #E8E8EA;
-}
-
-.hud-orb-emoji {
-  font-size: 16px;
-  transition: none;
-}
-
-.hud-orb:not(.online) .hud-orb-emoji { opacity: 0.5; }
-
+[data-theme="light"] .hud-orb { background: #E8E8EA !important; }
+.hud-orb-emoji { font-size: 16px !important; transition: none !important; }
+.hud-orb:not(.online) .hud-orb-emoji { opacity: 0.5 !important; }
 .hud-agent-name {
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: #F5F5F5;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 14px !important; font-weight: 500 !important;
+  letter-spacing: 0 !important; color: var(--cal-text-emphasis) !important;
 }
-
-[data-theme="light"] .hud-agent-name {
-  color: #0A0A0A;
-}
-
-.hud-agent-chevron {
-  font-size: 11px;
-  opacity: 0.4;
-}
-
+[data-theme="light"] .hud-agent-name { color: #0A0A0A !important; }
+.hud-agent-chevron { font-size: 11px !important; opacity: 0.4 !important; }
 .hud-status-line {
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  color: #737373;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 12px !important; font-weight: 400 !important;
+  letter-spacing: 0 !important; text-transform: none !important;
+  color: var(--cal-text-subtle) !important;
 }
-
-.hud-status-line.online {
-  color: #22C55E !important;
-  opacity: 1;
-}
-
+.hud-status-line.online { color: var(--cal-green) !important; opacity: 1 !important; }
 .hud-disconnect-link {
-  font-size: 12px;
-  font-family: var(--font-sans);
-  color: #525252;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 12px !important; color: var(--cal-text-muted) !important;
 }
+.hud-status-sep { color: var(--cal-text-muted) !important; opacity: 0.3 !important; }
 
-.hud-status-sep {
-  color: #525252;
-  opacity: 0.3;
-}
-
-/* ── Theme toggle ─────────────────────────────────────── */
-
-.hud-theme-toggle {
-  opacity: 0.4;
-}
-
-.hud-theme-toggle:hover {
-  opacity: 0.8;
-}
-
-/* ── Agent Card ───────────────────────────────────────── */
-
+/* ── Agent Card container ─────────────────────────────── */
 .hud-agent-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  margin: 0 4px 8px;
-  padding: 0;
+  background: var(--cal-agent-bg) !important;
+  border: 1px solid var(--cal-agent-border) !important;
+  border-radius: 8px !important;
+  margin: 0 4px 8px !important; padding: 0 !important;
 }
-
 .hud-agent-card-identity {
-  padding: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0 !important;
+  border-bottom: 1px solid var(--cal-agent-border) !important;
 }
-
 [data-theme="light"] .hud-agent-card {
-  background: rgba(0, 0, 0, 0.015);
-  border-color: rgba(0, 0, 0, 0.06);
+  background: rgba(0,0,0,0.015) !important;
+  border-color: rgba(0,0,0,0.06) !important;
 }
-
 [data-theme="light"] .hud-agent-card-identity {
-  border-bottom-color: rgba(0, 0, 0, 0.06);
+  border-bottom-color: rgba(0,0,0,0.06) !important;
 }
-
 .hud-agent-card .hud-section {
   border-bottom: none !important;
 }
 
-/* ── ALL Section toggles — flat nav item style ────────── */
-
+/* ── ALL section containers — invisible, just spacing ─── */
 .hud-section {
   background: transparent !important;
   border: none !important;
+  border-top: none !important;
   border-bottom: none !important;
   border-radius: 0 !important;
   padding: 0 4px !important;
@@ -3998,311 +3954,299 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   box-shadow: none !important;
 }
 
+/* ── Section toggle buttons — flat nav items ──────────── */
 .hud-section .hud-section-toggle {
-  padding: 8px 8px;
-  min-height: 40px;
-  border-radius: 6px;
-  transition: background 0.12s;
+  padding: 8px 8px !important;
+  min-height: 40px !important;
+  border-radius: 6px !important;
+  transition: background 0.12s !important;
+  background: transparent !important;
 }
-
 .hud-section .hud-section-toggle:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--cal-bg-hover) !important;
 }
-
 [data-theme="light"] .hud-section .hud-section-toggle:hover {
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(0,0,0,0.03) !important;
 }
 
-/* Section labels — 14px normal case, matching mockup */
-
+/* ── Section labels — THE KEY CHANGE ──────────────────── */
 .hud-section-label,
 .hud-section-label-row {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
   font-size: 14px !important;
   font-weight: 400 !important;
   letter-spacing: 0 !important;
   text-transform: none !important;
-  color: #B0B0B0 !important;
+  color: var(--cal-text-default) !important;
 }
-
 .hud-section .hud-section-toggle:hover .hud-section-label,
 .hud-section .hud-section-toggle:hover .hud-section-label-row {
-  color: #F5F5F5 !important;
+  color: var(--cal-text-emphasis) !important;
 }
-
 [data-theme="light"] .hud-section-label,
 [data-theme="light"] .hud-section-label-row {
   color: #525252 !important;
 }
-
 [data-theme="light"] .hud-section .hud-section-toggle:hover .hud-section-label,
 [data-theme="light"] .hud-section .hud-section-toggle:hover .hud-section-label-row {
   color: #0A0A0A !important;
 }
 
-/* Section label icons — 16px, consistent opacity */
-
+/* Section icons */
 .hud-section-label svg,
 .hud-section-label-row svg {
-  width: 16px !important;
-  height: 16px !important;
+  width: 16px !important; height: 16px !important;
   opacity: 0.45 !important;
-  vertical-align: -2px !important;
 }
-
 .hud-section .hud-section-toggle:hover .hud-section-label svg,
 .hud-section .hud-section-toggle:hover .hud-section-label-row svg {
   opacity: 0.7 !important;
 }
 
 /* Chevron */
-
 .hud-section-chevron {
-  font-size: 12px;
-  opacity: 0.25;
-  font-weight: 400;
+  font-size: 12px !important; opacity: 0.25 !important; font-weight: 400 !important;
 }
-
-.hud-collapsible.hud-open .hud-section-chevron {
-  opacity: 0.5;
-}
+.hud-collapsible.hud-open .hud-section-chevron { opacity: 0.5 !important; }
 
 /* Section body */
-
-.hud-collapsible.hud-open .hud-section-body {
-  padding-bottom: 6px;
-}
+.hud-collapsible.hud-open .hud-section-body { padding-bottom: 6px !important; }
 
 /* ── Group Labels (TOOLS, SETTINGS) ───────────────────── */
-
 .hud-group-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #525252;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 16px 12px 6px;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 11px !important; font-weight: 600 !important;
+  color: var(--cal-text-muted) !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  padding: 16px 12px 6px !important;
 }
-
-[data-theme="light"] .hud-group-label {
-  color: #999;
-}
+[data-theme="light"] .hud-group-label { color: #999 !important; }
 
 /* ── File chips ───────────────────────────────────────── */
-
 .hud-file-chip {
-  font-size: 12px;
-  font-weight: 400;
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 16px;
-  padding: 6px 12px;
-  transition: all 0.15s;
-  transform: none !important;
-  box-shadow: none !important;
-  color: #B0B0B0 !important;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 12px !important; font-weight: 400 !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 16px !important; padding: 6px 12px !important;
+  color: var(--cal-text-default) !important;
+  transform: none !important; box-shadow: none !important;
+  transition: all 0.15s !important;
 }
-
 .hud-file-chip:hover {
-  background: rgba(255, 255, 255, 0.07) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  color: #F5F5F5 !important;
-  transform: none !important;
-  box-shadow: none !important;
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: var(--cal-text-emphasis) !important;
+  transform: none !important; box-shadow: none !important;
 }
-
 [data-theme="light"] .hud-file-chip {
-  background: rgba(0, 0, 0, 0.03) !important;
-  border-color: rgba(0, 0, 0, 0.06) !important;
+  background: rgba(0,0,0,0.03) !important; border-color: rgba(0,0,0,0.06) !important;
   color: #525252 !important;
 }
-
 [data-theme="light"] .hud-file-chip:hover {
-  background: rgba(0, 0, 0, 0.06) !important;
-  border-color: rgba(0, 0, 0, 0.1) !important;
-  color: #0A0A0A !important;
-  box-shadow: none !important;
+  background: rgba(0,0,0,0.06) !important; border-color: rgba(0,0,0,0.1) !important;
+  color: #0A0A0A !important; box-shadow: none !important;
 }
 
-/* ── Cron/task items ──────────────────────────────────── */
+/* ── Task items ───────────────────────────────────────── */
+.hud-tl-item { border-radius: 4px !important; padding: 6px 6px !important; }
+.hud-tl-name { font-size: 13px !important; color: var(--cal-text-subtle) !important; }
+.hud-tl-when { font-size: 11px !important; color: var(--cal-text-muted) !important; }
+.hud-tl-dot-ok { background: var(--cal-green) !important; }
 
-.hud-tl-item { border-radius: 4px; }
-.hud-tl-name { font-size: 13px; }
-.hud-tl-when { font-size: 11px; }
-.hud-tl-dot-ok { background: #22C55E; }
+/* ── Settings rows ────────────────────────────────────── */
+.hud-settings-row { min-height: 40px !important; }
+.hud-settings-label {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 13px !important; color: var(--cal-text-default) !important;
+}
+.hud-settings-value {
+  font-size: 13px !important; color: var(--cal-text-subtle) !important;
+}
+[data-theme="light"] .hud-settings-label { color: #525252 !important; }
+[data-theme="light"] .hud-settings-value { color: #8C8C8C !important; }
 
-/* ── Settings inside sections ─────────────────────────── */
-
-.hud-settings-row { min-height: 40px; }
-.hud-settings-label { font-size: 13px; }
-.hud-settings-value { font-size: 13px; }
-
-.hud-defaults-row { min-height: 40px; }
+/* Defaults panel labels */
+.hud-defaults-row { min-height: 40px !important; }
 .hud-defaults-label {
-  font-size: 13px;
-  letter-spacing: 0;
-  text-transform: none;
-  color: #B0B0B0;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 13px !important; letter-spacing: 0 !important;
+  text-transform: none !important; color: var(--cal-text-default) !important;
 }
+[data-theme="light"] .hud-defaults-label { color: #525252 !important; }
+.hud-defaults-value { font-size: 13px !important; }
 
-[data-theme="light"] .hud-defaults-label { color: #525252; }
-
-.hud-defaults-value { font-size: 13px; }
-
-/* Selects */
-
+/* Select dropdowns */
 .hud-defaults-select {
-  font-size: 12px;
-  color: #B0B0B0;
-  padding: 6px 24px 6px 10px;
-  min-height: 34px;
-  border-radius: 6px;
-  background-position: right 8px center;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 12px !important; color: var(--cal-text-default) !important;
+  background-color: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 6px !important;
+  padding: 6px 24px 6px 10px !important; min-height: 34px !important;
+  background-position: right 8px center !important;
+}
+.hud-defaults-select:hover { border-color: rgba(255,255,255,0.15) !important; }
+[data-theme="light"] .hud-defaults-select {
+  background-color: rgba(0,0,0,0.03) !important;
+  border-color: rgba(0,0,0,0.1) !important; color: #525252 !important;
 }
 
-[data-theme="light"] .hud-defaults-select { color: #525252; }
-
-/* Chips */
-
+/* Chip buttons */
 .hud-chip {
-  font-size: 12px;
-  padding: 5px 10px;
-  color: #737373;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 12px !important; padding: 5px 10px !important;
+  color: var(--cal-text-subtle) !important;
+  border-color: rgba(255,255,255,0.08) !important;
 }
-
 .hud-chip:hover {
-  color: #B0B0B0;
+  background: rgba(255,255,255,0.04) !important;
+  color: var(--cal-text-default) !important;
 }
-
 .hud-chip.active {
   color: var(--accent) !important;
-  background: rgba(var(--accent-rgb), 0.1) !important;
-  border-color: rgba(var(--accent-rgb), 0.25) !important;
+  background: rgba(var(--accent-rgb),0.1) !important;
+  border-color: rgba(var(--accent-rgb),0.25) !important;
+}
+[data-theme="light"] .hud-chip { color: #8C8C8C !important; border-color: rgba(0,0,0,0.1) !important; }
+[data-theme="light"] .hud-chip:hover { background: rgba(0,0,0,0.04) !important; color: #525252 !important; }
+[data-theme="light"] .hud-chip.active {
+  color: #2563eb !important; background: rgba(37,99,235,0.08) !important;
+  border-color: rgba(37,99,235,0.2) !important;
 }
 
-[data-theme="light"] .hud-chip { color: #8C8C8C; }
-[data-theme="light"] .hud-chip:hover { color: #525252; }
-
-/* Action buttons */
-
+/* Server action buttons */
 .hud-server-action {
-  font-size: 12px;
-  padding: 6px 10px;
-  color: #737373;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 12px !important; padding: 6px 10px !important;
+  color: var(--cal-text-subtle) !important;
 }
+.hud-server-action:hover { color: var(--cal-text-emphasis) !important; }
+[data-theme="light"] .hud-server-action { color: #8C8C8C !important; }
+[data-theme="light"] .hud-server-action:hover { color: #0A0A0A !important; }
 
-.hud-server-action:hover {
-  color: #F5F5F5;
-}
-
-[data-theme="light"] .hud-server-action { color: #8C8C8C; }
-[data-theme="light"] .hud-server-action:hover { color: #0A0A0A; }
-
-/* ── Toggles — green ──────────────────────────────────── */
-
+/* ── Toggles ──────────────────────────────────────────── */
 .hud-toggle input:checked + .hud-toggle-track {
-  background: rgba(34, 197, 94, 0.15) !important;
+  background: rgba(34,197,94,0.15) !important;
 }
-
 .hud-toggle input:checked + .hud-toggle-track::before {
-  background: #22C55E !important;
+  background: var(--cal-green) !important;
 }
+[data-theme="light"] .hud-toggle-track { background: rgba(0,0,0,0.08) !important; }
+[data-theme="light"] .hud-toggle-track::before { background: #B0B0B0 !important; }
 
-[data-theme="light"] .hud-toggle-track { background: rgba(0, 0, 0, 0.08); }
-[data-theme="light"] .hud-toggle-track::before { background: #B0B0B0; }
-
-/* ── Apply / Pending buttons ──────────────────────────── */
-
+/* ── Apply / Pending ──────────────────────────────────── */
 .hud-defaults-apply {
-  color: var(--accent) !important;
-  background: rgba(var(--accent-rgb), 0.08) !important;
-  border-color: rgba(var(--accent-rgb), 0.2) !important;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  color: var(--accent) !important; background: rgba(var(--accent-rgb),0.08) !important;
+  border-color: rgba(var(--accent-rgb),0.2) !important;
 }
-
-.hud-defaults-apply:hover {
-  background: rgba(var(--accent-rgb), 0.15) !important;
-}
-
+.hud-defaults-apply:hover { background: rgba(var(--accent-rgb),0.15) !important; }
 .hud-defaults-pending { color: var(--accent) !important; }
-
 .hud-defaults-select.hud-defaults-pending {
-  color: var(--accent) !important;
-  border-color: rgba(var(--accent-rgb), 0.3) !important;
+  color: var(--accent) !important; border-color: rgba(var(--accent-rgb),0.3) !important;
 }
 
-/* ── Online dots everywhere — green ───────────────────── */
-
+/* ── Online dots — green everywhere ───────────────────── */
 .hud-embed-dot.connected {
-  background: #22C55E;
-  box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+  background: var(--cal-green) !important;
+  box-shadow: 0 0 4px rgba(34,197,94,0.4) !important;
+}
+.openclaw-status-dot.connected, .dash-dot.connected {
+  background: var(--cal-green) !important;
+  box-shadow: 0 0 4px rgba(34,197,94,0.4) !important;
 }
 
-.openclaw-status-dot.connected,
-.dash-dot.connected {
-  background: #22C55E !important;
-  box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
-}
-
-.hud-tl-dot-ok { background: #22C55E; }
-
-/* ── Server chips ─────────────────────────────────────── */
-
+/* Server chips */
 .hud-server-chip {
-  color: #22C55E;
-  background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(34, 197, 94, 0.15);
+  font-size: 10px !important; font-weight: 500 !important;
+  color: var(--cal-green) !important;
+  background: var(--cal-green-subtle) !important;
+  border-color: rgba(34,197,94,0.15) !important;
 }
-
 [data-theme="light"] .hud-server-chip {
-  color: #16a34a;
-  background: rgba(34, 197, 94, 0.06);
+  color: #16a34a !important; background: rgba(34,197,94,0.06) !important;
 }
 
-/* ── Alerts / badges ──────────────────────────────────── */
-
+/* Alerts / badges */
 .hud-alert-info {
-  background: rgba(var(--accent-rgb), 0.06) !important;
-  border-color: rgba(var(--accent-rgb), 0.12) !important;
+  background: rgba(var(--accent-rgb),0.06) !important;
+  border-color: rgba(var(--accent-rgb),0.12) !important;
   color: var(--accent) !important;
 }
-
 .hud-update-badge {
-  color: #22C55E !important;
-  background: rgba(34, 197, 94, 0.08) !important;
-  border-color: rgba(34, 197, 94, 0.15) !important;
+  color: var(--cal-green) !important; background: rgba(34,197,94,0.08) !important;
+  border-color: rgba(34,197,94,0.15) !important;
 }
 
-/* ── Agent dropdown dots ──────────────────────────────── */
-
-.hud-agent-dropdown-item .agent-dot { background: rgba(34, 197, 94, 0.6) !important; }
+/* Agent dropdown dots */
+.hud-agent-dropdown-item .agent-dot { background: rgba(34,197,94,0.6) !important; }
 .hud-agent-dropdown-item.active .agent-dot {
-  background: #22C55E !important;
-  box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+  background: var(--cal-green) !important;
+  box-shadow: 0 0 4px rgba(34,197,94,0.5) !important;
 }
 
-/* ── Panel dividers ───────────────────────────────────── */
-
-.hud-panel-divider { margin: 8px 8px 2px; }
-.hud-panel-divider-label { font-size: 10px; letter-spacing: 0.08em; opacity: 0.5; }
-
-/* ── Widgets area ─────────────────────────────────────── */
-
-.hud-widgets-area { border-top: 1px solid rgba(255, 255, 255, 0.04); }
-[data-theme="light"] .hud-widgets-area { border-top-color: rgba(0, 0, 0, 0.06); }
-
-/* ── Bottom utility ───────────────────────────────────── */
-
-.hud-bottom-utility { border-top: 1px solid rgba(255, 255, 255, 0.04); }
-[data-theme="light"] .hud-bottom-utility { border-top-color: rgba(0, 0, 0, 0.04); }
-
-/* ── Light theme accent ───────────────────────────────── */
-
-[data-theme="light"] {
-  --accent: #2563EB;
-  --accent-rgb: 37, 99, 235;
+/* Panel dividers */
+.hud-panel-divider { margin: 8px 8px 2px !important; }
+.hud-panel-divider-label {
+  font-size: 10px !important; letter-spacing: 0.08em !important; opacity: 0.5 !important;
 }
 
-/* ── Embed panel body — match mockup aspect ratio ─────── */
+/* Widgets / bottom */
+.hud-widgets-area { border-top: 1px solid rgba(255,255,255,0.04) !important; }
+[data-theme="light"] .hud-widgets-area { border-top-color: rgba(0,0,0,0.06) !important; }
+.hud-bottom-utility { border-top: 1px solid rgba(255,255,255,0.04) !important; }
+[data-theme="light"] .hud-bottom-utility { border-top-color: rgba(0,0,0,0.04) !important; }
 
-.hud-embed-panel.hud-open .hud-embed-body {
-  aspect-ratio: 16 / 9;
+/* Theme toggle */
+.hud-theme-toggle { opacity: 0.4 !important; }
+.hud-theme-toggle:hover { opacity: 0.8 !important; }
+
+/* Light theme accent */
+[data-theme="light"] { --accent: #2563EB; --accent-rgb: 37, 99, 235; }
+
+/* Embed panel body */
+.hud-embed-panel.hud-open .hud-embed-body { aspect-ratio: 16/9 !important; }
+
+/* Settings input fields */
+.hud-settings-input {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 12px !important;
 }
+
+/* Empty hints */
+.hud-empty-hint {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 12px !important; color: var(--cal-text-muted) !important;
+}
+
+/* Sub-agent rows */
+.hud-subagent-id { font-size: 12px !important; }
+.hud-subagent-tokens { font-size: 11px !important; }
+
+/* Settings divider */
+.hud-settings-divider {
+  background: var(--cal-border-subtle) !important;
+}
+[data-theme="light"] .hud-settings-divider { background: rgba(0,0,0,0.06) !important; }
+
+/* Sections inside agent card — tighter fit */
+.hud-agent-card .hud-section .hud-section-toggle {
+  padding: 8px 8px !important;
+  border-radius: 0 !important;
+}
+.hud-agent-card .hud-section:last-child .hud-section-toggle {
+  border-radius: 0 0 8px 8px !important;
+}
+
+/* Model bar chips — use IBM Plex */
+.openclaw-model-label {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+.openclaw-model-bar .bar-chip {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Server update hint */
+.hud-server-update-hint { color: var(--cal-green) !important; }
