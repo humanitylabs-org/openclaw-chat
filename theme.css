@@ -3846,12 +3846,19 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   --accent-rgb: 59, 130, 246;
 }
 
-/* ── Dashboard / Sidebar — cleaner background ─────────── */
+/* ── Dashboard / Sidebar ──────────────────────────────── */
 
 .dashboard {
+  width: 260px;
   background: #151515;
   border-right: 1px solid #2E2E2E;
   box-shadow: none;
+}
+
+.dashboard-scroll {
+  padding: 12px 10px;
+  animation: none !important;
+  gap: 0;
 }
 
 [data-theme="light"] .dashboard {
@@ -3860,20 +3867,28 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   box-shadow: none;
 }
 
-/* ── Kill all decorative animations ──────────────────── */
+/* ── Kill ALL decorative animations ──────────────────── */
 
-.hud-orb::after { animation: none !important; }
-.hud-orb.online .hud-orb-glow {
-  animation: none !important;
-  background: none !important;
-}
-.hud-orb-glow { background: none !important; }
-
-.hud-file-chip { animation: none !important; opacity: 1 !important; }
+.hud-orb::after,
+.hud-orb.online .hud-orb-glow,
+.hud-orb-glow { animation: none !important; background: none !important; }
+.hud-file-chip,
 .hud-tl-item { animation: none !important; opacity: 1 !important; }
 .dashboard-scroll { animation: none !important; }
 
-/* ── Identity — simplified, no orb glow ──────────────── */
+/* ── Identity — clean, simple ─────────────────────────── */
+
+.hud-identity-row {
+  padding: 0;
+}
+
+.hud-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  border-radius: 8px 8px 0 0;
+}
 
 .hud-orb {
   width: 32px;
@@ -3897,6 +3912,16 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0;
+  color: #F5F5F5;
+}
+
+[data-theme="light"] .hud-agent-name {
+  color: #0A0A0A;
+}
+
+.hud-agent-chevron {
+  font-size: 11px;
+  opacity: 0.4;
 }
 
 .hud-status-line {
@@ -3904,6 +3929,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
+  color: #737373;
 }
 
 .hud-status-line.online {
@@ -3914,20 +3940,36 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 .hud-disconnect-link {
   font-size: 12px;
   font-family: var(--font-sans);
+  color: #525252;
 }
 
-/* ── Agent Card — subtle container ────────────────────── */
+.hud-status-sep {
+  color: #525252;
+  opacity: 0.3;
+}
+
+/* ── Theme toggle ─────────────────────────────────────── */
+
+.hud-theme-toggle {
+  opacity: 0.4;
+}
+
+.hud-theme-toggle:hover {
+  opacity: 0.8;
+}
+
+/* ── Agent Card ───────────────────────────────────────── */
 
 .hud-agent-card {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
-  margin: 4px 4px 8px;
+  margin: 0 4px 8px;
   padding: 0;
 }
 
 .hud-agent-card-identity {
-  padding: 12px 12px 8px;
+  padding: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -3940,7 +3982,11 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   border-bottom-color: rgba(0, 0, 0, 0.06);
 }
 
-/* ── Section toggle — Cal-style flat nav items ────────── */
+.hud-agent-card .hud-section {
+  border-bottom: none !important;
+}
+
+/* ── ALL Section toggles — flat nav item style ────────── */
 
 .hud-section {
   background: transparent !important;
@@ -3948,7 +3994,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   border-bottom: none !important;
   border-radius: 0 !important;
   padding: 0 4px !important;
-  margin-top: 0 !important;
+  margin-top: 1px !important;
   box-shadow: none !important;
 }
 
@@ -3967,33 +4013,52 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   background: rgba(0, 0, 0, 0.03);
 }
 
-.hud-section-label {
-  font-size: 14px;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--text-muted, #B0B0B0);
+/* Section labels — 14px normal case, matching mockup */
+
+.hud-section-label,
+.hud-section-label-row {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: #B0B0B0 !important;
 }
 
-.hud-section .hud-section-toggle:hover .hud-section-label {
-  color: var(--text-normal, #dcddde);
+.hud-section .hud-section-toggle:hover .hud-section-label,
+.hud-section .hud-section-toggle:hover .hud-section-label-row {
+  color: #F5F5F5 !important;
 }
 
-[data-theme="light"] .hud-section-label {
-  color: #525252;
+[data-theme="light"] .hud-section-label,
+[data-theme="light"] .hud-section-label-row {
+  color: #525252 !important;
 }
 
-.hud-section-label svg {
-  opacity: 0.45;
+[data-theme="light"] .hud-section .hud-section-toggle:hover .hud-section-label,
+[data-theme="light"] .hud-section .hud-section-toggle:hover .hud-section-label-row {
+  color: #0A0A0A !important;
 }
 
-.hud-section .hud-section-toggle:hover .hud-section-label svg {
-  opacity: 0.7;
+/* Section label icons — 16px, consistent opacity */
+
+.hud-section-label svg,
+.hud-section-label-row svg {
+  width: 16px !important;
+  height: 16px !important;
+  opacity: 0.45 !important;
+  vertical-align: -2px !important;
 }
+
+.hud-section .hud-section-toggle:hover .hud-section-label svg,
+.hud-section .hud-section-toggle:hover .hud-section-label-row svg {
+  opacity: 0.7 !important;
+}
+
+/* Chevron */
 
 .hud-section-chevron {
   font-size: 12px;
-  opacity: 0.3;
+  opacity: 0.25;
   font-weight: 400;
 }
 
@@ -4001,45 +4066,46 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   opacity: 0.5;
 }
 
-/* ── Sections inside agent card — match card styling ──── */
-
-.hud-agent-card .hud-section {
-  border-bottom: none !important;
-}
-
-.hud-agent-card .hud-section .hud-section-toggle {
-  padding: 8px 8px;
-  border-radius: 0;
-}
-
-.hud-agent-card .hud-section:last-child .hud-section-toggle {
-  border-radius: 0 0 8px 8px;
-}
-
-/* ── Section body content ─────────────────────────────── */
+/* Section body */
 
 .hud-collapsible.hud-open .hud-section-body {
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 
-/* ── File chips — consistent with new design ──────────── */
+/* ── Group Labels (TOOLS, SETTINGS) ───────────────────── */
+
+.hud-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #525252;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 16px 12px 6px;
+}
+
+[data-theme="light"] .hud-group-label {
+  color: #999;
+}
+
+/* ── File chips ───────────────────────────────────────── */
 
 .hud-file-chip {
   font-size: 12px;
   font-weight: 400;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
   border-radius: 16px;
   padding: 6px 12px;
   transition: all 0.15s;
   transform: none !important;
   box-shadow: none !important;
+  color: #B0B0B0 !important;
 }
 
 .hud-file-chip:hover {
   background: rgba(255, 255, 255, 0.07) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
-  color: var(--text-normal) !important;
+  color: #F5F5F5 !important;
   transform: none !important;
   box-shadow: none !important;
 }
@@ -4057,83 +4123,81 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   box-shadow: none !important;
 }
 
-/* ── Cron/task items — cleaner ────────────────────────── */
+/* ── Cron/task items ──────────────────────────────────── */
 
-.hud-tl-item {
-  border-radius: 4px;
-}
+.hud-tl-item { border-radius: 4px; }
+.hud-tl-name { font-size: 13px; }
+.hud-tl-when { font-size: 11px; }
+.hud-tl-dot-ok { background: #22C55E; }
 
-.hud-tl-name {
-  font-size: 13px;
-}
+/* ── Settings inside sections ─────────────────────────── */
 
-.hud-tl-when {
-  font-size: 11px;
-}
+.hud-settings-row { min-height: 40px; }
+.hud-settings-label { font-size: 13px; }
+.hud-settings-value { font-size: 13px; }
 
-/* ── Settings rows — Cal spacing ──────────────────────── */
-
-.hud-settings-row {
-  min-height: 40px;
-}
-
-.hud-settings-label {
-  font-size: 13px;
-}
-
-.hud-settings-value {
-  font-size: 13px;
-}
-
-.hud-defaults-row {
-  min-height: 40px;
-}
-
+.hud-defaults-row { min-height: 40px; }
 .hud-defaults-label {
   font-size: 13px;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--text-muted, #B0B0B0);
+  color: #B0B0B0;
 }
 
-[data-theme="light"] .hud-defaults-label {
-  color: #525252;
-}
+[data-theme="light"] .hud-defaults-label { color: #525252; }
 
-.hud-defaults-value {
-  font-size: 13px;
-}
+.hud-defaults-value { font-size: 13px; }
 
-/* ── Select dropdowns — more readable ─────────────────── */
+/* Selects */
 
 .hud-defaults-select {
   font-size: 12px;
-  color: var(--text-muted, #B0B0B0);
+  color: #B0B0B0;
   padding: 6px 24px 6px 10px;
   min-height: 34px;
   border-radius: 6px;
   background-position: right 8px center;
 }
 
-[data-theme="light"] .hud-defaults-select {
-  color: #525252;
-}
+[data-theme="light"] .hud-defaults-select { color: #525252; }
 
-/* ── Chip buttons — consistent sizing ─────────────────── */
+/* Chips */
 
 .hud-chip {
   font-size: 12px;
   padding: 5px 10px;
+  color: #737373;
 }
 
-/* ── Action buttons — consistent sizing ───────────────── */
+.hud-chip:hover {
+  color: #B0B0B0;
+}
+
+.hud-chip.active {
+  color: var(--accent) !important;
+  background: rgba(var(--accent-rgb), 0.1) !important;
+  border-color: rgba(var(--accent-rgb), 0.25) !important;
+}
+
+[data-theme="light"] .hud-chip { color: #8C8C8C; }
+[data-theme="light"] .hud-chip:hover { color: #525252; }
+
+/* Action buttons */
 
 .hud-server-action {
   font-size: 12px;
   padding: 6px 10px;
+  color: #737373;
 }
 
-/* ── Toggle switches — green accent ───────────────────── */
+.hud-server-action:hover {
+  color: #F5F5F5;
+}
+
+[data-theme="light"] .hud-server-action { color: #8C8C8C; }
+[data-theme="light"] .hud-server-action:hover { color: #0A0A0A; }
+
+/* ── Toggles — green ──────────────────────────────────── */
 
 .hud-toggle input:checked + .hud-toggle-track {
   background: rgba(34, 197, 94, 0.15) !important;
@@ -4143,32 +4207,10 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   background: #22C55E !important;
 }
 
-/* ── Panel dividers — softer ──────────────────────────── */
+[data-theme="light"] .hud-toggle-track { background: rgba(0, 0, 0, 0.08); }
+[data-theme="light"] .hud-toggle-track::before { background: #B0B0B0; }
 
-.hud-panel-divider {
-  margin: 8px 8px 2px;
-}
-
-.hud-panel-divider-label {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  opacity: 0.5;
-}
-
-/* ── Online dots — green glow for accent ──────────────── */
-
-.hud-embed-dot.connected {
-  background: #22C55E;
-  box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
-}
-
-/* ── Accent color harmonization ───────────────────────── */
-
-.hud-chip.active {
-  color: var(--accent) !important;
-  background: rgba(var(--accent-rgb), 0.1) !important;
-  border-color: rgba(var(--accent-rgb), 0.25) !important;
-}
+/* ── Apply / Pending buttons ──────────────────────────── */
 
 .hud-defaults-apply {
   color: var(--accent) !important;
@@ -4180,26 +4222,27 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   background: rgba(var(--accent-rgb), 0.15) !important;
 }
 
-.hud-defaults-pending {
-  color: var(--accent) !important;
-}
+.hud-defaults-pending { color: var(--accent) !important; }
 
 .hud-defaults-select.hud-defaults-pending {
   color: var(--accent) !important;
   border-color: rgba(var(--accent-rgb), 0.3) !important;
 }
 
-/* ── Status dots — new accent ─────────────────────────── */
+/* ── Online dots everywhere — green ───────────────────── */
 
-.openclaw-status-dot.connected {
-  background: #22C55E !important;
+.hud-embed-dot.connected {
+  background: #22C55E;
   box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
 }
 
+.openclaw-status-dot.connected,
 .dash-dot.connected {
   background: #22C55E !important;
   box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
 }
+
+.hud-tl-dot-ok { background: #22C55E; }
 
 /* ── Server chips ─────────────────────────────────────── */
 
@@ -4214,7 +4257,7 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   background: rgba(34, 197, 94, 0.06);
 }
 
-/* ── Alert colors ─────────────────────────────────────── */
+/* ── Alerts / badges ──────────────────────────────────── */
 
 .hud-alert-info {
   background: rgba(var(--accent-rgb), 0.06) !important;
@@ -4228,91 +4271,38 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   border-color: rgba(34, 197, 94, 0.15) !important;
 }
 
-/* ── Agent dropdown ───────────────────────────────────── */
+/* ── Agent dropdown dots ──────────────────────────────── */
 
-.hud-agent-dropdown-item .agent-dot {
-  background: rgba(34, 197, 94, 0.6) !important;
-}
-
+.hud-agent-dropdown-item .agent-dot { background: rgba(34, 197, 94, 0.6) !important; }
 .hud-agent-dropdown-item.active .agent-dot {
   background: #22C55E !important;
   box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
 }
 
-/* ── Light theme: accent overrides ────────────────────── */
+/* ── Panel dividers ───────────────────────────────────── */
+
+.hud-panel-divider { margin: 8px 8px 2px; }
+.hud-panel-divider-label { font-size: 10px; letter-spacing: 0.08em; opacity: 0.5; }
+
+/* ── Widgets area ─────────────────────────────────────── */
+
+.hud-widgets-area { border-top: 1px solid rgba(255, 255, 255, 0.04); }
+[data-theme="light"] .hud-widgets-area { border-top-color: rgba(0, 0, 0, 0.06); }
+
+/* ── Bottom utility ───────────────────────────────────── */
+
+.hud-bottom-utility { border-top: 1px solid rgba(255, 255, 255, 0.04); }
+[data-theme="light"] .hud-bottom-utility { border-top-color: rgba(0, 0, 0, 0.04); }
+
+/* ── Light theme accent ───────────────────────────────── */
 
 [data-theme="light"] {
   --accent: #2563EB;
   --accent-rgb: 37, 99, 235;
 }
 
-[data-theme="light"] .hud-section .hud-section-toggle:hover .hud-section-label {
-  color: #0A0A0A;
-}
+/* ── Embed panel body — match mockup aspect ratio ─────── */
 
-/* ── Sidebar footer — just theme toggle ───────────────── */
-
-.hud-bottom-utility {
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-[data-theme="light"] .hud-bottom-utility {
-  border-top-color: rgba(0, 0, 0, 0.04);
-}
-
-/* ── Widgets area ─────────────────────────────────────── */
-
-.hud-widgets-area {
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-[data-theme="light"] .hud-widgets-area {
-  border-top-color: rgba(0, 0, 0, 0.06);
-}
-
-/* ── Light mode toggle track fix ──────────────────────── */
-
-[data-theme="light"] .hud-toggle-track {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-[data-theme="light"] .hud-toggle-track::before {
-  background: #B0B0B0;
-}
-
-/* ── Group Labels (TOOLS, SETTINGS) ───────────────────── */
-
-.hud-group-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-faint, #525252);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 14px 12px 6px;
-}
-
-[data-theme="light"] .hud-group-label {
-  color: #999;
-}
-
-/* ── Section label row (Browser/Terminal) — match flat style ── */
-
-.hud-section-label-row {
-  font-size: 14px;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--text-muted, #B0B0B0);
-}
-
-.hud-section .hud-section-toggle:hover .hud-section-label-row {
-  color: var(--text-normal, #dcddde);
-}
-
-[data-theme="light"] .hud-section-label-row {
-  color: #525252;
-}
-
-[data-theme="light"] .hud-section .hud-section-toggle:hover .hud-section-label-row {
-  color: #0A0A0A;
+.hud-embed-panel.hud-open .hud-embed-body {
+  aspect-ratio: 16 / 9;
 }
