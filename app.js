@@ -3243,14 +3243,30 @@ async function sendMessage(text) {
 }
 
 async function abortMessage() {
-  const ss = state.streams.get(state.sessionKey);
-  if (!state.gateway?.connected || !ss) return;
-  try {
-    await state.gateway.request("chat.abort", {
-      sessionKey: `${agentPrefix()}${state.sessionKey}`,
-      runId: ss.runId,
-    });
-  } catch { /* ignore */ }
+  const sk = state.sessionKey;
+  const ss = state.streams.get(sk);
+  if (!ss) return;
+
+  // Immediately save any partial text before cleanup
+  if (ss.text) {
+    state.messages.push({ role: "assistant", text: ss.text, images: [], timestamp: Date.now() });
+  }
+
+  // Clean up client-side UI right away (don't wait for server)
+  finishStream(sk);
+  renderMessages();
+
+  // Send abort to server (best-effort)
+  if (state.gateway?.connected) {
+    try {
+      await state.gateway.request("chat.abort", {
+        sessionKey: `${agentPrefix()}${sk}`,
+        runId: ss.runId,
+      });
+    } catch (err) {
+      console.warn("chat.abort failed:", err);
+    }
+  }
 }
 
 // ─── Attachment Handling ─────────────────────────────────────────────
