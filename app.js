@@ -4282,7 +4282,7 @@ function updateServerPanel() {
       '<button class="hud-server-action" onclick="openTerminalWithCmd(\'journalctl -u openclaw --no-pager -n 50\')" title="View recent logs">📋 logs</button>' +
     '</div>' +
     '<div class="hud-settings-divider"></div>' +
-    '<button class="hud-server-action" style="color:#ef4444;margin-top:4px" onclick="confirmDisconnect()">disconnect</button>';
+    '<button class="hud-disconnect-btn" onclick="confirmDisconnect()">Disconnect</button>';
 
   el.innerHTML = html;
 }
