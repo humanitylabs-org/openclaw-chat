@@ -4477,8 +4477,8 @@ html body .hud-agent-card .hud-section:last-child .hud-section-toggle {
 
 /* ── Expanded section card treatment ──────────────────── */
 /* When a section is open, give it a distinct card background */
-html body .hud-collapsible.hud-open {
-  background: #1E1E1E !important;
+html body .dashboard .hud-section.hud-collapsible.hud-open {
+  background: #252525 !important;
   border: 1px solid rgba(255, 255, 255, 0.10) !important;
   border-radius: 8px !important;
   margin: 4px 0 !important;
@@ -4486,102 +4486,102 @@ html body .hud-collapsible.hud-open {
 }
 
 /* The toggle inside an open section — round top corners */
-html body .hud-collapsible.hud-open > .hud-section-toggle {
+html body .dashboard .hud-section.hud-collapsible.hud-open > .hud-section-toggle {
   border-radius: 8px 8px 0 0 !important;
 }
 
 /* The body content — pad it inside the card, compact */
-html body .hud-collapsible.hud-open > .hud-section-body {
+html body .dashboard .hud-section.hud-collapsible.hud-open > .hud-section-body {
   padding: 0 10px 8px !important;
 }
 
 /* Settings rows inside expanded cards — compact spacing */
-html body .hud-collapsible.hud-open .hud-defaults-row,
-html body .hud-collapsible.hud-open .hud-settings-row {
+html body .dashboard .hud-collapsible.hud-open .hud-defaults-row,
+html body .dashboard .hud-collapsible.hud-open .hud-settings-row {
   padding: 5px 2px !important;
   min-height: 34px !important;
   border-bottom: none !important;
 }
 
-html body .hud-collapsible.hud-open .hud-defaults-row:last-child,
-html body .hud-collapsible.hud-open .hud-settings-row:last-child {
+html body .dashboard .hud-collapsible.hud-open .hud-defaults-row:last-child,
+html body .dashboard .hud-collapsible.hud-open .hud-settings-row:last-child {
   border-bottom: none !important;
 }
 
 /* Settings divider inside expanded cards — thin, tight */
-html body .hud-collapsible.hud-open .hud-settings-divider {
+html body .dashboard .hud-collapsible.hud-open .hud-settings-divider {
   background: rgba(255, 255, 255, 0.05) !important;
   margin: 2px 0 !important;
   height: 1px !important;
 }
 
 /* Settings panel inside expanded cards — no extra gaps */
-html body .hud-collapsible.hud-open .hud-settings-panel {
+html body .dashboard .hud-collapsible.hud-open .hud-settings-panel {
   gap: 0 !important;
   padding: 0 !important;
 }
-html body .hud-collapsible.hud-open .hud-defaults-panel {
+html body .dashboard .hud-collapsible.hud-open .hud-defaults-panel {
   gap: 0 !important;
   padding: 0 !important;
 }
 
 /* Timeline items inside expanded cards — compact */
-html body .hud-collapsible.hud-open .hud-tl-item {
+html body .dashboard .hud-collapsible.hud-open .hud-tl-item {
   padding: 4px 6px !important;
   min-height: 32px !important;
 }
 
 /* File chips inside expanded cards — tighter */
-html body .hud-collapsible.hud-open .hud-files-row {
+html body .dashboard .hud-collapsible.hud-open .hud-files-row {
   padding: 2px 4px 4px !important;
   gap: 4px !important;
 }
 
 /* Setting name/label text inside expanded cards */
-html body .hud-collapsible.hud-open .hud-setting-row {
+html body .dashboard .hud-collapsible.hud-open .hud-setting-row {
   padding: 4px 2px !important;
   min-height: 34px !important;
 }
 
 /* Agent card sections when open — no double border */
-html body .hud-agent-card .hud-collapsible.hud-open {
+html body .dashboard .hud-agent-card .hud-section.hud-collapsible.hud-open {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
   margin: 0 !important;
 }
 
-html body .hud-agent-card .hud-collapsible.hud-open > .hud-section-toggle {
+html body .dashboard .hud-agent-card .hud-section.hud-collapsible.hud-open > .hud-section-toggle {
   border-radius: 0 !important;
 }
 
-html body .hud-agent-card .hud-collapsible.hud-open > .hud-section-body {
+html body .dashboard .hud-agent-card .hud-section.hud-collapsible.hud-open > .hud-section-body {
   padding: 0 4px 6px !important;
 }
 
 /* Embed panels when open — already have their own embed body styling */
-html body .hud-embed-panel.hud-open {
+html body .dashboard .hud-embed-panel.hud-section.hud-collapsible.hud-open {
   background: transparent !important;
   border: none !important;
   margin: 0 !important;
 }
 
 /* Light theme */
-[data-theme="light"] .hud-collapsible.hud-open {
-  background: #ECECEE !important;
+[data-theme="light"] .dashboard .hud-section.hud-collapsible.hud-open {
+  background: #E5E5E8 !important;
   border-color: rgba(0, 0, 0, 0.10) !important;
 }
 
-[data-theme="light"] .hud-collapsible.hud-open .hud-defaults-row,
-[data-theme="light"] .hud-collapsible.hud-open .hud-settings-row {
+[data-theme="light"] .dashboard .hud-collapsible.hud-open .hud-defaults-row,
+[data-theme="light"] .dashboard .hud-collapsible.hud-open .hud-settings-row {
   border-bottom: none !important;
 }
 
-[data-theme="light"] .hud-collapsible.hud-open .hud-settings-divider {
+[data-theme="light"] .dashboard .hud-collapsible.hud-open .hud-settings-divider {
   background: rgba(0, 0, 0, 0.06) !important;
 }
 
-[data-theme="light"] .hud-agent-card .hud-collapsible.hud-open {
+[data-theme="light"] .dashboard .hud-agent-card .hud-section.hud-collapsible.hud-open {
   background: transparent !important;
   border: none !important;
 }
