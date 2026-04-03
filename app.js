@@ -1509,13 +1509,13 @@ async function _renderTabsInner() {
       actionBtn.addEventListener("click", (e) => { e.stopPropagation(); closeTab(tab, currentKey); });
       row.appendChild(actionBtn);
     }
-    // Unread badge
+    // Unread badge — insert BEFORE label (first child) to match updateUnreadBadges()
     const unreadCount = state.unreadCounts[tab.key] || 0;
     if (unreadCount > 0 && !isCurrent) {
       const dot = document.createElement("span");
       dot.className = "oc-unread-dot";
       dot.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
-      row.appendChild(dot);
+      row.insertBefore(dot, row.firstChild);
     }
 
     tabEl.appendChild(row);
