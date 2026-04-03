@@ -3535,14 +3535,51 @@ async function handleMicClick() {
   }
 }
 
+/** Shared hidden sizer for autoResize — avoids reflowing the real textarea */
+let _autoResizeSizer = null;
 function autoResize() {
   const el = ui.messageInput;
-  // Avoid iOS flicker: don't set height="auto" (causes momentary collapse + repaint).
-  // Instead, temporarily shrink to 1px to measure natural scrollHeight, then restore.
-  const currentHeight = el.style.height;
-  el.style.height = "1px";
-  const newHeight = Math.min(el.scrollHeight, 120) + "px";
-  el.style.height = newHeight;
+  // Use a hidden off-screen sizer to measure the needed height.
+  // This avoids collapsing the real textarea, which causes mobile layout vibration.
+  if (!_autoResizeSizer) {
+    _autoResizeSizer = document.createElement("textarea");
+    _autoResizeSizer.setAttribute("aria-hidden", "true");
+    _autoResizeSizer.setAttribute("tabindex", "-1");
+    Object.assign(_autoResizeSizer.style, {
+      position: "fixed",
+      left: "-9999px",
+      top: "0",
+      visibility: "hidden",
+      overflow: "hidden",
+      height: "0",
+      minHeight: "0",
+      maxHeight: "none",
+      padding: "0",
+      border: "0",
+      boxSizing: "border-box",
+    });
+    document.body.appendChild(_autoResizeSizer);
+  }
+  // Copy layout-affecting styles from the real textarea
+  const cs = getComputedStyle(el);
+  _autoResizeSizer.style.width = cs.width;
+  _autoResizeSizer.style.font = cs.font;
+  _autoResizeSizer.style.letterSpacing = cs.letterSpacing;
+  _autoResizeSizer.style.wordSpacing = cs.wordSpacing;
+  _autoResizeSizer.style.lineHeight = cs.lineHeight;
+  _autoResizeSizer.style.padding = cs.padding;
+  _autoResizeSizer.style.border = cs.border;
+  _autoResizeSizer.style.boxSizing = cs.boxSizing;
+  _autoResizeSizer.style.wordBreak = cs.wordBreak;
+  _autoResizeSizer.style.overflowWrap = cs.overflowWrap;
+  _autoResizeSizer.style.whiteSpace = cs.whiteSpace;
+  _autoResizeSizer.value = el.value;
+  _autoResizeSizer.style.height = "0";
+  const newHeight = Math.min(_autoResizeSizer.scrollHeight, 120) + "px";
+  // Only update if changed — avoids unnecessary reflow
+  if (el.style.height !== newHeight) {
+    el.style.height = newHeight;
+  }
 }
 
 // ─── Input Handlers ──────────────────────────────────────────────────
