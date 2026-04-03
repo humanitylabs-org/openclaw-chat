@@ -4476,13 +4476,13 @@ html body .hud-agent-card .hud-section:last-child .hud-section-toggle {
 }
 
 /* ── Expanded section card treatment ──────────────────── */
-/* When a section is open, give it a subtle background card */
+/* When a section is open, give it a distinct card background */
 html body .hud-collapsible.hud-open {
-  background: rgba(255, 255, 255, 0.025) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: rgba(255, 255, 255, 0.045) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 8px !important;
   margin: 4px 0 !important;
-  padding: 0 4px !important;
+  padding: 0 !important;
 }
 
 /* The toggle inside an open section — round top corners */
@@ -4490,16 +4490,17 @@ html body .hud-collapsible.hud-open > .hud-section-toggle {
   border-radius: 8px 8px 0 0 !important;
 }
 
-/* The body content — pad it inside the card */
+/* The body content — pad it inside the card, compact */
 html body .hud-collapsible.hud-open > .hud-section-body {
-  padding: 0 8px 10px !important;
+  padding: 0 10px 8px !important;
 }
 
-/* Settings rows inside expanded cards — tighter, consistent */
+/* Settings rows inside expanded cards — compact spacing */
 html body .hud-collapsible.hud-open .hud-defaults-row,
 html body .hud-collapsible.hud-open .hud-settings-row {
-  padding: 9px 2px !important;
-  border-bottom-color: rgba(255, 255, 255, 0.04) !important;
+  padding: 5px 2px !important;
+  min-height: 34px !important;
+  border-bottom: none !important;
 }
 
 html body .hud-collapsible.hud-open .hud-defaults-row:last-child,
@@ -4507,10 +4508,39 @@ html body .hud-collapsible.hud-open .hud-settings-row:last-child {
   border-bottom: none !important;
 }
 
-/* Settings divider inside expanded cards */
+/* Settings divider inside expanded cards — thin, tight */
 html body .hud-collapsible.hud-open .hud-settings-divider {
-  background: rgba(255, 255, 255, 0.04) !important;
-  margin: 4px 0 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  margin: 2px 0 !important;
+  height: 1px !important;
+}
+
+/* Settings panel inside expanded cards — no extra gaps */
+html body .hud-collapsible.hud-open .hud-settings-panel {
+  gap: 0 !important;
+  padding: 0 !important;
+}
+html body .hud-collapsible.hud-open .hud-defaults-panel {
+  gap: 0 !important;
+  padding: 0 !important;
+}
+
+/* Timeline items inside expanded cards — compact */
+html body .hud-collapsible.hud-open .hud-tl-item {
+  padding: 4px 6px !important;
+  min-height: 32px !important;
+}
+
+/* File chips inside expanded cards — tighter */
+html body .hud-collapsible.hud-open .hud-files-row {
+  padding: 2px 4px 4px !important;
+  gap: 4px !important;
+}
+
+/* Setting name/label text inside expanded cards */
+html body .hud-collapsible.hud-open .hud-setting-row {
+  padding: 4px 2px !important;
+  min-height: 34px !important;
 }
 
 /* Agent card sections when open — no double border */
@@ -4538,17 +4568,17 @@ html body .hud-embed-panel.hud-open {
 
 /* Light theme */
 [data-theme="light"] .hud-collapsible.hud-open {
-  background: rgba(0, 0, 0, 0.02) !important;
-  border-color: rgba(0, 0, 0, 0.06) !important;
+  background: rgba(0, 0, 0, 0.035) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
 [data-theme="light"] .hud-collapsible.hud-open .hud-defaults-row,
 [data-theme="light"] .hud-collapsible.hud-open .hud-settings-row {
-  border-bottom-color: rgba(0, 0, 0, 0.04) !important;
+  border-bottom: none !important;
 }
 
 [data-theme="light"] .hud-collapsible.hud-open .hud-settings-divider {
-  background: rgba(0, 0, 0, 0.04) !important;
+  background: rgba(0, 0, 0, 0.06) !important;
 }
 
 [data-theme="light"] .hud-agent-card .hud-collapsible.hud-open {
