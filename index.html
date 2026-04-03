@@ -314,6 +314,7 @@
       line-height: 1;
       flex-shrink: 0;
       box-sizing: border-box;
+      margin-right: 6px;
     }
     .oc-unread-switcher-dot {
       display: inline-flex;
@@ -329,6 +330,7 @@
       font-weight: 700;
       line-height: 1;
       flex-shrink: 0;
+      margin-right: 6px;
       margin-left: 6px;
       box-sizing: border-box;
     }
@@ -1330,7 +1332,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=106">
+  <link rel="stylesheet" href="/theme.css?v=107">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -1545,8 +1547,6 @@
                 <div class="hud-agent-name" id="hud-agent-name">Agent <span class="hud-agent-chevron">▾</span></div>
                 <div class="hud-status-row">
                   <span class="hud-status-line" id="hud-status-line">OFFLINE</span>
-                  <span class="hud-status-sep">·</span>
-                  <button class="hud-disconnect-link" id="hud-disconnect-inline" onclick="document.getElementById('dash-disconnect-btn')?.click()">disconnect</button>
                 </div>
               </div>
               <div class="hud-agent-dropdown" id="hud-agent-dropdown"></div>
@@ -1877,7 +1877,7 @@
 
   </div>
 
-  <script src="/app.js?v=106"></script>
+  <script src="/app.js?v=107"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}

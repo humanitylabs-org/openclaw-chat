@@ -531,7 +531,9 @@ function updateUnreadBadges() {
         if (!dot) {
           dot = document.createElement("span");
           dot.className = "oc-unread-dot";
-          el.querySelector(".openclaw-tab-row")?.appendChild(dot);
+          // Insert BEFORE the label (first child of tab-row)
+          const row = el.querySelector(".openclaw-tab-row");
+          if (row) row.insertBefore(dot, row.firstChild);
         }
         dot.textContent = count > 9 ? "9+" : String(count);
       } else if (dot) {
@@ -551,7 +553,9 @@ function updateUnreadBadges() {
       if (!switcherDot) {
         switcherDot = document.createElement("span");
         switcherDot.className = "oc-unread-switcher-dot";
-        switcherLabel.parentElement?.querySelector(".oc-tab-switcher-row")?.appendChild(switcherDot);
+        // Insert before the label, not after
+        const switcherRow = switcherLabel.parentElement?.querySelector(".oc-tab-switcher-row");
+        if (switcherRow) switcherRow.insertBefore(switcherDot, switcherLabel);
       }
       switcherDot.textContent = otherUnread > 9 ? "9+" : String(otherUnread);
     } else if (switcherDot) {
@@ -1254,13 +1258,14 @@ function renderHamburgerDropdown() {
     }
     item.appendChild(label);
 
-    // Unread badge in dropdown
+    // Unread badge in dropdown — insert BEFORE the label
     const ddUnread = state.unreadCounts[tab.key] || 0;
     if (ddUnread > 0 && !isCurrent) {
       const badge = document.createElement("span");
       badge.className = "oc-unread-dot";
       badge.textContent = ddUnread > 9 ? "9+" : String(ddUnread);
-      item.appendChild(badge);
+      // Insert before label (label is already appended to item)
+      item.insertBefore(badge, label);
     }
 
     const meter = document.createElement("div");
@@ -4275,7 +4280,9 @@ function updateServerPanel() {
       '<button class="hud-server-action" onclick="sendControlAction(\'Optimize my agent startup speed. Audit AGENTS.md startup sequence — remove instructions to re-read files already injected in the system prompt (SOUL.md, USER.md, TOOLS.md, IDENTITY.md, HEARTBEAT.md). Then check MEMORY.md size — if over 16k chars, restructure it: move deep project details to memory/projects/ files, keep concise summaries in MEMORY.md. Goal: MEMORY.md under 16k so it fits in the system prompt without truncation, eliminating the need to re-read it. Report what you changed and the before/after size.\')" title="Speed up session boot time">⚡ optimize</button>' +
       '<button class="hud-server-action" onclick="openTerminalPanel()" title="Open terminal">⌨ terminal</button>' +
       '<button class="hud-server-action" onclick="openTerminalWithCmd(\'journalctl -u openclaw --no-pager -n 50\')" title="View recent logs">📋 logs</button>' +
-    '</div>';
+    '</div>' +
+    '<div class="hud-settings-divider"></div>' +
+    '<button class="hud-server-action" style="color:#ef4444;margin-top:4px" onclick="confirmDisconnect()">disconnect</button>';
 
   el.innerHTML = html;
 }
@@ -5603,6 +5610,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+async function confirmDisconnect() {
+  const ok = await confirmClose('Disconnect?', 'This will unpair your device. You\'ll need to re-enter your gateway URL and token to reconnect.');
+  if (!ok) return;
+  document.getElementById('dash-disconnect-btn')?.click();
+}
 
 function sendControlAction(message) {
   // Close dashboard on mobile
