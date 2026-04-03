@@ -1331,6 +1331,48 @@
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
   <link rel="stylesheet" href="/theme.css?v=104">
+  <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
+  <style id="cal-spacing-fix">
+    /* Every section toggle — tight spacing, no exceptions */
+    html body .dashboard .hud-section-toggle,
+    html body .dashboard .hud-section .hud-section-toggle,
+    html body .dashboard .hud-collapsible .hud-section-toggle,
+    html body .dashboard button.hud-section-toggle,
+    html body .hud-agent-card .hud-section-toggle,
+    html body .hud-agent-card .hud-section .hud-section-toggle {
+      padding: 6px 10px !important;
+      min-height: 0 !important;
+      height: auto !important;
+      margin: 0 !important;
+    }
+    /* Collapsed section body = zero space */
+    html body .dashboard .hud-collapsible .hud-section-body {
+      display: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      min-height: 0 !important;
+    }
+    html body .dashboard .hud-collapsible.hud-open .hud-section-body {
+      display: flex !important;
+      padding: 0 0 4px !important;
+    }
+    /* Sections themselves = zero margin/padding */
+    html body .dashboard .hud-section {
+      margin: 0 !important;
+      padding: 0 4px !important;
+    }
+    html body .dashboard .hud-agent-card .hud-section {
+      padding: 0 4px !important;
+    }
+    /* Mobile: keep touch targets */
+    @media (max-width: 768px) {
+      html body .dashboard .hud-section-toggle,
+      html body .dashboard .hud-section .hud-section-toggle {
+        padding: 8px 10px !important;
+        min-height: 44px !important;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Landing Page (shown when no saved credentials) -->
