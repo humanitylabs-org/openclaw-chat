@@ -458,6 +458,7 @@ const state = {
   // Attachments
   pendingAttachments: [],
   sending: false,
+  processingQueue: false,
 
 };
 
@@ -1727,23 +1728,41 @@ function renderQueuedMessages() {
 }
 
 function processQueue() {
+  // Lock: only one drain loop at a time
+  if (state.processingQueue) return;
   const key = state.sessionKey;
   const queue = state.messageQueue[key];
   if (!queue || queue.length === 0) return;
   // Don't process if still streaming or sending
-  if (state.streams.has(key) || state.sending) return;
+  if (state.streams.has(key) || state.sending) {
+    // Retry after current send/stream completes
+    setTimeout(() => processQueue(), 800);
+    return;
+  }
   // Don't process if gateway is disconnected
   if (!state.gateway?.connected) return;
+
+  state.processingQueue = true;
+
+  // Pop item and flush localStorage BEFORE sending
   const next = queue.shift();
   if (queue.length === 0) delete state.messageQueue[key];
   localStorage.setItem('messageQueue', JSON.stringify(state.messageQueue));
   renderQueuedMessages();
+
   // Restore attachments if any
   if (next.attachments && next.attachments.length > 0) {
     state.pendingAttachments = next.attachments;
   }
-  // Send directly (bypass input/click which can race)
-  sendMessage(next.text || '');
+  // Send and wait for completion before unlocking
+  sendMessage(next.text || '').finally(() => {
+    state.processingQueue = false;
+    // Drain next queued message if any remain
+    const remaining = state.messageQueue[key];
+    if (remaining && remaining.length > 0) {
+      setTimeout(() => processQueue(), 500);
+    }
+  });
 }
 
 async function switchTab(tab) {
