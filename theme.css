@@ -3955,9 +3955,8 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 }
 
 /* ── Section toggle buttons — flat nav items ──────────── */
+/* (padding/min-height moved to nuclear reset section) */
 .hud-section .hud-section-toggle {
-  padding: 8px 8px !important;
-  min-height: 40px !important;
   border-radius: 6px !important;
   transition: background 0.12s !important;
   background: transparent !important;
@@ -4233,7 +4232,6 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 
 /* Sections inside agent card — tighter fit */
 .hud-agent-card .hud-section .hud-section-toggle {
-  padding: 8px 8px !important;
   border-radius: 0 !important;
 }
 .hud-agent-card .hud-section:last-child .hud-section-toggle {
@@ -4314,14 +4312,14 @@ div.hud-section {
 }
 
 /* Step 2: Rebuild toggle — target every selector that could apply */
-.hud-section-toggle,
-.hud-section .hud-section-toggle,
-.hud-collapsible .hud-section-toggle,
-.hud-collapsible.hud-open .hud-section-toggle,
-button.hud-section-toggle,
-.dashboard .hud-section-toggle,
-.dashboard-scroll .hud-section-toggle,
-.hud-agent-card .hud-section-toggle {
+html body .hud-section-toggle,
+html body .hud-section .hud-section-toggle,
+html body .hud-collapsible .hud-section-toggle,
+html body .hud-collapsible.hud-open .hud-section-toggle,
+html body button.hud-section-toggle,
+html body .dashboard .hud-section-toggle,
+html body .dashboard-scroll .hud-section-toggle,
+html body .hud-agent-card .hud-section-toggle {
   padding: 6px 10px !important;
   min-height: 0 !important;
   height: auto !important;
@@ -4336,8 +4334,8 @@ button.hud-section-toggle,
   flex-shrink: 0 !important;
 }
 
-.hud-section-toggle:hover,
-.hud-section .hud-section-toggle:hover {
+html body .hud-section-toggle:hover,
+html body .hud-section .hud-section-toggle:hover {
   background: rgba(255,255,255,0.04) !important;
 }
 
@@ -4351,12 +4349,12 @@ button.hud-section-toggle,
   padding: 0 4px !important;
 }
 
-.hud-agent-card .hud-section .hud-section-toggle {
+html body .hud-agent-card .hud-section .hud-section-toggle {
   border-radius: 0 !important;
   margin: 0 !important;
 }
 
-.hud-agent-card .hud-section:last-child .hud-section-toggle {
+html body .hud-agent-card .hud-section:last-child .hud-section-toggle {
   border-radius: 0 0 8px 8px !important;
 }
 
