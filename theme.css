@@ -931,7 +931,7 @@
   letter-spacing: 0.06em;
   color: var(--text-faint);
   text-transform: uppercase;
-  padding: 10px 0 8px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -2607,9 +2607,9 @@
   background: transparent;
   border: none !important;
   border-radius: 0;
-  padding: 0 8px !important;
-  margin-top: 2px;
-  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  padding: 0 !important;
+  margin-top: 0;
+  border-bottom: none !important;
 }
 
 /* [REMOVED by Cal redesign] */
