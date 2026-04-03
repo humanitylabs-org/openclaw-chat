@@ -4474,3 +4474,84 @@ html body .hud-agent-card .hud-section:last-child .hud-section-toggle {
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.2);
 }
+
+/* ── Expanded section card treatment ──────────────────── */
+/* When a section is open, give it a subtle background card */
+html body .hud-collapsible.hud-open {
+  background: rgba(255, 255, 255, 0.025) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px !important;
+  margin: 4px 0 !important;
+  padding: 0 4px !important;
+}
+
+/* The toggle inside an open section — round top corners */
+html body .hud-collapsible.hud-open > .hud-section-toggle {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+/* The body content — pad it inside the card */
+html body .hud-collapsible.hud-open > .hud-section-body {
+  padding: 0 8px 10px !important;
+}
+
+/* Settings rows inside expanded cards — tighter, consistent */
+html body .hud-collapsible.hud-open .hud-defaults-row,
+html body .hud-collapsible.hud-open .hud-settings-row {
+  padding: 9px 2px !important;
+  border-bottom-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+html body .hud-collapsible.hud-open .hud-defaults-row:last-child,
+html body .hud-collapsible.hud-open .hud-settings-row:last-child {
+  border-bottom: none !important;
+}
+
+/* Settings divider inside expanded cards */
+html body .hud-collapsible.hud-open .hud-settings-divider {
+  background: rgba(255, 255, 255, 0.04) !important;
+  margin: 4px 0 !important;
+}
+
+/* Agent card sections when open — no double border */
+html body .hud-agent-card .hud-collapsible.hud-open {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+html body .hud-agent-card .hud-collapsible.hud-open > .hud-section-toggle {
+  border-radius: 0 !important;
+}
+
+html body .hud-agent-card .hud-collapsible.hud-open > .hud-section-body {
+  padding: 0 4px 6px !important;
+}
+
+/* Embed panels when open — already have their own embed body styling */
+html body .hud-embed-panel.hud-open {
+  background: transparent !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+/* Light theme */
+[data-theme="light"] .hud-collapsible.hud-open {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .hud-collapsible.hud-open .hud-defaults-row,
+[data-theme="light"] .hud-collapsible.hud-open .hud-settings-row {
+  border-bottom-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .hud-collapsible.hud-open .hud-settings-divider {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .hud-agent-card .hud-collapsible.hud-open {
+  background: transparent !important;
+  border: none !important;
+}
