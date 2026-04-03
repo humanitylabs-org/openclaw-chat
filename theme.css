@@ -748,11 +748,7 @@
   border-bottom: 1px solid rgba(var(--accent-rgb), 0.08);
 }
 
-.hud-agent-card .hud-section {
-  border-bottom-color: rgba(var(--accent-rgb), 0.08) !important;
-  margin-left: 0;
-  margin-right: 0;
-}
+/* [REMOVED by Cal redesign] */
 
 .hud-agent-card .hud-section:last-child {
   border-bottom: none !important;
@@ -910,7 +906,7 @@
 
 .hud-section {
   padding: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: none;
   flex-shrink: 0;
 }
 
@@ -947,7 +943,7 @@
 
 .hud-collapsible .hud-section-body {
   display: none;
-  padding: 0 0 14px;
+  padding: 0;
 }
 .hud-collapsible.hud-open .hud-section-body {
   display: flex;
@@ -1236,15 +1232,15 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 0;
+  padding: 6px 10px;
   background: none;
   border: none;
   cursor: pointer;
   color: var(--text-muted);
-  transition: color 0.15s;
+  transition: background 0.12s;
   outline: none;
   flex-shrink: 0;
-  min-height: 44px;
+  min-height: 0;
 }
 .hud-section-toggle:hover { color: var(--text-normal); }
 .hud-section-toggle:focus-visible {
@@ -1828,10 +1824,7 @@
   }
 
   /* Section toggles: 44px touch target */
-  .hud-section .hud-section-toggle {
-    min-height: 44px;
-    padding: 10px 0;
-  }
+  /* [Cal redesign] mobile touch targets handled in inline style */
 
   /* Embed action buttons (refresh, expand, close): 44px */
   .hud-embed-action {
@@ -2619,9 +2612,7 @@
   border-bottom: 1px solid rgba(255,255,255,0.06) !important;
 }
 
-.hud-section:first-of-type {
-  margin-top: 0;
-}
+/* [REMOVED by Cal redesign] */
 
 .hud-section.hud-collapsible.hud-open {
   background: transparent;
@@ -2631,9 +2622,7 @@
   padding-bottom: 4px;
 }
 
-.hud-section .hud-section-toggle {
-  padding: 8px 0;
-}
+/* [REMOVED by Cal redesign] old toggle padding */
 
 /* ── File Chip Enhancements ──────────────────────────── */
 
@@ -2805,12 +2794,7 @@
     linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px);
 }
 
-[data-theme="light"] .hud-section {
-  background: transparent !important;
-  border: none !important;
-  border-bottom: 1px solid rgba(0,0,0,0.08) !important;
-  box-shadow: none;
-}
+/* [REMOVED by Cal redesign] */
 
 [data-theme="light"] .hud-section.hud-collapsible.hud-open {
   background: transparent !important;
