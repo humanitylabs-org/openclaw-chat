@@ -779,10 +779,13 @@ async function startChat() {
   setInterval(() => {
     for (const [sk, ss] of state.streams) {
       const isStale = ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > 90000);
+      // Background (startup) streams: clean up after 20s since they don't block anything
+      const isBackgroundStale = ss.background && ss.runId?.startsWith("startup-")
+        && (Date.now() - parseInt(ss.runId.split("-")[1])) > 20000;
       const isOrphanedStartup = !ss.lastDeltaTime && !ss.text && ss.runId?.startsWith("startup-")
         && (Date.now() - parseInt(ss.runId.split("-")[1])) > 45000;
-      if (isStale || isOrphanedStartup) {
-        console.warn(`[watchdog] Cleaning up stale/orphaned stream for ${sk}`);
+      if (isStale || isBackgroundStale || isOrphanedStartup) {
+        console.warn(`[watchdog] Cleaning up ${ss.background ? 'background' : 'stale'} stream for ${sk}`);
         finishStream(sk);
       }
     }
@@ -2978,6 +2981,7 @@ function handleStreamEvent(payload) {
       }
     }
     // Auto-create stream for startup/reset events on active session
+    // Mark as background so it doesn't block user sends
     const matched = matchActiveSessionKey(payload);
     if (matched && (stream === "tool" || stream === "lifecycle" || eventState === "lifecycle")) {
       const runId = str(payload.runId, str(payloadData?.runId));
@@ -2990,13 +2994,14 @@ function handleStreamEvent(payload) {
         lastDeltaTime: 0,
         compactTimer: null,
         workingTimer: null,
+        background: true,  // not user-initiated — don't block sending
       };
       state.streams.set(matched, ss);
       if (runId) state.runToSession.set(runId, matched);
       sessionKey = matched;
       isActiveTab = true;
       hideLoading(); // replace static "Loading…" with live tool activity
-      setSendButtonStopMode(true);
+      // Don't set stop mode for background streams — user should still be able to send
     } else {
       return;
     }
@@ -3599,23 +3604,16 @@ function autoResize() {
 
 function handleSendOrQueue() {
   const text = ui.messageInput.value.trim();
-  let isStreaming = state.streams.has(state.sessionKey);
+  const ss = state.streams.get(state.sessionKey);
+  // Only treat as "streaming" if it's a user-initiated stream (not background/startup)
+  let isStreaming = !!ss && !ss.background;
 
   // Safety: if stream exists but is stale (no delta for 60s), clean it up
   if (isStreaming) {
-    const ss = state.streams.get(state.sessionKey);
-    if (ss && ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > 60000)) {
+    if (ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > 60000)) {
       console.warn("[queue] Cleaning up stale stream (no delta for 60s+)");
       finishStream(state.sessionKey);
       isStreaming = false;
-    } else if (ss && !ss.lastDeltaTime && !ss.text) {
-      // Auto-created stream that never received any data — check age via runId timestamp
-      const match = ss.runId?.match(/startup-(\d+)/);
-      if (match && (Date.now() - parseInt(match[1])) > 30000) {
-        console.warn("[queue] Cleaning up orphaned startup stream");
-        finishStream(state.sessionKey);
-        isStreaming = false;
-      }
     }
   }
 
