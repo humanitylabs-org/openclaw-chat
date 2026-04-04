@@ -161,7 +161,6 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      justify-content: space-between;
     }
     .openclaw-tab-label {
       font-size: 12px;
@@ -169,6 +168,7 @@
       text-overflow: ellipsis;
       flex: 1;
       min-width: 0;
+      order: 1;
     }
     .openclaw-tab-label-input {
       font-size: 12px;
@@ -191,7 +191,7 @@
       border-radius: 4px;
       transition: all 0.15s;
       flex-shrink: 0;
-      margin-left: auto;
+      order: 2;
     }
     .openclaw-tab:hover .openclaw-tab-close,
     .openclaw-tab.active .openclaw-tab-close {
@@ -231,7 +231,7 @@
 
     /* Reset button on non-home tabs (shows alongside ×) */
     .openclaw-tab-reset {
-      margin-left: auto;
+      order: 2;
       margin-right: 0;
     }
 
@@ -314,7 +314,8 @@
       line-height: 1;
       flex-shrink: 0;
       box-sizing: border-box;
-      margin-right: 6px;
+      order: 0;
+      margin-right: 2px;
     }
     .oc-unread-switcher-dot {
       display: inline-flex;
@@ -533,6 +534,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      order: 1;
+    }
+    .oc-hamburger-dropdown-item .oc-unread-dot {
+      order: 0;
     }
     .oc-hamburger-dropdown-item .oc-dd-meter {
       width: 40px;
@@ -553,6 +558,7 @@
       align-items: center;
       gap: 4px;
       flex-shrink: 0;
+      order: 3;
     }
     .oc-dd-action-btn {
       display: flex;
@@ -1332,7 +1338,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=119">
+  <link rel="stylesheet" href="/theme.css?v=120">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -1877,7 +1883,7 @@
 
   </div>
 
-  <script src="/app.js?v=119"></script>
+  <script src="/app.js?v=120"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
