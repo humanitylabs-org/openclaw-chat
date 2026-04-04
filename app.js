@@ -3731,9 +3731,16 @@ if (isMobile && window.visualViewport) {
 }
 
 ui.messageInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey && !isMobile) {
-    e.preventDefault();
-    handleSendOrQueue();
+  if (e.key === "Enter") {
+    // Mobile: Enter always creates a newline (user taps Send button)
+    // Desktop: Enter sends, Shift+Enter creates newline
+    // Detect mobile dynamically — not the stale const from page load
+    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      || ("ontouchstart" in window && window.innerWidth <= 1024);
+    if (!mobile && !e.shiftKey) {
+      e.preventDefault();
+      handleSendOrQueue();
+    }
   }
 });
 
