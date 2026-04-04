@@ -775,6 +775,19 @@ async function startChat() {
 
   setInterval(() => updateContextMeter(), 15000);
 
+  // Stale stream watchdog — clean up orphaned streams every 15s
+  setInterval(() => {
+    for (const [sk, ss] of state.streams) {
+      const isStale = ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > 90000);
+      const isOrphanedStartup = !ss.lastDeltaTime && !ss.text && ss.runId?.startsWith("startup-")
+        && (Date.now() - parseInt(ss.runId.split("-")[1])) > 45000;
+      if (isStale || isOrphanedStartup) {
+        console.warn(`[watchdog] Cleaning up stale/orphaned stream for ${sk}`);
+        finishStream(sk);
+      }
+    }
+  }, 15000);
+
   // ─── Recover from app backgrounding (Android/iOS tab suspend) ──────
   // When the user switches to another app, the browser suspends JS and the
   // WebSocket can silently die. Stream events sent during suspension are lost.
@@ -3586,7 +3599,25 @@ function autoResize() {
 
 function handleSendOrQueue() {
   const text = ui.messageInput.value.trim();
-  const isStreaming = state.streams.has(state.sessionKey);
+  let isStreaming = state.streams.has(state.sessionKey);
+
+  // Safety: if stream exists but is stale (no delta for 60s), clean it up
+  if (isStreaming) {
+    const ss = state.streams.get(state.sessionKey);
+    if (ss && ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > 60000)) {
+      console.warn("[queue] Cleaning up stale stream (no delta for 60s+)");
+      finishStream(state.sessionKey);
+      isStreaming = false;
+    } else if (ss && !ss.lastDeltaTime && !ss.text) {
+      // Auto-created stream that never received any data — check age via runId timestamp
+      const match = ss.runId?.match(/startup-(\d+)/);
+      if (match && (Date.now() - parseInt(match[1])) > 30000) {
+        console.warn("[queue] Cleaning up orphaned startup stream");
+        finishStream(state.sessionKey);
+        isStreaming = false;
+      }
+    }
+  }
 
   // If streaming and input is empty, abort (stop button behavior)
   if (ui.sendBtn.classList.contains("stop-mode") && !text) {
