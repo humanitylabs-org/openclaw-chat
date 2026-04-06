@@ -2196,32 +2196,17 @@ function updateModelLabel() {
   updateDashboard();
 }
 
-// ─── Bar Controls (simple visibility toggles) ───────────────────────
+// ─── Bar Controls (steps visibility) ────────────────────────────────
 
-function onOffLabel(enabled) {
-  return enabled ? "on" : "off";
-}
+const STEPS_CYCLE = ["off", "on", "full"];
 
 function updateBarControls() {
-  const toolsEl = document.getElementById("bar-thinking");
-  const reasonEl = document.getElementById("bar-reasoning");
   const stepsEl = document.getElementById("bar-verbose");
+  const mode = effectiveVerboseLevel();
 
-  const showToolUse = shouldShowToolEvents();
-  const showSteps = shouldShowToolOutput();
-  const showReasoning = effectiveReasoningLevel() !== "off";
-
-  if (toolsEl) {
-    toolsEl.textContent = "show tool use: " + onOffLabel(showToolUse);
-    toolsEl.classList.toggle("active", showToolUse);
-  }
-  if (reasonEl) {
-    reasonEl.textContent = "show reasoning: " + onOffLabel(showReasoning);
-    reasonEl.classList.toggle("active", showReasoning);
-  }
   if (stepsEl) {
-    stepsEl.textContent = "show steps: " + onOffLabel(showSteps);
-    stepsEl.classList.toggle("active", showSteps);
+    stepsEl.textContent = "show steps: " + mode;
+    stepsEl.classList.toggle("active", mode !== "off");
   }
 }
 
@@ -2262,27 +2247,15 @@ async function setSessionControl(field, nextValue) {
   }
 }
 
-async function toggleShowToolUse() {
-  const next = shouldShowToolEvents() ? "off" : "on";
+async function cycleShowSteps() {
+  const current = effectiveVerboseLevel();
+  const idx = STEPS_CYCLE.indexOf(current);
+  const next = STEPS_CYCLE[(idx + 1) % STEPS_CYCLE.length];
   await setSessionControl("verboseLevel", next);
 }
 
-async function toggleShowSteps() {
-  const next = shouldShowToolOutput() ? "on" : "full";
-  await setSessionControl("verboseLevel", next);
-}
-
-async function toggleShowReasoning() {
-  const next = effectiveReasoningLevel() === "off" ? "on" : "off";
-  await setSessionControl("reasoningLevel", next);
-}
-
-document.getElementById("bar-thinking")?.addEventListener("click", () =>
-  toggleShowToolUse());
-document.getElementById("bar-reasoning")?.addEventListener("click", () =>
-  toggleShowReasoning());
 document.getElementById("bar-verbose")?.addEventListener("click", () =>
-  toggleShowSteps());
+  cycleShowSteps());
 
 async function openModelPicker(opts = {}) {
   // opts.current: current model id, opts.onSelect: callback(fullId, modal)
