@@ -2629,12 +2629,14 @@ async function loadChatHistory(opts) {
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => {
         const { text, images } = extractContent(m.content);
+        const runId = str(m.runId, str(m?.meta?.runId, str(m?.metadata?.runId)));
         return {
           role: m.role,
           text,
           images,
           timestamp: m.timestamp ?? Date.now(),
           contentBlocks: Array.isArray(m.content) ? m.content : undefined,
+          runId,
         };
       })
       .filter(m => (m.text.trim() || m.images.length > 0) && !m.text.startsWith("HEARTBEAT"));
@@ -2663,11 +2665,48 @@ async function loadChatHistory(opts) {
     }
 
     // Re-attach persisted tool traces for this session so verbose history remains visible.
-    const traces = state.toolTraceLog[targetKey] || [];
+    // Insert traces BEFORE their final assistant message whenever possible.
+    const traces = Array.isArray(state.toolTraceLog[targetKey]) ? [...state.toolTraceLog[targetKey]] : [];
     if (traces.length > 0) {
+      traces.sort((a, b) => (a?.timestamp || 0) - (b?.timestamp || 0));
+
+      const runsWithToolBlocks = new Set();
+      for (const msg of parsed) {
+        if (!msg?.runId || !Array.isArray(msg.contentBlocks)) continue;
+        if (msg.contentBlocks.some(b => b?.type === "tool_use" || b?.type === "toolCall")) {
+          runsWithToolBlocks.add(msg.runId);
+        }
+      }
+
+      const insertTraceMessage = (arr, traceMsg) => {
+        const traceRunId = str(traceMsg.syntheticToolRunId);
+        const traceTs = Number.isFinite(traceMsg.timestamp) ? traceMsg.timestamp : 0;
+
+        // 1) Prefer exact run match: place right before the assistant message for that run.
+        if (traceRunId) {
+          const runIdx = arr.findIndex((m) => m?.role === "assistant" && str(m?.runId) === traceRunId);
+          if (runIdx >= 0) {
+            arr.splice(runIdx, 0, traceMsg);
+            return;
+          }
+        }
+
+        // 2) Fallback to timestamp: place before first assistant at/after trace time.
+        const tsIdx = arr.findIndex((m) => m?.role === "assistant" && Number(m?.timestamp || 0) >= traceTs);
+        if (tsIdx >= 0) {
+          arr.splice(tsIdx, 0, traceMsg);
+          return;
+        }
+
+        // 3) Last resort append.
+        arr.push(traceMsg);
+      };
+
       for (const trace of traces) {
         if (!trace?.runId || !Array.isArray(trace.items) || trace.items.length === 0) continue;
-        parsed.push({
+        if (runsWithToolBlocks.has(trace.runId)) continue; // avoid duplicate tool rendering when history already has tool blocks
+
+        insertTraceMessage(parsed, {
           role: "assistant",
           text: "",
           images: [],
@@ -2676,7 +2715,6 @@ async function loadChatHistory(opts) {
           syntheticToolRunId: trace.runId,
         });
       }
-      parsed.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
     }
 
     // Cache the result
