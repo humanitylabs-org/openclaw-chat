@@ -466,7 +466,10 @@ const state = {
   streams: new Map(),
   runToSession: new Map(),
   finalizedRuns: new Map(),
-  toolTraceLog: {}, // { [sessionKey]: [{ runId, timestamp, items[] }] }
+  historyInFlight: {}, // { [sessionKey]: boolean }
+  historyPollTimer: null,
+  historyPollSession: "",
+  historyPollSettled: 0,
   streamEl: null,
   streamAssembler: null,
   gapRecoveryInFlight: false,
@@ -876,6 +879,7 @@ function updateConnectionStatus(connected) {
     ui.messageInput.placeholder = "Message...";
     hideReconnectBanner();
   } else {
+    stopHistoryInFlightPoll();
     ui.sendBtn.classList.add("oc-hidden");
     ui.messageInput.disabled = true;
     if (state.gatewayRestarting) {
@@ -911,6 +915,7 @@ function hideReconnectBanner() {
 async function recoverFromEventGap(info) {
   if (state.gapRecoveryInFlight) return;
   state.gapRecoveryInFlight = true;
+  stopHistoryInFlightPoll();
 
   const expected = Number.isFinite(info?.expected) ? info.expected : "?";
   const received = Number.isFinite(info?.received) ? info.received : "?";
@@ -1945,7 +1950,6 @@ function updateMobileTabLabelInstant(tab) {
 async function resetTab(tab) {
   if (!state.gateway?.connected) return;
   delete state.tabCache[tab.key];
-  clearToolTrace(tab.key);
   const isHome = tab.key === "main";
   const title = isHome ? "Reset Home?" : `Reset "${tab.label}"?`;
   const msg = "You will be briefly disconnected while resetting. Just wait a few moments.";
@@ -1978,7 +1982,6 @@ async function closeTab(tab, currentKey) {
   if (!ok) return;
   state.tabDeleteInProgress = true;
   delete state.tabCache[tab.key];
-  clearToolTrace(tab.key);
   finishStream(tab.key);
 
   // Actually delete the session on the gateway
@@ -2625,11 +2628,39 @@ async function loadChatHistory(opts) {
     });
 
     const messages = result?.messages || [];
+    const assistantHasText = (content) => {
+      if (typeof content === "string") return !!content.trim();
+      if (!Array.isArray(content)) return false;
+      for (const block of content) {
+        if (!block || typeof block !== "object") continue;
+        if (block.type === "text" && typeof block.text === "string" && block.text.trim()) return true;
+      }
+      return false;
+    };
+    const assistantHasToolCalls = (content) => {
+      if (!Array.isArray(content)) return false;
+      return content.some((block) => block && typeof block === "object" && (block.type === "toolCall" || block.type === "tool_use"));
+    };
+
+    // Transcript-first in-flight detection for refresh/reopen recovery.
+    // If the latest transcript entry is a toolResult or an assistant tool-call frame
+    // without final text yet, treat as potentially still running.
+    const runTail = messages.filter((m) => m?.role === "user" || m?.role === "assistant" || m?.role === "toolResult");
+    const last = runTail.length > 0 ? runTail[runTail.length - 1] : null;
+    let maybeInFlight = false;
+    if (last?.role === "toolResult") {
+      maybeInFlight = true;
+    } else if (last?.role === "assistant") {
+      maybeInFlight = assistantHasToolCalls(last.content) && !assistantHasText(last.content);
+    }
+
     let parsed = messages
       .filter(m => m.role === "user" || m.role === "assistant")
       .map(m => {
         const { text, images } = extractContent(m.content);
         const runId = str(m.runId, str(m?.meta?.runId, str(m?.metadata?.runId)));
+        const hasToolBlocks = Array.isArray(m.content)
+          && m.content.some((b) => b?.type === "tool_use" || b?.type === "toolCall");
         return {
           role: m.role,
           text,
@@ -2637,9 +2668,10 @@ async function loadChatHistory(opts) {
           timestamp: m.timestamp ?? Date.now(),
           contentBlocks: Array.isArray(m.content) ? m.content : undefined,
           runId,
+          hasToolBlocks,
         };
       })
-      .filter(m => (m.text.trim() || m.images.length > 0) && !m.text.startsWith("HEARTBEAT"));
+      .filter(m => (m.text.trim() || m.images.length > 0 || m.hasToolBlocks) && !m.text.startsWith("HEARTBEAT"));
 
     // Strip injected system messages from user messages
     parsed = parsed.map(m => {
@@ -2647,7 +2679,7 @@ async function loadChatHistory(opts) {
         m.text = stripSystemMessages(m.text);
       }
       return m;
-    }).filter(m => m.text.trim() || m.images.length > 0);
+    }).filter(m => m.text.trim() || m.images.length > 0 || m.hasToolBlocks);
 
     // Hide system-generated startup messages (not real user input)
     if (parsed.length > 0 && parsed[0].role === "user") {
@@ -2664,58 +2696,7 @@ async function loadChatHistory(opts) {
       }
     }
 
-    // Re-attach persisted tool traces for this session so verbose history remains visible.
-    // Insert traces BEFORE their final assistant message whenever possible.
-    const traces = Array.isArray(state.toolTraceLog[targetKey]) ? [...state.toolTraceLog[targetKey]] : [];
-    if (traces.length > 0) {
-      traces.sort((a, b) => (a?.timestamp || 0) - (b?.timestamp || 0));
-
-      const runsWithToolBlocks = new Set();
-      for (const msg of parsed) {
-        if (!msg?.runId || !Array.isArray(msg.contentBlocks)) continue;
-        if (msg.contentBlocks.some(b => b?.type === "tool_use" || b?.type === "toolCall")) {
-          runsWithToolBlocks.add(msg.runId);
-        }
-      }
-
-      const insertTraceMessage = (arr, traceMsg) => {
-        const traceRunId = str(traceMsg.syntheticToolRunId);
-        const traceTs = Number.isFinite(traceMsg.timestamp) ? traceMsg.timestamp : 0;
-
-        // 1) Prefer exact run match: place right before the assistant message for that run.
-        if (traceRunId) {
-          const runIdx = arr.findIndex((m) => m?.role === "assistant" && str(m?.runId) === traceRunId);
-          if (runIdx >= 0) {
-            arr.splice(runIdx, 0, traceMsg);
-            return;
-          }
-        }
-
-        // 2) Fallback to timestamp: place before first assistant at/after trace time.
-        const tsIdx = arr.findIndex((m) => m?.role === "assistant" && Number(m?.timestamp || 0) >= traceTs);
-        if (tsIdx >= 0) {
-          arr.splice(tsIdx, 0, traceMsg);
-          return;
-        }
-
-        // 3) Last resort append.
-        arr.push(traceMsg);
-      };
-
-      for (const trace of traces) {
-        if (!trace?.runId || !Array.isArray(trace.items) || trace.items.length === 0) continue;
-        if (runsWithToolBlocks.has(trace.runId)) continue; // avoid duplicate tool rendering when history already has tool blocks
-
-        insertTraceMessage(parsed, {
-          role: "assistant",
-          text: "",
-          images: [],
-          timestamp: Number.isFinite(trace.timestamp) ? trace.timestamp : Date.now(),
-          toolTrace: trace.items,
-          syntheticToolRunId: trace.runId,
-        });
-      }
-    }
+    state.historyInFlight[targetKey] = maybeInFlight;
 
     // Cache the result
     state.tabCache[targetKey] = { messages: parsed, timestamp: Date.now() };
@@ -2725,11 +2706,57 @@ async function loadChatHistory(opts) {
       state.messages = parsed;
       if (!background) hideLoading();
       renderMessages();
+
+      // If a run was already in-flight before this page connected, keep polling
+      // transcript history until the final assistant message lands.
+      if (!state.streams.has(targetKey) && maybeInFlight) {
+        startHistoryInFlightPoll(targetKey);
+      } else if (!maybeInFlight) {
+        stopHistoryInFlightPoll(targetKey);
+      }
     }
   } catch (err) {
     if (!background && targetKey === state.sessionKey) hideLoading();
     console.error("Failed to load chat history:", err);
   }
+}
+
+function stopHistoryInFlightPoll(sessionKey) {
+  if (state.historyPollSession && sessionKey && state.historyPollSession !== sessionKey) return;
+  if (state.historyPollTimer) {
+    clearInterval(state.historyPollTimer);
+    state.historyPollTimer = null;
+  }
+  state.historyPollSession = "";
+  state.historyPollSettled = 0;
+}
+
+function startHistoryInFlightPoll(sessionKey) {
+  if (!sessionKey) return;
+  if (state.historyPollTimer && state.historyPollSession === sessionKey) return;
+  stopHistoryInFlightPoll();
+
+  state.historyPollSession = sessionKey;
+  state.historyPollSettled = 0;
+  state.historyPollTimer = setInterval(async () => {
+    if (state.sessionKey !== sessionKey) {
+      stopHistoryInFlightPoll(sessionKey);
+      return;
+    }
+    if (state.streams.has(sessionKey)) {
+      stopHistoryInFlightPoll(sessionKey);
+      return;
+    }
+
+    await loadChatHistory({ background: true, sessionKey });
+    const stillInFlight = !!state.historyInFlight[sessionKey];
+    if (stillInFlight) {
+      state.historyPollSettled = 0;
+      return;
+    }
+    state.historyPollSettled += 1;
+    if (state.historyPollSettled >= 3) stopHistoryInFlightPoll(sessionKey);
+  }, 1200);
 }
 
 // Pre-fetch history for all tabs in background
@@ -2848,19 +2875,6 @@ function renderMessages() {
   ui.messagesContainer.innerHTML = "";
   state.streamEl = null;
   for (const msg of state.messages) {
-    if (Array.isArray(msg.toolTrace)) {
-      if (shouldShowToolEvents()) {
-        msg.toolTrace.forEach((item, idx) => {
-          appendToolCall(item.label, item.url || undefined, false, {
-            toolCallId: `trace-${msg.syntheticToolRunId || "run"}-${idx}`,
-            detail: shouldShowToolOutput() ? (item.detail || "") : "",
-            isError: !!item.isError,
-          });
-        });
-      }
-      continue;
-    }
-
     if (msg.role === "assistant") {
       const hasContentTools = msg.contentBlocks?.some(b => b.type === "tool_use" || b.type === "toolCall") || false;
       if (hasContentTools && msg.contentBlocks) {
@@ -3541,38 +3555,6 @@ function noteFinalizedRun(runId) {
   }
 }
 
-function persistToolTrace(sessionKey, runId, items) {
-  const sk = str(sessionKey);
-  const rid = str(runId);
-  if (!sk || !rid || !Array.isArray(items) || items.length === 0) return;
-
-  const toolItems = items
-    .filter((item) => item?.type === "tool" && str(item.label).trim())
-    .map((item) => ({
-      label: str(item.label),
-      url: str(item.url),
-      detail: str(item.detail),
-      isError: !!item.isError,
-    }));
-  if (toolItems.length === 0) return;
-
-  const list = state.toolTraceLog[sk] || [];
-  const existingIdx = list.findIndex((t) => t?.runId === rid);
-  const entry = { runId: rid, timestamp: Date.now(), items: toolItems };
-  if (existingIdx >= 0) list[existingIdx] = entry;
-  else list.push(entry);
-
-  // keep recent traces only
-  if (list.length > 30) list.splice(0, list.length - 30);
-  state.toolTraceLog[sk] = list;
-}
-
-function clearToolTrace(sessionKey) {
-  const sk = str(sessionKey);
-  if (!sk) return;
-  delete state.toolTraceLog[sk];
-}
-
 if (!state.streamAssembler) state.streamAssembler = new UiStreamAssembler();
 
 function extractDeltaText(msg) {
@@ -3988,7 +3970,6 @@ function handleChatEvent(payload) {
     }
     if (finalText && finalText !== "(no output)") ss && (ss.text = finalText);
     if (runId) noteFinalizedRun(runId);
-    if (ss?.items?.length) persistToolTrace(eventSessionKey, runId, ss.items);
 
     // Upgrade tab title from assistant's response (better than user's choppy words)
     if (ss?.text) {
@@ -4014,7 +3995,6 @@ function handleChatEvent(payload) {
       if (partial && partial !== "(no output)") ss && (ss.text = partial);
     }
     if (runId) noteFinalizedRun(runId);
-    if (ss?.items?.length) persistToolTrace(eventSessionKey, runId, ss.items);
     if (isActiveTab && ss?.text) {
       state.messages.push({ role: "assistant", text: ss.text, images: [], timestamp: Date.now() });
     }
@@ -4023,7 +4003,6 @@ function handleChatEvent(payload) {
   } else if (chatState === "error") {
     if (runId && state.streamAssembler) state.streamAssembler.drop(runId);
     if (runId) noteFinalizedRun(runId);
-    if (ss?.items?.length) persistToolTrace(eventSessionKey, runId, ss.items);
     if (isActiveTab) {
       state.messages.push({
         role: "assistant",
