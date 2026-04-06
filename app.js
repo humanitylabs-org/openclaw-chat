@@ -5720,7 +5720,7 @@ async function applyTTSConfig() {
     updateTTSApplyBtn();
   } catch (err) {
     console.warn("Failed to apply TTS config:", err);
-    if (btn) { btn.disabled = false; btn.textContent = 'restart to apply'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'save'; }
   }
 }
 
