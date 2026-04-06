@@ -13,6 +13,15 @@ function str(v, fallback = "") {
   return typeof v === "string" ? v : fallback;
 }
 
+function normalizeSessionsVisibility(value) {
+  const v = str(value).toLowerCase();
+  return ["self", "tree", "agent", "all"].includes(v) ? v : "tree";
+}
+
+function isAllTabsAwareness(visibility) {
+  return visibility === "agent" || visibility === "all";
+}
+
 /** Generate a short tab title from conversation context */
 function generateTabTitle(userText, assistantText) {
   // Try assistant response first — it's usually a better summary
@@ -435,10 +444,15 @@ const state = {
     resetAtHour: 4,
     resetIdleMinutes: 240,
     heartbeatEvery: "1h",
+    tabAwareness: "tree",
   },
   
   // Pending default changes (not yet applied to config)
   pendingDefaults: {},
+
+  // Global tools.sessions.visibility value from gateway config
+  tabAwarenessVisibility: "tree",
+  tabAwarenessApplying: false,
 
   // Connection state for reconnect UX
   reconnecting: false,
@@ -992,6 +1006,11 @@ async function loadDefaults() {
     const heartbeatCfg = ad?.heartbeat || {};
     const heartbeatEvery = heartbeatCfg?.every || "0m";
 
+    const sessionsVisibility = normalizeSessionsVisibility(
+      parsed?.tools?.sessions?.visibility || cfg?.tools?.sessions?.visibility || "tree"
+    );
+    state.tabAwarenessVisibility = sessionsVisibility;
+
     state.defaults = {
       model: typeof model === "string" ? model : "",
       fallbacks,
@@ -1002,6 +1021,7 @@ async function loadDefaults() {
       resetAtHour,
       resetIdleMinutes,
       heartbeatEvery,
+      tabAwareness: sessionsVisibility,
     };
     
     // Parse TTS config
@@ -1023,6 +1043,7 @@ async function loadDefaults() {
     
     // Load available channels for dock switcher
     loadAvailableChannels();
+    updateServerPanel();
   } catch (err) {
     console.warn("Failed to load defaults:", err);
   }
@@ -5491,11 +5512,38 @@ function updateServerPanel() {
         '<span class="hud-settings-label">Sessions</span>' +
         '<span class="hud-settings-value">' + sessionCount + ' active</span>' +
       '</div>';
-  } +
+  }
+
+  html +=
     '<div class="hud-settings-row">' +
       '<span class="hud-settings-label">Channels</span>' +
       '<span class="hud-settings-value hud-server-chips">' + channelChips + '</span>' +
     '</div>';
+
+  const tabAwarenessVisibility = normalizeSessionsVisibility(
+    state.tabAwarenessVisibility || state.defaults?.tabAwareness || "tree"
+  );
+  const allTabsAwareness = isAllTabsAwareness(tabAwarenessVisibility);
+  const tabAwarenessLabel = allTabsAwareness ? "All tabs" : "Current tab only";
+
+  html +=
+    '<div class="hud-settings-row">' +
+      '<span class="hud-settings-label">Tab awareness</span>' +
+      '<span class="hud-settings-value">' + tabAwarenessLabel +
+      (allTabsAwareness
+        ? ' <span style="opacity:0.4">✓</span>'
+        : ' · <span class="hud-server-update-hint">recommended: All tabs</span>') +
+      '</span>' +
+    '</div>';
+
+  if (!allTabsAwareness) {
+    html += '<button class="hud-defaults-apply" id="hud-tab-awareness-apply"' +
+      (state.tabAwarenessApplying ? ' disabled' : '') +
+      ' onclick="applyRecommendedTabAwareness()">' +
+      (state.tabAwarenessApplying ? 'applying…' : 'set to All tabs (recommended)') +
+      '</button>' +
+      '<div class="hud-server-update-hint" style="font-size:0.8em;margin-top:6px;line-height:1.35;">Applying this restarts OpenClaw. It may be unresponsive for a few seconds.</div>';
+  }
 
   // Update button (only if update available)
   if (latest) {
@@ -5520,6 +5568,43 @@ function updateServerPanel() {
     '<button class="hud-disconnect-btn" onclick="confirmDisconnect()">Disconnect</button>';
 
   el.innerHTML = html;
+}
+
+async function applyRecommendedTabAwareness() {
+  if (!state.gateway?.connected || state.tabAwarenessApplying) return;
+
+  state.tabAwarenessApplying = true;
+  updateServerPanel();
+
+  try {
+    const getResult = await state.gateway.request("config.get", {});
+    const hash = getResult?.hash || "";
+    const raw = JSON.stringify({ tools: { sessions: { visibility: "agent" } } });
+
+    // This config patch restarts the gateway.
+    state.gatewayRestarting = true;
+    showReconnectBanner("Applying tab awareness — OpenClaw may be unresponsive for a few seconds.");
+    await state.gateway.request("config.patch", { raw, baseHash: hash });
+
+    state.tabAwarenessVisibility = "agent";
+    state.defaults.tabAwareness = "agent";
+
+    // If gateway did not restart, clear restart UX after a short grace period.
+    setTimeout(() => {
+      state.gatewayRestarting = false;
+      hideReconnectBanner();
+      updateServerPanel();
+    }, 2000);
+  } catch (err) {
+    state.gatewayRestarting = false;
+    hideReconnectBanner();
+    console.warn("Failed to apply tab awareness:", err);
+    showBanner("Couldn't apply Tab awareness. Please try again.");
+    setTimeout(() => hideBanner(), 4500);
+  } finally {
+    state.tabAwarenessApplying = false;
+    updateServerPanel();
+  }
 }
 
 // ─── Agent File List + Viewer ─────────────────────────────────────
