@@ -1136,7 +1136,10 @@ function renderMobileTabSwitcher() {
     };
   }
 
-  if (meterFill) meterFill.style.width = (current.pct || 0) + "%";
+  if (meterFill) {
+    meterFill.style.width = (current.pct || 0) + "%";
+    meterFill.title = contextMeterTitle(current.model, current.used, current.max, current.pct || 0);
+  }
 
   arrowLeft.style.visibility = idx <= 0 ? "hidden" : "visible";
   arrowLeft.style.pointerEvents = idx <= 0 ? "none" : "auto";
@@ -1299,6 +1302,7 @@ function renderHamburgerDropdown() {
     const fill = document.createElement("div");
     fill.className = "oc-dd-meter-fill";
     fill.style.width = tab.pct + "%";
+    fill.title = contextMeterTitle(tab.model, tab.used, tab.max, tab.pct || 0);
     meter.appendChild(fill);
     item.appendChild(meter);
 
@@ -1449,9 +1453,10 @@ async function _renderTabsInner() {
   if (mainSession) {
     const used = mainSession.totalTokens || 0;
     const max = mainSession.contextTokens || 200000;
-    state.tabSessions.push({ key: "main", label: "Home", pct: Math.min(100, Math.round((used / max) * 100)) });
+    const pct = Math.min(100, Math.round((used / max) * 100));
+    state.tabSessions.push({ key: "main", label: "Home", pct, used, max, model: mainSession.model || "" });
   } else {
-    state.tabSessions.push({ key: "main", label: "Home", pct: 0 });
+    state.tabSessions.push({ key: "main", label: "Home", pct: 0, used: 0, max: 200000, model: state.currentModel || "" });
   }
 
   const others = convSessions
@@ -1480,12 +1485,12 @@ async function _renderTabsInner() {
     const max = s.contextTokens || 200000;
     const pct = Math.min(100, Math.round((used / max) * 100));
     const label = s.label || s.displayName || "Untitled";
-    state.tabSessions.push({ key: sk, label, pct });
+    state.tabSessions.push({ key: sk, label, pct, used, max, model: s.model || "" });
   }
 
   // Ensure the active session always has a tab (sessions.list race condition)
   if (currentKey !== "main" && !state.tabSessions.find(t => t.key === currentKey)) {
-    state.tabSessions.push({ key: currentKey, label: "Untitled", pct: 0 });
+    state.tabSessions.push({ key: currentKey, label: "Untitled", pct: 0, used: 0, max: 200000, model: "" });
   }
 
   for (const tab of state.tabSessions) {
@@ -1551,6 +1556,7 @@ async function _renderTabsInner() {
     const fill = document.createElement("div");
     fill.className = "openclaw-tab-meter-fill";
     fill.style.width = tab.pct + "%";
+    fill.title = contextMeterTitle(tab.model, tab.used, tab.max, tab.pct || 0);
     meter.appendChild(fill);
     tabEl.appendChild(meter);
 
@@ -2015,6 +2021,20 @@ async function updateContextMeter() {
       const max = session.contextTokens || 200000;
       const pct = Math.min(100, Math.round((used / max) * 100));
       activeFill.style.width = pct + "%";
+      activeFill.title = contextMeterTitle(session.model || state.currentModel || "", used, max, pct);
+
+      const activeTab = state.tabSessions.find(t => t.key === sk);
+      if (activeTab) {
+        activeTab.used = used;
+        activeTab.max = max;
+        activeTab.pct = pct;
+        activeTab.model = session.model || activeTab.model || "";
+      }
+
+      const hamburgerBar = document.getElementById("hamburger-bar");
+      if (hamburgerBar?.classList.contains("oc-visible")) {
+        renderMobileTabSwitcher();
+      }
     }
 
     const currentSessionKeys = new Set(
@@ -2071,6 +2091,17 @@ function sameStringArray(a, b) {
   if (!Array.isArray(a) || !Array.isArray(b)) return false;
   if (a.length !== b.length) return false;
   return a.every((v, i) => v === b[i]);
+}
+
+function contextMeterTitle(model, used, max, pct) {
+  const modelName = shortModelName(model || "unknown");
+  const usedSafe = Number.isFinite(Number(used)) ? Number(used) : 0;
+  const maxSafe = Number.isFinite(Number(max)) ? Number(max) : 0;
+  const pctSafe = Number.isFinite(Number(pct)) ? Number(pct) : 0;
+  const ratio = maxSafe > 0
+    ? `${usedSafe.toLocaleString()} / ${maxSafe.toLocaleString()} (${pctSafe}%)`
+    : `${usedSafe.toLocaleString()} tokens`;
+  return `${modelName}\n${ratio}`;
 }
 
 function updateModelLabel() {
