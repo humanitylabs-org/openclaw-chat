@@ -1111,6 +1111,7 @@ function updateTabMode() {
 function renderMobileTabSwitcher() {
   const label = document.getElementById("tab-switcher-label");
   const meterFill = document.getElementById("tab-switcher-meter-fill");
+  const meterWrap = meterFill?.parentElement || null;
   const actions = document.getElementById("tab-switcher-actions");
   const arrowLeft = document.getElementById("tab-arrow-left");
   const arrowRight = document.getElementById("tab-arrow-right");
@@ -1136,10 +1137,15 @@ function renderMobileTabSwitcher() {
     };
   }
 
+  const meterTitle = contextMeterTitle(current.model, current.used, current.max, current.pct || 0);
   if (meterFill) {
     meterFill.style.width = (current.pct || 0) + "%";
-    meterFill.title = contextMeterTitle(current.model, current.used, current.max, current.pct || 0);
+    meterFill.title = meterTitle;
   }
+  if (meterWrap) {
+    meterWrap.title = meterTitle;
+  }
+  label.title = meterTitle;
 
   arrowLeft.style.visibility = idx <= 0 ? "hidden" : "visible";
   arrowLeft.style.pointerEvents = idx <= 0 ? "none" : "auto";
@@ -1302,7 +1308,10 @@ function renderHamburgerDropdown() {
     const fill = document.createElement("div");
     fill.className = "oc-dd-meter-fill";
     fill.style.width = tab.pct + "%";
-    fill.title = contextMeterTitle(tab.model, tab.used, tab.max, tab.pct || 0);
+    const meterTitle = contextMeterTitle(tab.model, tab.used, tab.max, tab.pct || 0);
+    fill.title = meterTitle;
+    meter.title = meterTitle;
+    item.title = meterTitle;
     meter.appendChild(fill);
     item.appendChild(meter);
 
@@ -1556,7 +1565,10 @@ async function _renderTabsInner() {
     const fill = document.createElement("div");
     fill.className = "openclaw-tab-meter-fill";
     fill.style.width = tab.pct + "%";
-    fill.title = contextMeterTitle(tab.model, tab.used, tab.max, tab.pct || 0);
+    const meterTitle = contextMeterTitle(tab.model, tab.used, tab.max, tab.pct || 0);
+    fill.title = meterTitle;
+    meter.title = meterTitle;
+    tabEl.title = meterTitle;
     meter.appendChild(fill);
     tabEl.appendChild(meter);
 
@@ -2021,7 +2033,12 @@ async function updateContextMeter() {
       const max = session.contextTokens || 200000;
       const pct = Math.min(100, Math.round((used / max) * 100));
       activeFill.style.width = pct + "%";
-      activeFill.title = contextMeterTitle(session.model || state.currentModel || "", used, max, pct);
+      const meterTitle = contextMeterTitle(session.model || state.currentModel || "", used, max, pct);
+      activeFill.title = meterTitle;
+      const activeMeter = activeFill.parentElement;
+      if (activeMeter) activeMeter.title = meterTitle;
+      const activeTabEl = activeFill.closest(".openclaw-tab");
+      if (activeTabEl) activeTabEl.title = meterTitle;
 
       const activeTab = state.tabSessions.find(t => t.key === sk);
       if (activeTab) {
@@ -2035,6 +2052,9 @@ async function updateContextMeter() {
       if (hamburgerBar?.classList.contains("oc-visible")) {
         renderMobileTabSwitcher();
       }
+
+      const mobileLabel = document.getElementById("tab-switcher-label");
+      if (mobileLabel) mobileLabel.title = meterTitle;
     }
 
     const currentSessionKeys = new Set(
