@@ -221,13 +221,17 @@
       opacity: 0.5;
       flex: 0 0 auto !important;
       background: transparent;
-      padding: 6px 10px;
-      font-size: 16px;
+      padding: 6px 12px;
+      font-size: 12px;
       border-radius: 8px 8px 0 0;
       min-width: auto !important;
     }
     .openclaw-tab-add:hover { opacity: 1; background: rgba(128,128,128,0.1); }
     .openclaw-tab-add .openclaw-tab-meter { display: none; }
+    .openclaw-tab-add .openclaw-tab-label {
+      white-space: nowrap;
+      flex: none;
+    }
 
     /* Reset button on non-home tabs (shows alongside ×) */
     .openclaw-tab-reset {
@@ -235,37 +239,57 @@
       margin-right: 0;
     }
 
-    /* Home tab: house icon, same height as other tabs, with meter */
+    /* Home tab: pinned inbox tab (mirrors Telegram when available) */
     .openclaw-tab-home {
       flex: 0 0 auto !important;
       max-width: none !important;
-      min-width: auto !important;
-      width: 64px;
-      padding: 6px 0 0 0;
+      min-width: 146px !important;
+      width: auto;
+      padding: 6px 10px 0 10px;
       opacity: 0.7;
       position: relative;
     }
     .openclaw-tab-home.active { opacity: 1; }
     .openclaw-tab-home:hover { opacity: 0.9; }
     .openclaw-tab-home .openclaw-tab-row {
-      justify-content: center;
-      gap: 0;
+      justify-content: flex-start;
+      gap: 6px;
+      padding-right: 18px;
     }
     .openclaw-tab-home .openclaw-tab-label.openclaw-tab-home-label {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      flex: none;
+      gap: 6px;
+      min-width: 0;
     }
     .openclaw-tab-home .openclaw-tab-home-label svg {
-      width: 18px;
-      height: 18px;
-      fill: none;
-      stroke: var(--text-muted);
-      transition: stroke 0.2s;
+      width: 15px;
+      height: 15px;
+      fill: var(--text-muted);
+      transition: fill 0.2s;
+      flex-shrink: 0;
     }
     .openclaw-tab-home.active .openclaw-tab-home-label svg {
-      stroke: var(--text-normal);
+      fill: var(--text-normal);
+    }
+    .openclaw-tab-home .openclaw-home-label-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-normal);
+      white-space: nowrap;
+    }
+    .openclaw-tab-home .openclaw-home-source {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      line-height: 1.2;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 999px;
+      padding: 1px 5px;
+      white-space: nowrap;
+      opacity: 0.8;
     }
     .openclaw-tab-home .openclaw-tab-close {
       display: none;
@@ -419,6 +443,26 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    .oc-home-switcher-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .oc-home-switcher-hint {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.2;
+      padding: 1px 5px;
+      border-radius: 999px;
+      border: 1px solid var(--background-modifier-border);
+      color: var(--text-muted);
+      opacity: 0.8;
+      white-space: nowrap;
+      vertical-align: middle;
     }
     .oc-tab-switcher-actions {
       display: flex;

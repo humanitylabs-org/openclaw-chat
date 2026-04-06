@@ -13,13 +13,9 @@ function str(v, fallback = "") {
   return typeof v === "string" ? v : fallback;
 }
 
-/** Generate a short tab title from conversation context */
-function generateTabTitle(userText, assistantText) {
-  // Try assistant response first — it's usually a better summary
-  const title = titleFromAssistant(assistantText) || titleFromUser(userText);
-  if (!title || title.length < 2) return null;
-  return title.charAt(0).toUpperCase() + title.slice(1);
-}
+const TAB_NAMER_SUFFIX = ":tab-namer";
+const TAB_NAMER_MAX_CHARS = 30;
+const TAB_NAMER_MAX_WORDS = 5;
 
 function cleanTextForTitle(text) {
   return (text || "")
@@ -31,120 +27,226 @@ function cleanTextForTitle(text) {
     .trim();
 }
 
-function capWords(text, maxWords, maxChars) {
-  const words = text.split(/\s+/);
-  let result = "";
-  for (let i = 0; i < Math.min(words.length, maxWords); i++) {
-    const next = result ? result + " " + words[i] : words[i];
-    if (next.length > maxChars) break;
-    result = next;
-  }
-  return result;
+function truncateForTabNamer(text, maxChars = 700) {
+  const clean = cleanTextForTitle(str(text));
+  if (!clean) return "";
+  if (clean.length <= maxChars) return clean;
+  const clipped = clean.slice(0, maxChars);
+  return clipped.replace(/\s+\S*$/, "").trim() || clipped.trim();
 }
 
-function titleFromAssistant(text) {
-  if (!text) return null;
-  const clean = cleanTextForTitle(text);
-  if (!clean || clean.length < 5) return null;
+function sanitizeSmartTabTitle(rawTitle) {
+  let title = cleanTextForTitle(str(rawTitle));
+  if (!title) return "";
 
-  // If assistant starts with a greeting + topic, extract the topic part
-  // e.g. "Hey! Here's the fix for the scroll issue" → "Scroll issue fix"
-  // e.g. "Done. The deployment is live." → "Deployment live"
-  // e.g. "I found 3 issues with..." → "3 issues with..."
-  const sentences = clean.split(/[.!?\n]/).map(s => s.trim()).filter(s => s.length > 3);
-  if (sentences.length === 0) return null;
-
-  // Skip pure greetings as first sentence
-  let sentence = sentences[0];
-  if (/^(hey|hi|hello|sure|ok|okay|got it|alright|no problem|of course|absolutely)/i.test(sentence) && sentences.length > 1) {
-    sentence = sentences[1];
-  }
-
-  // Strip leading filler
-  sentence = sentence
-    .replace(/^(here'?s?|i('ve| have)?|let me|i('ll| will)?|this is|that'?s?|the|so|well|basically|essentially)\s+/i, "")
-    .replace(/^(a |an |the )/i, "")
+  title = title
+    .replace(/^['"`]+|['"`]+$/g, "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/[.:;,!?\-–—]+$/g, "")
     .trim();
 
-  return capWords(sentence, 5, 30) || null;
+  if (!title) return "";
+
+  const words = title.split(/\s+/).filter(Boolean);
+  if (words.length > TAB_NAMER_MAX_WORDS) {
+    title = words.slice(0, TAB_NAMER_MAX_WORDS).join(" ");
+  }
+
+  if (title.length > TAB_NAMER_MAX_CHARS) {
+    const clipped = title.slice(0, TAB_NAMER_MAX_CHARS);
+    title = clipped.replace(/\s+\S*$/, "").trim() || clipped.trim();
+  }
+
+  if (title.length < 3) return "";
+  return title.charAt(0).toUpperCase() + title.slice(1);
 }
 
-function titleFromUser(text) {
-  if (!text) return null;
+function parseSmartTitlePayload(text) {
+  const raw = str(text).trim();
+  if (!raw) return "";
 
-  // Extract URL domain as fallback context
-  const urlMatch = text.match(/https?:\/\/(?:www\.)?([^\/\s]+)/);
-  const clean = cleanTextForTitle(text.replace(/https?:\/\/\S+/g, "")).trim();
+  const candidates = [];
+  const objMatch = raw.match(/\{[\s\S]*\}/);
+  if (objMatch) candidates.push(objMatch[0]);
+  candidates.push(raw);
 
-  // If it's just a URL, use the domain
-  if (!clean && urlMatch) {
-    const domain = urlMatch[1].replace(/\.[^.]+$/, ""); // strip TLD
-    return capWords(domain.replace(/[-_]/g, " "), 3, 25) || null;
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (typeof parsed?.title === "string") {
+        const cleaned = sanitizeSmartTabTitle(parsed.title);
+        if (cleaned) return cleaned;
+      }
+    } catch { /* fall through */ }
   }
 
-  // Handle questions — use the question itself
-  const questionMatch = clean.match(/^(what|how|why|when|where|who|can|could|is|are|do|does|should|would|will)\s+(.+)/i);
-  if (questionMatch) {
-    const qBody = questionMatch[2].replace(/\?.*$/, "").trim();
-    return capWords(qBody, 5, 30) || null;
-  }
-
-  // Handle imperative commands: "fix the scroll", "make it blue", "deploy to prod"
-  const sentence = clean.split(/[.!?\n]/)[0].trim();
-  const stripped = sentence
-    .replace(/^(hey|hi|hello|please|can you|could you|i want to|i need to|i'd like to|let'?s|okay|ok)\s+/i, "")
-    .replace(/^(a |an |the )/i, "")
-    .trim();
-
-  const result = capWords(stripped || sentence, 5, 30);
-  // Add domain context if we have a URL
-  if (result && urlMatch && result.length < 20) {
-    const domain = urlMatch[1].replace(/\.[^.]+$/, "");
-    const combined = result + " — " + domain;
-    if (combined.length <= 30) return combined;
-  }
-  return result || null;
+  return sanitizeSmartTabTitle(raw);
 }
 
-/** Auto-rename an "Untitled" tab — waits for assistant reply for better titles */
+function buildSmartTabNamerPrompt(userText, assistantText) {
+  const user = truncateForTabNamer(userText, 420) || "(none)";
+  const assistant = truncateForTabNamer(stripSystemMessages(assistantText), 560) || "(none)";
+
+  return [
+    "Name this chat tab from the exchange below.",
+    "Return ONLY minified JSON exactly like: {\"title\":\"...\"}",
+    "Rules:",
+    "- 2-5 words",
+    `- max ${TAB_NAMER_MAX_CHARS} characters`,
+    "- concrete task/topic, not generic",
+    "- plain text only (no emoji, no quotes in title)",
+    "",
+    `User: ${user}`,
+    `Assistant: ${assistant}`,
+  ].join("\n");
+}
+
+function tabNamerSessionKey(tabKey) {
+  return `${tabKey}${TAB_NAMER_SUFFIX}`;
+}
+
+function ensureTabRenameMeta(sessionKey) {
+  if (!sessionKey) return {};
+  if (!state.tabRenameState[sessionKey]) state.tabRenameState[sessionKey] = {};
+  return state.tabRenameState[sessionKey];
+}
+
+async function waitMs(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function extractSmartTitleFromHistory(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return "";
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (!m || m.role !== "assistant") continue;
+    const fromContent = extractContent(m.content || "").text;
+    const text = fromContent || str(m.text);
+    const parsed = parseSmartTitlePayload(text);
+    if (parsed) return parsed;
+  }
+  return "";
+}
+
+async function requestSmartTabTitle(sessionKey, userText, assistantText) {
+  if (!state.gateway?.connected || !sessionKey) return "";
+
+  const namerKey = `${agentPrefix()}${tabNamerSessionKey(sessionKey)}`;
+  const prompt = buildSmartTabNamerPrompt(userText, assistantText);
+  const idempotencyKey = `tabnamer-${sessionKey}-${Date.now()}`;
+
+  try {
+    await state.gateway.request("chat.send", {
+      sessionKey: namerKey,
+      message: prompt,
+      deliver: false,
+      idempotencyKey,
+    });
+  } catch {
+    return "";
+  }
+
+  const waitScheduleMs = [200, 350, 550, 900, 1300];
+  for (const delay of waitScheduleMs) {
+    await waitMs(delay);
+    try {
+      const result = await state.gateway.request("chat.history", {
+        sessionKey: namerKey,
+        limit: 12,
+      });
+      const parsed = extractSmartTitleFromHistory(result?.messages || []);
+      if (parsed) return parsed;
+    } catch { /* retry */ }
+  }
+
+  return "";
+}
+
+async function cleanupSmartTabNamerSession(sessionKey) {
+  if (!state.gateway?.connected || !sessionKey) return;
+  try {
+    await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tabNamerSessionKey(sessionKey)}`, true);
+  } catch { /* non-critical */ }
+}
+
+function markTabTitleManual(sessionKey) {
+  if (!sessionKey) return;
+  const meta = ensureTabRenameMeta(sessionKey);
+  meta.manual = true;
+  meta.pending = false;
+  meta.inFlight = false;
+  delete meta.userText;
+  void cleanupSmartTabNamerSession(sessionKey);
+}
+
+function resetTabRenameState(sessionKey, cleanupNamer = false) {
+  if (!sessionKey) return;
+  delete state.tabRenameState[sessionKey];
+  if (cleanupNamer) void cleanupSmartTabNamerSession(sessionKey);
+}
+
+/** Stage smart auto-rename for an Untitled tab (AI title after first assistant reply). */
 async function autoRenameTab(sessionKey, messageText) {
   if (sessionKey === "main") return;
   const tab = state.tabSessions.find(t => t.key === sessionKey);
   if (!tab || tab.label !== "Untitled") return;
 
-  // Quick rename from user message first (instant feedback)
-  const quickTitle = titleFromUser(messageText);
-  if (quickTitle) {
-    try {
-      await state.gateway.request("sessions.patch", {
-        key: `${agentPrefix()}${sessionKey}`,
-        label: quickTitle,
-      });
-      tab.label = quickTitle;
-      renderTabs();
-    } catch { /* non-critical */ }
-  }
+  const meta = ensureTabRenameMeta(sessionKey);
+  if (meta.manual || meta.attempted || meta.pending || meta.inFlight) return;
 
-  // Store user text so we can upgrade the title when assistant responds
-  tab._pendingRenameUserText = messageText;
+  meta.userText = truncateForTabNamer(messageText, 420);
+  meta.pending = true;
 }
 
-/** Upgrade tab title when assistant's first response arrives */
-function upgradeTabTitle(sessionKey, assistantText) {
+/** Run AI tab naming after first assistant response and patch label once. */
+async function upgradeTabTitle(sessionKey, assistantText) {
+  if (!sessionKey || sessionKey === "main") return;
+
   const tab = state.tabSessions.find(t => t.key === sessionKey);
-  if (!tab || !tab._pendingRenameUserText) return;
-  const userText = tab._pendingRenameUserText;
-  delete tab._pendingRenameUserText;
+  if (!tab || tab.label !== "Untitled") return;
 
-  const betterTitle = generateTabTitle(userText, assistantText);
-  if (!betterTitle || betterTitle === tab.label) return;
+  const meta = ensureTabRenameMeta(sessionKey);
+  if (meta.manual || meta.attempted || meta.inFlight || !meta.pending) return;
 
-  tab.label = betterTitle;
-  renderTabs();
-  state.gateway?.request("sessions.patch", {
-    key: `${agentPrefix()}${sessionKey}`,
-    label: betterTitle,
-  }).catch(() => {});
+  meta.pending = false;
+  meta.attempted = true;
+  meta.inFlight = true;
+
+  try {
+    const title = await requestSmartTabTitle(sessionKey, meta.userText, assistantText);
+    if (!title) {
+      void cleanupSmartTabNamerSession(sessionKey);
+      return;
+    }
+
+    // User may have renamed while the naming request was in-flight.
+    if (meta.manual) {
+      void cleanupSmartTabNamerSession(sessionKey);
+      return;
+    }
+
+    const latestTab = state.tabSessions.find(t => t.key === sessionKey);
+    if (!latestTab || latestTab.label !== "Untitled") {
+      void cleanupSmartTabNamerSession(sessionKey);
+      return;
+    }
+
+    await state.gateway.request("sessions.patch", {
+      key: `${agentPrefix()}${sessionKey}`,
+      label: title,
+    });
+
+    latestTab.label = title;
+    renderTabs();
+    renderMobileTabSwitcher();
+    void cleanupSmartTabNamerSession(sessionKey);
+  } catch {
+    void cleanupSmartTabNamerSession(sessionKey);
+  } finally {
+    meta.inFlight = false;
+    delete meta.userText;
+  }
 }
 
 function normalizeGatewayUrl(raw) {
@@ -453,11 +555,13 @@ const state = {
 
   // Tabs
   tabSessions: [],
+  homeMirrorSessionKey: "",
   renderingTabs: false,
   tabDeleteInProgress: false,
   tabCache: {},  // { [sessionKey]: { messages: [...], timestamp: number } }
   tabDrafts: JSON.parse(localStorage.getItem('tabDrafts') || '{}'),
   messageQueue: JSON.parse(localStorage.getItem('messageQueue') || '{}'),  // { [sessionKey]: [{ text, images, timestamp }] }
+  tabRenameState: {}, // { [sessionKey]: { userText, pending, attempted, inFlight, manual } }
 
   // Unread tracking
   unreadCounts: {},  // { [sessionKey]: number }
@@ -490,23 +594,63 @@ function agentPrefix() {
   return `agent:${state.activeAgent.id}:`;
 }
 
+function normalizeSessionKey(sessionKey) {
+  if (!sessionKey) return "";
+  const prefix = agentPrefix();
+  return sessionKey.startsWith(prefix) ? sessionKey.slice(prefix.length) : sessionKey;
+}
+
+function pickHomeMirrorSessionKey(sessions = []) {
+  const prefix = agentPrefix();
+  const directPrefix = `${prefix}telegram:direct:`;
+  const candidates = sessions
+    .filter((s) => {
+      const key = typeof s?.key === "string" ? s.key : "";
+      if (!key.startsWith(directPrefix)) return false;
+      if (key.includes(":heartbeat")) return false;
+      return true;
+    })
+    .sort((a, b) => (b?.updatedAt || b?.createdAt || 0) - (a?.updatedAt || a?.createdAt || 0));
+  if (!candidates.length) return "";
+  return normalizeSessionKey(candidates[0].key);
+}
+
+function resolveGatewaySessionKey(tabKey) {
+  if (tabKey === "main" && state.homeMirrorSessionKey) return state.homeMirrorSessionKey;
+  return tabKey;
+}
+
+function prefixedSessionKeyForTab(tabKey) {
+  return `${agentPrefix()}${resolveGatewaySessionKey(tabKey)}`;
+}
+
+function sessionMatchesTab(payloadSessionKey, tabKey) {
+  const normalized = normalizeSessionKey(payloadSessionKey);
+  if (!normalized || !tabKey) return false;
+  return normalized === tabKey || normalized === resolveGatewaySessionKey(tabKey);
+}
+
 // ─── Unread Tracking ─────────────────────────────────────────────────
 
 /** Resolve an event's sessionKey to a tab key (e.g. "main", "tab-5"), or null if not a known tab */
 function resolveTabKey(payloadSessionKey) {
-  if (!payloadSessionKey) return null;
-  const prefix = agentPrefix();
-  const normalized = payloadSessionKey.startsWith(prefix)
-    ? payloadSessionKey.slice(prefix.length)
-    : payloadSessionKey;
+  const normalized = normalizeSessionKey(payloadSessionKey);
+  if (!normalized) return null;
+
+  if (state.homeMirrorSessionKey && normalized === state.homeMirrorSessionKey) return "main";
+
   // Must be a known tab
   if (state.tabSessions.some(t => t.key === normalized)) return normalized;
+
+  if (normalized === "main") return "main";
+
   // Also check un-prefixed match
   for (const t of state.tabSessions) {
-    if (payloadSessionKey === t.key || payloadSessionKey === `${prefix}${t.key}` || payloadSessionKey.endsWith(`:${t.key}`)) {
+    if (sessionMatchesTab(payloadSessionKey, t.key)) {
       return t.key;
     }
   }
+
   return null;
 }
 
@@ -784,11 +928,12 @@ async function startChat() {
   updateConnectionStatus(true);
   await loadDefaults();
   await loadAgents();
-  await loadChatHistory();
   await renderTabs();
+  await loadChatHistory();
   updateModelLabel();
   prefetchAllTabs(); // pre-load other tabs in background
   restoreDraft();
+  updateComposerPlaceholder();
   renderQueuedMessages();
   // Drain any queued messages from a previous session/page load
   setTimeout(() => processQueue(), 1000);
@@ -879,7 +1024,7 @@ function updateConnectionStatus(connected) {
     state.gatewayRestarting = false;
     ui.sendBtn.classList.remove("oc-hidden");
     ui.messageInput.disabled = false;
-    ui.messageInput.placeholder = "Message...";
+    updateComposerPlaceholder();
     hideReconnectBanner();
   } else {
     stopHistoryInFlightPoll();
@@ -895,6 +1040,20 @@ function updateConnectionStatus(connected) {
     }
   }
   updateDashboard();
+}
+
+function composerPlaceholderForSession(sessionKey = state.sessionKey) {
+  if ((sessionKey || "main") === "main") {
+    return state.homeMirrorSessionKey
+      ? "Quick reply in Home (Telegram). For focused work, open a new tab."
+      : "Quick reply in Home. For focused work, open a new tab.";
+  }
+  return "Message this tab...";
+}
+
+function updateComposerPlaceholder() {
+  if (!ui.messageInput || ui.messageInput.disabled) return;
+  ui.messageInput.placeholder = composerPlaceholderForSession(state.sessionKey);
 }
 
 function showReconnectBanner(text) {
@@ -1064,6 +1223,7 @@ async function switchAgent(agent) {
   if (agent.id === state.activeAgent.id) return;
   state.activeAgent = agent;
   state.sessionKey = "main";
+  state.homeMirrorSessionKey = "";
   localStorage.setItem("activeAgent", JSON.stringify(agent));
   localStorage.setItem("sessionKey", "main");
   updateAgentButton();
@@ -1080,8 +1240,9 @@ async function switchAgent(agent) {
   state.tabCache = {};
   ui.messagesContainer.innerHTML = "";
   showLoading("Loading…");
-  await loadChatHistory();
   await renderTabs();
+  await loadChatHistory();
+  updateComposerPlaceholder();
   prefetchAllTabs();
   // Reload control panel sections for new agent
   loadAgentFiles();
@@ -1138,6 +1299,7 @@ function startTabRename(labelEl, tab) {
           label: newName,
         });
         tab.label = newName;
+        markTabTitleManual(tab.key);
       } catch { /* keep old name */ }
     }
     input.replaceWith(labelEl);
@@ -1189,7 +1351,8 @@ function renderMobileTabSwitcher() {
   const idx = currentIdx >= 0 ? currentIdx : 0;
 
   if (current.key === "main") {
-    label.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-4px;opacity:0.8"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
+    const homeHint = state.homeMirrorSessionKey ? ' <span class="oc-home-switcher-hint">Telegram</span>' : "";
+    label.innerHTML = '<span class="oc-home-switcher-label"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;opacity:0.85"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg><span>Home</span>' + homeHint + '</span>';
     label.title = "";
     label.style.cursor = "";
     label.ondblclick = null;
@@ -1268,6 +1431,7 @@ function startSwitcherRename(labelEl, tab) {
           label: newName,
         });
         tab.label = newName;
+        markTabTitleManual(tab.key);
       } catch { /* keep old name */ }
     }
     renderTabs();
@@ -1348,7 +1512,7 @@ function renderHamburgerDropdown() {
     const label = document.createElement("span");
     label.className = "oc-dd-label";
     if (isHome) {
-      label.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;opacity:0.7"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Home';
+      label.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;opacity:0.75"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg> Home' + (state.homeMirrorSessionKey ? ' <span class="oc-home-switcher-hint">Telegram</span>' : '');
     } else {
       label.textContent = tab.label;
       label.title = "Double-click to rename";
@@ -1455,6 +1619,7 @@ function startHamburgerRename(labelEl, tab, dd) {
           label: newName,
         });
         tab.label = newName;
+        markTabTitleManual(tab.key);
       } catch { /* keep old name */ }
     }
     labelEl.textContent = tab.label;
@@ -1523,13 +1688,19 @@ async function _renderTabsInner() {
     return !suffix.includes(":");
   });
 
+  state.homeMirrorSessionKey = pickHomeMirrorSessionKey(sessions);
+
   state.tabSessions = [];
   const mainSession = convSessions.find(s => s.key === `${prefix}main`);
-  if (mainSession) {
-    const used = mainSession.totalTokens || 0;
-    const max = mainSession.contextTokens || 200000;
+  const homeSource = state.homeMirrorSessionKey
+    ? sessions.find((s) => normalizeSessionKey(s.key) === state.homeMirrorSessionKey)
+    : null;
+  const homeSession = homeSource || mainSession;
+  if (homeSession) {
+    const used = homeSession.totalTokens || 0;
+    const max = homeSession.contextTokens || 200000;
     const pct = Math.min(100, Math.round((used / max) * 100));
-    state.tabSessions.push({ key: "main", label: "Home", pct, used, max, model: mainSession.model || "" });
+    state.tabSessions.push({ key: "main", label: "Home", pct, used, max, model: homeSession.model || "" });
   } else {
     state.tabSessions.push({ key: "main", label: "Home", pct: 0, used: 0, max: 200000, model: state.currentModel || "" });
   }
@@ -1568,6 +1739,11 @@ async function _renderTabsInner() {
     state.tabSessions.push({ key: currentKey, label: "Untitled", pct: 0, used: 0, max: 200000, model: "" });
   }
 
+  const liveTabKeys = new Set(state.tabSessions.map(t => t.key));
+  for (const key of Object.keys(state.tabRenameState || {})) {
+    if (!liveTabKeys.has(key)) delete state.tabRenameState[key];
+  }
+
   for (const tab of state.tabSessions) {
     const isCurrent = tab.key === currentKey;
     const isHome = tab.key === "main";
@@ -1580,8 +1756,10 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
 
     if (isHome) {
-      label.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+      const sourceHint = state.homeMirrorSessionKey ? '<span class="openclaw-home-source">Telegram</span>' : '';
+      label.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg><span class="openclaw-home-label-text">Home</span>' + sourceHint;
       label.classList.add('openclaw-tab-home-label');
+      label.title = state.homeMirrorSessionKey ? "Home (synced with Telegram chat)" : "Home";
     } else {
       label.textContent = tab.label;
       label.addEventListener("dblclick", (e) => {
@@ -1676,7 +1854,7 @@ async function _renderTabsInner() {
   addBtn.className = "openclaw-tab openclaw-tab-add";
   const addLabel = document.createElement("span");
   addLabel.className = "openclaw-tab-label";
-  addLabel.textContent = "+";
+  addLabel.textContent = "+ New Tab";
   addBtn.appendChild(addLabel);
   addBtn.addEventListener("click", () => createNewTab());
   fragment.appendChild(addBtn);
@@ -1685,6 +1863,7 @@ async function _renderTabsInner() {
   ui.tabBar.innerHTML = "";
   ui.tabBar.appendChild(fragment);
 
+  updateComposerPlaceholder();
   updateTabMode();
 }
 
@@ -1894,6 +2073,7 @@ async function switchTab(tab) {
   renderTabs();
   updateMobileTabLabelInstant(tab);
   restoreDraft();
+  updateComposerPlaceholder();
 
   // Serve from cache instantly if available
   const cached = state.tabCache[tab.key];
@@ -1928,7 +2108,8 @@ function updateMobileTabLabelInstant(tab) {
   if (!label) return;
 
   if (tab.key === "main") {
-    label.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-4px;opacity:0.8"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>';
+    const homeHint = state.homeMirrorSessionKey ? ' <span class="oc-home-switcher-hint">Telegram</span>' : "";
+    label.innerHTML = '<span class="oc-home-switcher-label"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;opacity:0.85"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg><span>Home</span>' + homeHint + '</span>';
     label.title = "";
     label.ondblclick = null;
   } else {
@@ -1954,9 +2135,12 @@ function updateMobileTabLabelInstant(tab) {
 
 async function resetTab(tab) {
   if (!state.gateway?.connected) return;
+  resetTabRenameState(tab.key, true);
   delete state.tabCache[tab.key];
   const isHome = tab.key === "main";
-  const title = isHome ? "Reset Home?" : `Reset "${tab.label}"?`;
+  const title = isHome
+    ? (state.homeMirrorSessionKey ? "Reset Home (Telegram)?" : "Reset Home?")
+    : `Reset "${tab.label}"?`;
   const msg = "You will be briefly disconnected while resetting. Just wait a few moments.";
   const ok = await confirmClose(title, msg);
   if (!ok) return;
@@ -1967,7 +2151,7 @@ async function resetTab(tab) {
   }
   try {
     await state.gateway.request("chat.send", {
-      sessionKey: `${agentPrefix()}${tab.key}`,
+      sessionKey: prefixedSessionKeyForTab(tab.key),
       message: "/reset",
       deliver: false,
       idempotencyKey: "reset-" + Date.now(),
@@ -1986,6 +2170,7 @@ async function closeTab(tab, currentKey) {
   const ok = await confirmClose("Close tab?", `Close "${tab.label}"? Chat history will be lost.`);
   if (!ok) return;
   state.tabDeleteInProgress = true;
+  resetTabRenameState(tab.key, false);
   delete state.tabCache[tab.key];
   finishStream(tab.key);
 
@@ -1996,12 +2181,17 @@ async function closeTab(tab, currentKey) {
     console.error("Failed to delete session:", err);
   }
 
+  try {
+    await deleteSessionWithFallback(state.gateway, `${agentPrefix()}${tabNamerSessionKey(tab.key)}`, true);
+  } catch { /* non-critical */ }
+
   if (tab.key === currentKey) {
     state.sessionKey = "main";
     localStorage.setItem("sessionKey", "main");
     state.messages = [];
     ui.messagesContainer.innerHTML = "";
     await loadChatHistory();
+    updateComposerPlaceholder();
   }
   state.tabDeleteInProgress = false;
   await renderTabs();
@@ -2023,6 +2213,7 @@ async function createNewTab() {
   }
   const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1;
   const sessionKey = `tab-${nextNum}`;
+  resetTabRenameState(sessionKey, true);
   try {
     await state.gateway.request("chat.send", {
       sessionKey: `${agentPrefix()}${sessionKey}`,
@@ -2048,6 +2239,7 @@ async function createNewTab() {
     state.messages = [];
     ui.messagesContainer.innerHTML = "";
     showLoading("Loading…");
+    updateComposerPlaceholder();
     await renderTabs();
     await updateContextMeter();
   } catch (err) {
@@ -2073,12 +2265,22 @@ async function updateContextMeter() {
   try {
     const result = await state.gateway.request("sessions.list", {});
     const sessions = result?.sessions || [];
+    const prevHomeMirror = state.homeMirrorSessionKey;
+    state.homeMirrorSessionKey = pickHomeMirrorSessionKey(sessions);
+    const homeMirrorChanged = prevHomeMirror !== state.homeMirrorSessionKey;
     const sk = state.sessionKey || "main";
+    const effectiveSk = resolveGatewaySessionKey(sk);
     const prefix = agentPrefix();
-    const session = sessions.find(s => s.key === sk) ||
-      sessions.find(s => s.key === `${prefix}${sk}`) ||
-      sessions.find(s => s.key.endsWith(`:${sk}`));
+    const session = sessions.find((s) => normalizeSessionKey(s.key) === effectiveSk);
     if (!session) return;
+
+    if (homeMirrorChanged) {
+      renderTabs();
+      delete state.tabCache.main;
+      if (sk === "main") {
+        loadChatHistory({ background: true, sessionKey: "main" });
+      }
+    }
 
     const fullModel = session.model || "";
     const modelCooldown = Date.now() - state.currentModelSetAt < 5000;
@@ -2143,6 +2345,7 @@ async function updateContextMeter() {
         state.messages = [];
         ui.messagesContainer.innerHTML = "";
         await loadChatHistory();
+        updateComposerPlaceholder();
       }
       await renderTabs();
     }
@@ -2241,7 +2444,7 @@ async function setSessionControl(field, nextValue) {
   patch[field] = nextValue || null;
   try {
     await state.gateway.request("sessions.patch", {
-      key: `${agentPrefix()}${state.sessionKey}`,
+      key: prefixedSessionKeyForTab(state.sessionKey),
       ...patch,
     });
     state[field] = nextValue;
@@ -2589,7 +2792,7 @@ function renderModelList(box, models, provider, currentModel, modal, providerMap
       row.textContent = "Switching...";
       try {
         await state.gateway.request("chat.send", {
-          sessionKey: `${agentPrefix()}${state.sessionKey}`,
+          sessionKey: prefixedSessionKeyForTab(state.sessionKey),
           message: `/model ${fullId}`,
           deliver: false,
           idempotencyKey: "model-" + Date.now(),
@@ -2744,11 +2947,12 @@ function clearWorkingSince(sessionKey) {
 async function loadChatHistory(opts) {
   const background = opts?.background || false;
   const targetKey = opts?.sessionKey || state.sessionKey;
+  const requestKey = resolveGatewaySessionKey(targetKey);
   if (!state.gateway?.connected) return;
   if (!background) showLoading("Loading…");
   try {
     const result = await state.gateway.request("chat.history", {
-      sessionKey: `${agentPrefix()}${targetKey}`,
+      sessionKey: `${agentPrefix()}${requestKey}`,
       limit: 200,
     });
 
@@ -3844,8 +4048,9 @@ function extractDeltaText(msg) {
 function resolveStreamSession(payload) {
   const sk = str(payload.sessionKey);
   if (sk) {
-    const prefix = agentPrefix();
-    const normalized = sk.startsWith(prefix) ? sk.slice(prefix.length) : sk;
+    const normalized = normalizeSessionKey(sk);
+    const tabKey = resolveTabKey(sk);
+    if (tabKey && state.streams.has(tabKey)) return tabKey;
     if (state.streams.has(normalized)) return normalized;
     // sessionKey is explicit but no matching stream — don't guess
     // (prevents heartbeat/background events from leaking into the active tab)
@@ -3946,9 +4151,8 @@ function handleGatewayEvent(msg) {
 function matchActiveSessionKey(payload) {
   const sk = str(payload.sessionKey);
   if (!sk) return null;
-  const prefix = agentPrefix();
   const active = state.sessionKey;
-  if (sk === active || sk === `${prefix}${active}` || sk.endsWith(`:${active}`)) return active;
+  if (sessionMatchesTab(sk, active)) return active;
   return null;
 }
 
@@ -4166,11 +4370,10 @@ function handleStreamEvent(payload) {
 
 function handleChatEvent(payload) {
   const payloadSk = str(payload.sessionKey);
-  const prefix = agentPrefix();
   let eventSessionKey = null;
 
   for (const sk of [...state.streams.keys(), state.sessionKey]) {
-    if (payloadSk === sk || payloadSk === `${prefix}${sk}` || payloadSk.endsWith(`:${sk}`)) {
+    if (sessionMatchesTab(payloadSk, sk)) {
       eventSessionKey = sk;
       break;
     }
@@ -4178,7 +4381,7 @@ function handleChatEvent(payload) {
 
   if (!eventSessionKey) {
     const active = state.sessionKey;
-    if (payloadSk === active || payloadSk === `${prefix}${active}` || payloadSk.endsWith(`:${active}`)) {
+    if (sessionMatchesTab(payloadSk, active)) {
       eventSessionKey = active;
     } else {
       // Not the active tab or a known stream — check if it's any known tab (for unread tracking)
@@ -4260,7 +4463,7 @@ function handleChatEvent(payload) {
     // Upgrade tab title from assistant's response (better than user's choppy words)
     if (ss?.text) {
       const sk = eventSessionKey.startsWith(agentPrefix()) ? eventSessionKey.slice(agentPrefix().length) : eventSessionKey;
-      upgradeTabTitle(sk, ss.text);
+      void upgradeTabTitle(sk, ss.text);
     }
     finishStream(eventSessionKey);
     if (isActiveTab) {
@@ -4345,7 +4548,7 @@ async function sendMessage(text) {
   renderMessages();
 
   // Auto-rename "Untitled" tabs based on first message
-  void autoRenameTab(state.sessionKey, text);
+  void autoRenameTab(state.sessionKey, displayText || fullMessage);
 
   const runId = generateId();
   const sendSessionKey = state.sessionKey;
@@ -4386,7 +4589,7 @@ async function sendMessage(text) {
 
   try {
     const sendParams = {
-      sessionKey: `${agentPrefix()}${sendSessionKey}`,
+      sessionKey: prefixedSessionKeyForTab(sendSessionKey),
       message: fullMessage,
       deliver: false,
       idempotencyKey: runId,
@@ -4424,7 +4627,7 @@ async function abortMessage() {
   if (state.gateway?.connected) {
     try {
       await state.gateway.request("chat.abort", {
-        sessionKey: `${agentPrefix()}${sk}`,
+        sessionKey: prefixedSessionKeyForTab(sk),
         runId: ss.runId,
       });
     } catch (err) {
