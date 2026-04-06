@@ -2196,61 +2196,45 @@ function updateModelLabel() {
   updateDashboard();
 }
 
-// ─── Bar Controls (thinking/reasoning/verbose) ──────────────────────
+// ─── Bar Controls (simple visibility toggles) ───────────────────────
 
-const THINKING_CYCLE = ["", "off", "low", "medium", "high"];
-const REASONING_CYCLE = ["", "off", "on", "stream"];
-const VERBOSE_CYCLE = ["", "off", "on", "full"];
-
-function defaultLabel(defaultVal, key) {
-  const val = (key && key in state.pendingDefaults) ? state.pendingDefaults[key] : defaultVal;
-  return val ? "default (" + val + ")" : "default";
-}
-
-function compactDefaultLabel(defaultVal, key) {
-  // On mobile, just show the value without "default (...)" wrapper
-  const val = (key && key in state.pendingDefaults) ? state.pendingDefaults[key] : defaultVal;
-  return val || "off";
+function onOffLabel(enabled) {
+  return enabled ? "on" : "off";
 }
 
 function updateBarControls() {
-  const thinkEl = document.getElementById("bar-thinking");
+  const toolsEl = document.getElementById("bar-thinking");
   const reasonEl = document.getElementById("bar-reasoning");
-  const verboseEl = document.getElementById("bar-verbose");
-  const mobile = state.isMobile;
+  const stepsEl = document.getElementById("bar-verbose");
 
-  if (thinkEl) {
-    const v = state.thinkingLevel || (mobile ? compactDefaultLabel(state.defaults.thinking, "thinking") : defaultLabel(state.defaults.thinking, "thinking"));
-    thinkEl.textContent = "think: " + v;
-    thinkEl.classList.toggle("active", !!state.thinkingLevel);
+  const showToolUse = shouldShowToolEvents();
+  const showSteps = shouldShowToolOutput();
+  const showReasoning = effectiveReasoningLevel() !== "off";
+
+  if (toolsEl) {
+    toolsEl.textContent = "show tool use: " + onOffLabel(showToolUse);
+    toolsEl.classList.toggle("active", showToolUse);
   }
   if (reasonEl) {
-    // Reasoning is a toggle-style chip: just show the mode, highlight when on
-    const level = state.reasoningLevel || "";
-    const isOn = level === "on" || level === "stream";
-    reasonEl.textContent = isOn ? (level === "stream" ? "reasoning ⚡" : "reasoning ●") : "reasoning";
-    reasonEl.classList.toggle("active", isOn);
+    reasonEl.textContent = "show reasoning: " + onOffLabel(showReasoning);
+    reasonEl.classList.toggle("active", showReasoning);
   }
-  if (verboseEl) {
-    const v = state.verboseLevel || (mobile ? compactDefaultLabel(state.defaults.verbose, "verbose") : defaultLabel(state.defaults.verbose, "verbose"));
-    verboseEl.textContent = "verbose: " + v;
-    verboseEl.classList.toggle("active", !!state.verboseLevel);
+  if (stepsEl) {
+    stepsEl.textContent = "show steps: " + onOffLabel(showSteps);
+    stepsEl.classList.toggle("active", showSteps);
   }
 }
 
-async function cycleBarControl(field, cycle) {
+async function setSessionControl(field, nextValue) {
   if (!state.gateway?.connected) return;
-  const current = state[field] || "";
-  const idx = cycle.indexOf(current);
-  const next = cycle[(idx + 1) % cycle.length];
   const patch = {};
-  patch[field] = next || null; // null = clear override (inherit)
+  patch[field] = nextValue || null;
   try {
     await state.gateway.request("sessions.patch", {
       key: `${agentPrefix()}${state.sessionKey}`,
       ...patch,
     });
-    state[field] = next;
+    state[field] = nextValue;
     updateBarControls();
 
     // Keep streaming UI in sync with button changes.
@@ -2273,12 +2257,27 @@ async function cycleBarControl(field, cycle) {
   }
 }
 
+async function toggleShowToolUse() {
+  const next = shouldShowToolEvents() ? "off" : "on";
+  await setSessionControl("verboseLevel", next);
+}
+
+async function toggleShowSteps() {
+  const next = shouldShowToolOutput() ? "on" : "full";
+  await setSessionControl("verboseLevel", next);
+}
+
+async function toggleShowReasoning() {
+  const next = effectiveReasoningLevel() === "off" ? "on" : "off";
+  await setSessionControl("reasoningLevel", next);
+}
+
 document.getElementById("bar-thinking")?.addEventListener("click", () =>
-  cycleBarControl("thinkingLevel", THINKING_CYCLE));
+  toggleShowToolUse());
 document.getElementById("bar-reasoning")?.addEventListener("click", () =>
-  cycleBarControl("reasoningLevel", REASONING_CYCLE));
+  toggleShowReasoning());
 document.getElementById("bar-verbose")?.addEventListener("click", () =>
-  cycleBarControl("verboseLevel", VERBOSE_CYCLE));
+  toggleShowSteps());
 
 async function openModelPicker(opts = {}) {
   // opts.current: current model id, opts.onSelect: callback(fullId, modal)
@@ -2701,6 +2700,7 @@ async function loadChatHistory(opts) {
           contentBlocks: Array.isArray(m.content) ? m.content : undefined,
           runId,
           hasToolBlocks,
+          isReasoning: m.role === "assistant" && /^reasoning\s*:/i.test((text || "").trim()),
         };
       })
       .filter(m => {
@@ -2912,6 +2912,23 @@ function buildVoiceUrl(voicePath) {
   return `${httpUrl}/${voicePath}`;
 }
 
+function isReasoningAssistantMessage(msg) {
+  if (!msg || msg.role !== "assistant") return false;
+  if (msg.isReasoning) return true;
+  const direct = str(msg.text).trim();
+  if (direct && /^reasoning\s*:/i.test(direct)) return true;
+
+  const blocks = Array.isArray(msg.contentBlocks) ? msg.contentBlocks : [];
+  if (blocks.length > 0) {
+    let merged = "";
+    for (const block of blocks) {
+      if (block?.type === "text" && typeof block.text === "string") merged += block.text;
+    }
+    if (merged.trim() && /^reasoning\s*:/i.test(merged.trim())) return true;
+  }
+  return false;
+}
+
 function renderMessages() {
   // Sync cache with current messages
   if (state.sessionKey && state.messages.length > 0) {
@@ -2920,6 +2937,10 @@ function renderMessages() {
   ui.messagesContainer.innerHTML = "";
   state.streamEl = null;
   for (const msg of state.messages) {
+    if (msg.role === "assistant" && isReasoningAssistantMessage(msg) && effectiveReasoningLevel() === "off") {
+      continue;
+    }
+
     if (msg.role === "toolResult") {
       if (shouldShowToolEvents()) {
         const { label, url } = buildToolLabel(msg.toolName || "", msg.toolArgs || {});
