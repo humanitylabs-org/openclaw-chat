@@ -5286,7 +5286,7 @@ function updateDefaultsPanel() {
     renderSelect("thinking", "Think") +
     renderSelect("verbose", "Verbose");
 
-  html += '<div style="margin-top:6px;font-size:11px;line-height:1.35;color:var(--text-muted);opacity:0.85">Saved live. Affects new runs. Current session may keep its model override.</div>';
+  html += '<div style="margin-top:6px;font-size:11px;line-height:1.35;color:var(--text-muted);opacity:0.85">Saved live. Affects new tabs. Current tab may keep its model override.</div>';
 
   if (hasModelPending()) {
     html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">save</button>';
