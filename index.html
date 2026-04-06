@@ -848,6 +848,7 @@
       padding: 2px 8px;
       line-height: 1.4;
     }
+    .openclaw-tool-error { color: #ff9b9b; }
     .openclaw-tool-active { opacity: 1; }
     .openclaw-tool-link {
       color: var(--text-muted);
@@ -855,6 +856,14 @@
       cursor: pointer;
     }
     .openclaw-tool-link:hover { color: var(--interactive-accent); text-decoration: underline; }
+    .openclaw-tool-output {
+      margin-top: 2px;
+      opacity: 0.92;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 10px;
+      font-family: var(--font-monospace, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    }
     .openclaw-tool-dots {
       display: inline-flex;
       gap: 3px;

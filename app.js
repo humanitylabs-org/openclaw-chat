@@ -232,6 +232,7 @@ class GatewayClient {
     this.connectNonce = null;
     this.backoffMs = 800;
     this.connectTimer = null;
+    this.lastSeq = null;
   }
 
   get connected() {
@@ -272,6 +273,7 @@ class GatewayClient {
     const url = normalizeGatewayUrl(this.opts.url);
     if (!url) { console.error("Invalid gateway URL"); return; }
 
+    this.lastSeq = null;
     this.ws = new WebSocket(url);
     this.ws.addEventListener("open", () => this.queueConnect());
     this.ws.addEventListener("message", (e) => this.handleMessage(e.data));
@@ -372,6 +374,15 @@ class GatewayClient {
         }
         return;
       }
+
+      const seq = typeof msg.seq === "number" ? msg.seq : null;
+      if (seq !== null) {
+        if (this.lastSeq !== null && seq > this.lastSeq + 1) {
+          this.opts.onGap?.({ expected: this.lastSeq + 1, received: seq });
+        }
+        this.lastSeq = this.lastSeq === null ? seq : Math.max(this.lastSeq, seq);
+      }
+
       this.opts.onEvent?.(msg);
     }
   }
@@ -454,7 +465,10 @@ const state = {
   // Stream state (per-session)
   streams: new Map(),
   runToSession: new Map(),
+  finalizedRuns: new Map(),
   streamEl: null,
+  streamAssembler: null,
+  gapRecoveryInFlight: false,
 
   // Attachments
   pendingAttachments: [],
@@ -735,6 +749,10 @@ async function connectToGateway() {
           showPairingBanner();
         }
       },
+      onGap: (info) => {
+        console.warn("Gateway event gap detected:", info);
+        void recoverFromEventGap(info);
+      },
       onEvent: handleGatewayEvent,
     });
 
@@ -887,6 +905,44 @@ function showReconnectBanner(text) {
 function hideReconnectBanner() {
   const banner = document.getElementById("reconnect-banner");
   if (banner) banner.style.display = "none";
+}
+
+async function recoverFromEventGap(info) {
+  if (state.gapRecoveryInFlight) return;
+  state.gapRecoveryInFlight = true;
+
+  const expected = Number.isFinite(info?.expected) ? info.expected : "?";
+  const received = Number.isFinite(info?.received) ? info.received : "?";
+  showReconnectBanner(`Event gap detected (expected ${expected}, got ${received}) — resyncing…`);
+
+  // Drop all in-flight UI streams; source of truth is chat.history after resync.
+  for (const [, ss] of state.streams) {
+    if (ss?.compactTimer) clearTimeout(ss.compactTimer);
+    if (ss?.workingTimer) clearTimeout(ss.workingTimer);
+    if (ss?.runId && state.streamAssembler) state.streamAssembler.drop(ss.runId);
+  }
+  if (state.streamAssembler) state.streamAssembler.clear();
+  state.streams.clear();
+  state.runToSession.clear();
+  state.streamEl = null;
+  setSendButtonStopMode(false);
+  hideBanner();
+  ui.typingIndicator.classList.add("oc-hidden");
+
+  // Invalidate all tab caches so subsequent tab switches are consistent.
+  state.tabCache = {};
+
+  try {
+    await loadChatHistory({ background: true });
+    // Best-effort: warm inactive tabs again after resync.
+    prefetchAllTabs();
+  } catch (err) {
+    console.warn("Gap recovery history refresh failed:", err);
+  } finally {
+    if (state.gateway?.connected) hideReconnectBanner();
+    state.gapRecoveryInFlight = false;
+    setTimeout(() => processQueue(), 250);
+  }
 }
 
 
@@ -2189,6 +2245,22 @@ async function cycleBarControl(field, cycle) {
     });
     state[field] = next;
     updateBarControls();
+
+    // Keep streaming UI in sync with button changes.
+    const ss = state.streams.get(state.sessionKey);
+    if (ss) {
+      if (field === "reasoningLevel" && ss.runId && state.streamAssembler) {
+        const preview = state.streamAssembler.peek(ss.runId, shouldShowThinkingInStream());
+        if (preview !== null) {
+          ss.text = preview;
+          updateStreamBubble();
+        }
+      }
+      if (field === "verboseLevel") {
+        renderMessages();
+        restoreStreamUI();
+      }
+    }
   } catch (err) {
     console.error(`Failed to set ${field}:`, err);
   }
@@ -2716,6 +2788,7 @@ function renderMessages() {
     state.tabCache[state.sessionKey] = { messages: [...state.messages], timestamp: Date.now() };
   }
   ui.messagesContainer.innerHTML = "";
+  state.streamEl = null;
   for (const msg of state.messages) {
     if (msg.role === "assistant") {
       const hasContentTools = msg.contentBlocks?.some(b => b.type === "tool_use" || b.type === "toolCall") || false;
@@ -3057,43 +3130,119 @@ function buildToolLabel(toolName, args) {
   }
 }
 
-function appendToolCall(label, url, active = false) {
-  const el = document.createElement("div");
-  el.className = "openclaw-tool-item" + (active ? " openclaw-tool-active" : "");
+function findToolItemEl(toolCallId) {
+  if (!toolCallId) return null;
+  const items = ui.messagesContainer.querySelectorAll(".openclaw-tool-item[data-tool-call-id]");
+  for (const el of items) {
+    if (el.dataset.toolCallId === toolCallId) return el;
+  }
+  return null;
+}
+
+function setToolDots(el, active) {
+  const existing = el.querySelector(".openclaw-tool-dots");
+  if (!active) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return;
+  const dots = document.createElement("span");
+  dots.className = "openclaw-tool-dots";
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement("span");
+    dot.className = "openclaw-dot";
+    dots.appendChild(dot);
+  }
+  el.appendChild(dots);
+}
+
+function appendToolCall(label, url, active = false, opts = {}) {
+  const toolCallId = str(opts.toolCallId);
+  const detail = str(opts.detail);
+  const isError = !!opts.isError;
+
+  let el = toolCallId ? findToolItemEl(toolCallId) : null;
+  if (!el) {
+    el = document.createElement("div");
+    ui.messagesContainer.appendChild(el);
+  }
+
+  el.className = "openclaw-tool-item" + (active ? " openclaw-tool-active" : "") + (isError ? " openclaw-tool-error" : "");
+  if (toolCallId) el.dataset.toolCallId = toolCallId;
+  else delete el.dataset.toolCallId;
+
+  el.innerHTML = "";
+  const title = document.createElement(url ? "a" : "span");
   if (url) {
-    const link = document.createElement("a");
-    link.href = url;
-    link.textContent = label;
-    link.className = "openclaw-tool-link";
-    link.addEventListener("click", (e) => { e.preventDefault(); window.open(url, "_blank"); });
-    el.appendChild(link);
-  } else {
-    const span = document.createElement("span");
-    span.textContent = label;
-    el.appendChild(span);
+    title.href = url;
+    title.className = "openclaw-tool-link";
+    title.addEventListener("click", (e) => { e.preventDefault(); window.open(url, "_blank"); });
   }
-  if (active) {
-    const dots = document.createElement("span");
-    dots.className = "openclaw-tool-dots";
-    for (let i = 0; i < 3; i++) {
-      const dot = document.createElement("span");
-      dot.className = "openclaw-dot";
-      dots.appendChild(dot);
-    }
-    el.appendChild(dots);
+  title.textContent = label;
+  el.appendChild(title);
+
+  if (detail) {
+    const detailEl = document.createElement("div");
+    detailEl.className = "openclaw-tool-output";
+    detailEl.textContent = detail;
+    el.appendChild(detailEl);
   }
-  ui.messagesContainer.appendChild(el);
+
+  setToolDots(el, active);
   scrollToBottom();
 }
 
 function deactivateLastToolItem() {
   const items = ui.messagesContainer.querySelectorAll(".openclaw-tool-active");
   const last = items[items.length - 1];
-  if (last) {
-    last.classList.remove("openclaw-tool-active");
-    const dots = last.querySelector(".openclaw-tool-dots");
-    if (dots) dots.remove();
+  if (!last) return;
+  last.classList.remove("openclaw-tool-active");
+  setToolDots(last, false);
+}
+
+function summarizeToolResult(result, maxLen = 280) {
+  let text = "";
+
+  if (typeof result === "string") {
+    text = result;
+  } else if (result && typeof result === "object") {
+    if (Array.isArray(result.content)) {
+      const parts = [];
+      for (const c of result.content) {
+        if (!c || typeof c !== "object") continue;
+        if (c.type === "text" && typeof c.text === "string") parts.push(c.text);
+      }
+      text = parts.join("\n");
+    }
+    if (!text && typeof result.text === "string") text = result.text;
+    if (!text) {
+      try { text = JSON.stringify(result); } catch { text = ""; }
+    }
   }
+
+  text = text.replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  return text.length > maxLen ? text.slice(0, maxLen) + "…" : text;
+}
+
+function effectiveReasoningLevel() {
+  return (state.reasoningLevel || state.defaults.reasoning || "off").toLowerCase();
+}
+
+function effectiveVerboseLevel() {
+  return (state.verboseLevel || state.defaults.verbose || "off").toLowerCase();
+}
+
+function shouldShowThinkingInStream() {
+  return effectiveReasoningLevel() === "stream";
+}
+
+function shouldShowToolEvents() {
+  return effectiveVerboseLevel() !== "off";
+}
+
+function shouldShowToolOutput() {
+  return effectiveVerboseLevel() === "full";
 }
 
 // ─── Banner ──────────────────────────────────────────────────────────
@@ -3108,6 +3257,224 @@ function hideBanner() {
 }
 
 // ─── Stream Management ──────────────────────────────────────────────
+
+function resolveFinalAssistantText({ finalText, streamedText, errorMessage }) {
+  const f = str(finalText).trim();
+  if (f) return f;
+  const s = str(streamedText).trim();
+  if (s) return s;
+  const e = str(errorMessage).trim();
+  if (e) return e;
+  return "(no output)";
+}
+
+function composeThinkingAndContent({ thinkingText, contentText, showThinking }) {
+  const parts = [];
+  if (showThinking && str(thinkingText).trim()) parts.push(`[thinking]\n${str(thinkingText).trim()}`);
+  if (str(contentText).trim()) parts.push(str(contentText).trim());
+  return parts.join("\n\n").trim();
+}
+
+function extractThinkingFromMessage(message) {
+  if (!message || typeof message !== "object") return "";
+  const content = message.content;
+  if (!Array.isArray(content)) return "";
+  const parts = [];
+  for (const block of content) {
+    if (!block || typeof block !== "object") continue;
+    if (block.type === "thinking" && typeof block.thinking === "string") parts.push(block.thinking);
+  }
+  return parts.join("\n").trim();
+}
+
+function extractContentFromMessage(message) {
+  if (!message || typeof message !== "object") return "";
+  const content = message.content;
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) {
+    if (message.stopReason === "error" && typeof message.errorMessage === "string") return message.errorMessage.trim();
+    return "";
+  }
+  const parts = [];
+  for (const block of content) {
+    if (!block || typeof block !== "object") continue;
+    if (block.type === "text" && typeof block.text === "string") {
+      const t = block.text.trim();
+      if (t) parts.push(t);
+    }
+  }
+  if (parts.length > 0) return parts.join("\n").trim();
+  if (message.stopReason === "error" && typeof message.errorMessage === "string") return message.errorMessage.trim();
+  return "";
+}
+
+function extractTextBlocksAndSignals(message) {
+  if (!message || typeof message !== "object") {
+    return { textBlocks: [], sawNonTextContentBlocks: false };
+  }
+  const content = message.content;
+  if (typeof content === "string") {
+    const t = content.trim();
+    return { textBlocks: t ? [t] : [], sawNonTextContentBlocks: false };
+  }
+  if (!Array.isArray(content)) {
+    return { textBlocks: [], sawNonTextContentBlocks: false };
+  }
+  const textBlocks = [];
+  let sawNonTextContentBlocks = false;
+  for (const block of content) {
+    if (!block || typeof block !== "object") continue;
+    if (block.type === "text" && typeof block.text === "string") {
+      const t = block.text.trim();
+      if (t) textBlocks.push(t);
+      continue;
+    }
+    if (typeof block.type === "string" && block.type !== "thinking") sawNonTextContentBlocks = true;
+  }
+  return { textBlocks, sawNonTextContentBlocks };
+}
+
+function isDroppedBoundaryTextBlockSubset({ streamedTextBlocks, finalTextBlocks }) {
+  if (!Array.isArray(streamedTextBlocks) || !Array.isArray(finalTextBlocks)) return false;
+  if (finalTextBlocks.length === 0 || finalTextBlocks.length >= streamedTextBlocks.length) return false;
+  if (finalTextBlocks.every((block, i) => streamedTextBlocks[i] === block)) return true;
+  const suffixStart = streamedTextBlocks.length - finalTextBlocks.length;
+  return finalTextBlocks.every((block, i) => streamedTextBlocks[suffixStart + i] === block);
+}
+
+function shouldPreserveBoundaryDroppedText(params) {
+  if (params.boundaryDropMode === "off") return false;
+  const sawNonText = params.boundaryDropMode === "streamed-or-incoming"
+    ? (params.streamedSawNonTextContentBlocks || params.incomingSawNonTextContentBlocks)
+    : params.streamedSawNonTextContentBlocks;
+  if (!sawNonText) return false;
+  return isDroppedBoundaryTextBlockSubset({
+    streamedTextBlocks: params.streamedTextBlocks,
+    finalTextBlocks: params.nextContentBlocks,
+  });
+}
+
+class UiStreamAssembler {
+  constructor() {
+    this.runs = new Map();
+  }
+
+  getOrCreateRun(runId) {
+    let state = this.runs.get(runId);
+    if (!state) {
+      state = {
+        thinkingText: "",
+        contentText: "",
+        contentBlocks: [],
+        sawNonTextContentBlocks: false,
+        displayText: "",
+      };
+      this.runs.set(runId, state);
+    }
+    return state;
+  }
+
+  updateRunState(state, message, showThinking, opts = {}) {
+    const thinkingText = extractThinkingFromMessage(message);
+    const contentText = extractContentFromMessage(message);
+    const { textBlocks, sawNonTextContentBlocks } = extractTextBlocksAndSignals(message);
+
+    if (thinkingText) state.thinkingText = thinkingText;
+    if (contentText) {
+      const nextContentBlocks = textBlocks.length > 0 ? textBlocks : [contentText];
+      if (!shouldPreserveBoundaryDroppedText({
+        boundaryDropMode: opts.boundaryDropMode || "off",
+        streamedSawNonTextContentBlocks: state.sawNonTextContentBlocks,
+        incomingSawNonTextContentBlocks: sawNonTextContentBlocks,
+        streamedTextBlocks: state.contentBlocks,
+        nextContentBlocks,
+      })) {
+        state.contentText = contentText;
+        state.contentBlocks = nextContentBlocks;
+      }
+    }
+    if (sawNonTextContentBlocks) state.sawNonTextContentBlocks = true;
+    state.displayText = composeThinkingAndContent({
+      thinkingText: state.thinkingText,
+      contentText: state.contentText,
+      showThinking,
+    });
+  }
+
+  ingestDelta(runId, message, showThinking) {
+    const state = this.getOrCreateRun(runId);
+    const previousDisplayText = state.displayText;
+    this.updateRunState(state, message, showThinking, { boundaryDropMode: "streamed-or-incoming" });
+    if (!state.displayText || state.displayText === previousDisplayText) return null;
+    return state.displayText;
+  }
+
+  finalize(runId, message, showThinking, errorMessage) {
+    const state = this.getOrCreateRun(runId);
+    const streamedDisplayText = state.displayText;
+    const streamedTextBlocks = [...state.contentBlocks];
+    const streamedSawNonTextContentBlocks = state.sawNonTextContentBlocks;
+
+    this.updateRunState(state, message, showThinking, { boundaryDropMode: "streamed-only" });
+    const finalComposed = state.displayText;
+    const finalText = resolveFinalAssistantText({
+      finalText: streamedSawNonTextContentBlocks && isDroppedBoundaryTextBlockSubset({
+        streamedTextBlocks,
+        finalTextBlocks: state.contentBlocks,
+      })
+        ? streamedDisplayText
+        : finalComposed,
+      streamedText: streamedDisplayText,
+      errorMessage,
+    });
+
+    this.runs.delete(runId);
+    return finalText;
+  }
+
+  drop(runId) {
+    if (!runId) return;
+    this.runs.delete(runId);
+  }
+
+  peek(runId, showThinking) {
+    const state = this.runs.get(runId);
+    if (!state) return null;
+    return composeThinkingAndContent({
+      thinkingText: state.thinkingText,
+      contentText: state.contentText,
+      showThinking,
+    });
+  }
+
+  clear() {
+    this.runs.clear();
+  }
+}
+
+function noteFinalizedRun(runId) {
+  if (!runId) return;
+  state.finalizedRuns.set(runId, Date.now());
+  if (state.finalizedRuns.size <= 200) return;
+  const keepUntil = Date.now() - 10 * 60 * 1000;
+  for (const [id, ts] of state.finalizedRuns) {
+    if (state.finalizedRuns.size <= 150) break;
+    if (ts < keepUntil) state.finalizedRuns.delete(id);
+  }
+  while (state.finalizedRuns.size > 150) {
+    const oldest = state.finalizedRuns.keys().next().value;
+    if (!oldest) break;
+    state.finalizedRuns.delete(oldest);
+  }
+}
+
+if (!state.streamAssembler) state.streamAssembler = new UiStreamAssembler();
+
+function extractDeltaText(msg) {
+  if (typeof msg === "string") return msg;
+  if (!msg) return "";
+  return extractContentFromMessage(msg) || str(msg.text);
+}
 
 function resolveStreamSession(payload) {
   const sk = str(payload.sessionKey);
@@ -3133,7 +3500,10 @@ function finishStream(sessionKey) {
   if (ss) {
     if (ss.compactTimer) clearTimeout(ss.compactTimer);
     if (ss.workingTimer) clearTimeout(ss.workingTimer);
-    state.runToSession.delete(ss.runId);
+    if (ss.runId) {
+      state.runToSession.delete(ss.runId);
+      if (state.streamAssembler) state.streamAssembler.drop(ss.runId);
+    }
     state.streams.delete(sk);
   }
   if (sk === state.sessionKey) {
@@ -3151,9 +3521,15 @@ function finishStream(sessionKey) {
 function restoreStreamUI() {
   const ss = state.streams.get(state.sessionKey);
   if (!ss) return;
-  setSendButtonStopMode(true);
+  setSendButtonStopMode(!ss.background);
   for (const item of ss.items) {
-    if (item.type === "tool") appendToolCall(item.label, item.url);
+    if (item.type === "tool" && shouldShowToolEvents()) {
+      appendToolCall(item.label, item.url, !!item.active, {
+        toolCallId: item.id,
+        detail: shouldShowToolOutput() ? (item.detail || "") : "",
+        isError: !!item.isError,
+      });
+    }
   }
   if (ss.text) {
     updateStreamBubble();
@@ -3171,7 +3547,13 @@ function restoreStreamUI() {
 function updateStreamBubble() {
   const ss = state.streams.get(state.sessionKey);
   const visibleText = ss?.text;
-  if (!visibleText) return;
+  if (!visibleText) {
+    if (state.streamEl) {
+      state.streamEl.remove();
+      state.streamEl = null;
+    }
+    return;
+  }
   if (!state.streamEl) {
     state.streamEl = document.createElement("div");
     state.streamEl.className = "openclaw-msg openclaw-msg-assistant openclaw-streaming";
@@ -3183,22 +3565,6 @@ function updateStreamBubble() {
   textDiv.className = "openclaw-msg-text";
   textDiv.innerHTML = formatMarkdown(visibleText);
   state.streamEl.appendChild(textDiv);
-}
-
-function extractDeltaText(msg) {
-  if (typeof msg === "string") return msg;
-  if (!msg) return "";
-  const content = msg.content ?? msg;
-  if (Array.isArray(content)) {
-    let text = "";
-    for (const block of content) {
-      if (typeof block === "string") text += block;
-      else if (block && typeof block === "object" && "text" in block) text += (text ? "\n" : "") + String(block.text);
-    }
-    return text;
-  }
-  if (typeof content === "string") return content;
-  return str(msg.text);
 }
 
 // ─── Gateway Event Handlers ─────────────────────────────────────────
@@ -3222,6 +3588,34 @@ function matchActiveSessionKey(payload) {
   return null;
 }
 
+function getToolEntry(ss, toolCallId) {
+  if (!ss?.items) return null;
+  if (toolCallId) {
+    for (let i = ss.items.length - 1; i >= 0; i--) {
+      const item = ss.items[i];
+      if (item?.type === "tool" && item.id === toolCallId) return item;
+    }
+  }
+  for (let i = ss.items.length - 1; i >= 0; i--) {
+    const item = ss.items[i];
+    if (item?.type === "tool" && item.active) return item;
+  }
+  return null;
+}
+
+function fallbackStatusLabel(data, phase) {
+  const selected = [str(data?.selectedProvider), str(data?.selectedModel)].filter(Boolean).join("/");
+  const active = [str(data?.activeProvider, str(data?.toProvider)), str(data?.activeModel, str(data?.toModel))].filter(Boolean).join("/");
+  const reason = str(data?.reasonSummary, str(data?.reason));
+  if (phase === "fallback_cleared") {
+    return selected ? `✅ Primary model restored (${selected})` : "✅ Primary model restored";
+  }
+  const target = active || selected || "alternate model";
+  return reason
+    ? `↪️ Fallback to ${target} (${reason})`
+    : `↪️ Fallback to ${target}`;
+}
+
 function handleStreamEvent(payload) {
   const stream = str(payload.stream);
   const eventState = str(payload.state);
@@ -3241,7 +3635,7 @@ function handleStreamEvent(payload) {
     // Auto-create stream for startup/reset events on active session
     // Mark as background so it doesn't block user sends
     const matched = matchActiveSessionKey(payload);
-    if (matched && (stream === "tool" || stream === "lifecycle" || eventState === "lifecycle")) {
+    if (matched && (stream === "tool" || stream === "lifecycle" || stream === "fallback" || eventState === "lifecycle")) {
       const runId = str(payload.runId, str(payloadData?.runId));
       const ss = {
         runId: runId || "startup-" + Date.now(),
@@ -3266,6 +3660,12 @@ function handleStreamEvent(payload) {
   }
 
   const ss = state.streams.get(sessionKey);
+  const incomingRunId = str(payload.runId, str(payloadData?.runId));
+  if (incomingRunId) {
+    ss.runId = incomingRunId;
+    state.runToSession.set(incomingRunId, sessionKey);
+  }
+
   const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
 
   if (eventState === "assistant") {
@@ -3292,23 +3692,68 @@ function handleStreamEvent(payload) {
 
   const toolName = str(payloadData?.name, str(payloadData?.toolName, str(payload.toolName, str(payload.name))));
   const phase = str(payloadData?.phase, str(payload.phase));
+  const toolCallId = str(payloadData?.toolCallId, str(payload.toolCallId));
+
+  if (stream === "fallback" || (stream === "lifecycle" && (phase === "fallback" || phase === "fallback_cleared"))) {
+    const label = fallbackStatusLabel(payloadData, phase);
+    const fallbackId = `fallback-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    ss.items.push({ type: "tool", id: fallbackId, label, active: false, detail: "", isError: false });
+    if (isActiveTab) {
+      if (shouldShowToolEvents()) appendToolCall(label, undefined, false, { toolCallId: fallbackId });
+      showBanner(label);
+      setTimeout(() => hideBanner(), 3500);
+    }
+    return;
+  }
 
   if ((stream === "tool" || toolName) && (phase === "start" || eventState === "tool_use")) {
     if (ss.compactTimer) { clearTimeout(ss.compactTimer); ss.compactTimer = null; }
     if (ss.workingTimer) { clearTimeout(ss.workingTimer); ss.workingTimer = null; }
     if (ss.text) ss.splitPoints.push(ss.text.length);
 
+    const resolvedToolCallId = toolCallId || `tool-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const { label, url } = buildToolLabel(toolName, (payloadData?.args || payload.args));
     ss.toolCalls.push(label);
-    ss.items.push({ type: "tool", label, url });
+    const item = { type: "tool", id: resolvedToolCallId, label, url, active: true, detail: "", isError: false };
+    ss.items.push(item);
     if (isActiveTab) {
-      appendToolCall(label, url, true);
-      if (typingText) typingText.textContent = label;
+      if (shouldShowToolEvents()) appendToolCall(label, url, true, { toolCallId: resolvedToolCallId });
+      if (typingText) typingText.textContent = shouldShowToolEvents() ? label : "Thinking";
       ui.typingIndicator.classList.remove("oc-hidden");
     }
+  } else if ((stream === "tool" || toolName) && phase === "update") {
+    const detail = summarizeToolResult(payloadData?.partialResult);
+    const item = getToolEntry(ss, toolCallId);
+    if (item && detail) item.detail = detail;
+    if (item) item.active = true;
+    if (isActiveTab && shouldShowToolEvents() && shouldShowToolOutput() && item && detail) {
+      appendToolCall(item.label, item.url, true, {
+        toolCallId: item.id,
+        detail,
+        isError: !!item.isError,
+      });
+      ui.typingIndicator.classList.remove("oc-hidden");
+      if (typingText) typingText.textContent = item.label;
+    }
   } else if ((stream === "tool" || toolName) && phase === "result") {
+    const item = getToolEntry(ss, toolCallId);
+    const detail = shouldShowToolOutput() ? summarizeToolResult(payloadData?.result) : "";
+    const isError = !!payloadData?.isError;
+    if (item) {
+      item.active = false;
+      if (detail) item.detail = detail;
+      item.isError = isError;
+    }
     if (isActiveTab) {
-      deactivateLastToolItem();
+      if (shouldShowToolEvents() && item) {
+        appendToolCall(item.label, item.url, false, {
+          toolCallId: item.id,
+          detail: item.detail || "",
+          isError,
+        });
+      } else {
+        deactivateLastToolItem();
+      }
       if (typingText) typingText.textContent = "Thinking";
       ui.typingIndicator.classList.remove("oc-hidden");
       scrollToBottom();
@@ -3318,12 +3763,30 @@ function handleStreamEvent(payload) {
       if (isActiveTab) setTimeout(() => hideBanner(), 2000);
     } else {
       ss.toolCalls.push("Compacting memory");
-      ss.items.push({ type: "tool", label: "Compacting memory" });
+      ss.items.push({
+        type: "tool",
+        id: `compact-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        label: "Compacting memory",
+        active: false,
+        detail: "",
+        isError: false,
+      });
       if (isActiveTab) {
         appendToolCall("Compacting memory");
         ui.typingIndicator.classList.add("oc-hidden");
         showBanner("Compacting context...");
       }
+    }
+  } else if (stream === "lifecycle") {
+    if (!isActiveTab) return;
+    if (phase === "start") {
+      if (typingText) typingText.textContent = "Thinking";
+      ui.typingIndicator.classList.remove("oc-hidden");
+    } else if (phase === "end") {
+      if (typingText) typingText.textContent = "Thinking";
+    } else if (phase === "error") {
+      if (typingText) typingText.textContent = "Error";
+      ui.typingIndicator.classList.remove("oc-hidden");
     }
   }
 }
@@ -3367,8 +3830,17 @@ function handleChatEvent(payload) {
   const ss = state.streams.get(eventSessionKey);
   const isActiveTab = eventSessionKey === state.sessionKey;
   const chatState = str(payload.state);
+  const runId = str(payload.runId, str(ss?.runId));
+
+  if (runId && state.finalizedRuns.has(runId) && (chatState === "delta" || chatState === "final")) {
+    return;
+  }
 
   if (!ss && (chatState === "final" || chatState === "aborted" || chatState === "error")) {
+    if (runId) {
+      noteFinalizedRun(runId);
+      if (state.streamAssembler) state.streamAssembler.drop(runId);
+    }
     if (isActiveTab) {
       hideBanner();
       loadChatHistory();
@@ -3391,7 +3863,9 @@ function handleChatEvent(payload) {
     if (ss.compactTimer) { clearTimeout(ss.compactTimer); ss.compactTimer = null; }
     if (ss.workingTimer) { clearTimeout(ss.workingTimer); ss.workingTimer = null; }
     ss.lastDeltaTime = Date.now();
-    const text = extractDeltaText(payload.message);
+    const text = runId && state.streamAssembler
+      ? state.streamAssembler.ingestDelta(runId, payload.message, shouldShowThinkingInStream())
+      : extractDeltaText(payload.message);
     if (text) {
       ss.text = text;
       if (isActiveTab) {
@@ -3401,6 +3875,15 @@ function handleChatEvent(payload) {
       }
     }
   } else if (chatState === "final") {
+    let finalText = "";
+    if (runId && state.streamAssembler) {
+      finalText = state.streamAssembler.finalize(runId, payload.message, shouldShowThinkingInStream(), str(payload.errorMessage));
+    } else {
+      finalText = extractDeltaText(payload.message) || str(payload.errorMessage);
+    }
+    if (finalText && finalText !== "(no output)") ss && (ss.text = finalText);
+    if (runId) noteFinalizedRun(runId);
+
     // Upgrade tab title from assistant's response (better than user's choppy words)
     if (ss?.text) {
       const sk = eventSessionKey.startsWith(agentPrefix()) ? eventSessionKey.slice(agentPrefix().length) : eventSessionKey;
@@ -3420,12 +3903,19 @@ function handleChatEvent(payload) {
       delete state.tabCache[eventSessionKey];
     }
   } else if (chatState === "aborted") {
+    if (runId && state.streamAssembler) {
+      const partial = state.streamAssembler.finalize(runId, payload.message, shouldShowThinkingInStream(), str(payload.errorMessage));
+      if (partial && partial !== "(no output)") ss && (ss.text = partial);
+    }
+    if (runId) noteFinalizedRun(runId);
     if (isActiveTab && ss?.text) {
       state.messages.push({ role: "assistant", text: ss.text, images: [], timestamp: Date.now() });
     }
     finishStream(eventSessionKey);
     if (isActiveTab) renderMessages();
   } else if (chatState === "error") {
+    if (runId && state.streamAssembler) state.streamAssembler.drop(runId);
+    if (runId) noteFinalizedRun(runId);
     if (isActiveTab) {
       state.messages.push({
         role: "assistant",
@@ -3496,6 +3986,7 @@ async function sendMessage(text) {
     lastDeltaTime: 0,
     compactTimer: null,
     workingTimer: null,
+    background: false,
   };
   state.streams.set(sendSessionKey, ss);
   state.runToSession.set(runId, sendSessionKey);
@@ -3530,6 +4021,7 @@ async function sendMessage(text) {
     state.messages.push({ role: "assistant", text: `Error: ${err}`, images: [], timestamp: Date.now() });
     state.streams.delete(sendSessionKey);
     state.runToSession.delete(runId);
+    if (state.streamAssembler) state.streamAssembler.drop(runId);
     setSendButtonStopMode(false);
     renderMessages();
   } finally {
