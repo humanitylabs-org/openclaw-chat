@@ -5287,7 +5287,7 @@ function updateDefaultsPanel() {
     renderSelect("verbose", "Verbose");
 
   if (hasModelPending()) {
-    html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">reset to apply</button>';
+    html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">save</button>';
   }
 
   el.innerHTML = html;
@@ -5541,12 +5541,6 @@ function hasPendingDefaults() {
 async function applyPendingDefaults() {
   if (!hasModelPending() || !state.gateway?.connected) return;
 
-  const ok = await confirmClose(
-    "Reset to apply?",
-    "This will reset the current session so the new model settings take effect."
-  );
-  if (!ok) return;
-
   const configKeys = {
     thinking: "thinkingDefault",
     verbose: "verboseDefault",
@@ -5555,7 +5549,7 @@ async function applyPendingDefaults() {
   const applyBtn = document.getElementById("hud-defaults-apply");
   if (applyBtn) {
     applyBtn.disabled = true;
-    applyBtn.textContent = "applying…";
+    applyBtn.textContent = "saving…";
   }
 
   try {
@@ -5579,7 +5573,7 @@ async function applyPendingDefaults() {
     }
 
     if (Object.keys(agentDefaultsPatch).length === 0) {
-      if (applyBtn) { applyBtn.disabled = false; applyBtn.textContent = "reset to apply"; }
+      if (applyBtn) { applyBtn.disabled = false; applyBtn.textContent = "save"; }
       return;
     }
 
@@ -5598,22 +5592,6 @@ async function applyPendingDefaults() {
     // Ensure local defaults stay normalized against current primary.
     state.defaults.fallbacks = normalizeFallbacks(state.defaults.fallbacks, state.defaults.model);
 
-    // Reset active session so new model applies
-    const activeTab = state.sessionKey || "main";
-    delete state.tabCache[activeTab];
-    state.messages = [];
-    ui.messagesContainer.innerHTML = "";
-    showLoading("Resetting…");
-    try {
-      await state.gateway.request("chat.send", {
-        sessionKey: `${agentPrefix()}${activeTab}`,
-        message: "/reset",
-        deliver: false,
-        idempotencyKey: "reset-defaults-" + Date.now(),
-      });
-    } catch { /* gateway may have restarted */ }
-    hideLoading();
-
     // If gateway didn't restart within 2s, clear the flag
     setTimeout(() => { state.gatewayRestarting = false; }, 2000);
 
@@ -5627,7 +5605,7 @@ async function applyPendingDefaults() {
     console.warn("Failed to apply defaults:", err);
     if (applyBtn) {
       applyBtn.disabled = false;
-      applyBtn.textContent = "reset to apply";
+      applyBtn.textContent = "save";
     }
   }
 }
