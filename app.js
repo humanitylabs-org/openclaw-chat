@@ -1838,8 +1838,9 @@ function processQueue() {
   const key = state.sessionKey;
   const queue = state.messageQueue[key];
   if (!queue || queue.length === 0) return;
-  // Don't process if still streaming or sending
-  if (state.streams.has(key) || state.sending) {
+  // Don't process if still streaming, transcript indicates an in-flight run,
+  // or we're already sending.
+  if (state.streams.has(key) || state.historyInFlight[key] || state.sending) {
     // Retry after current send/stream completes
     setTimeout(() => processQueue(), 800);
     return;
@@ -2761,12 +2762,18 @@ async function loadChatHistory(opts) {
 
 function stopHistoryInFlightPoll(sessionKey) {
   if (state.historyPollSession && sessionKey && state.historyPollSession !== sessionKey) return;
+  const endedSession = state.historyPollSession;
   if (state.historyPollTimer) {
     clearInterval(state.historyPollTimer);
     state.historyPollTimer = null;
   }
   state.historyPollSession = "";
   state.historyPollSettled = 0;
+
+  // When transcript polling settles for the active tab, try draining queue.
+  if (endedSession && endedSession === state.sessionKey) {
+    setTimeout(() => processQueue(), 50);
+  }
 }
 
 function startHistoryInFlightPoll(sessionKey) {
