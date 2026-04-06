@@ -2237,6 +2237,12 @@ async function setSessionControl(field, nextValue) {
     state[field] = nextValue;
     updateBarControls();
 
+    // Visibility toggles should affect full history immediately,
+    // even when no stream is currently active.
+    if (field === "verboseLevel" || field === "reasoningLevel") {
+      renderMessages();
+    }
+
     // Keep streaming UI in sync with button changes.
     const ss = state.streams.get(state.sessionKey);
     if (ss) {
@@ -2248,7 +2254,6 @@ async function setSessionControl(field, nextValue) {
         }
       }
       if (field === "verboseLevel") {
-        renderMessages();
         restoreStreamUI();
       }
     }
