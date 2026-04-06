@@ -2200,6 +2200,8 @@ function updateModelLabel() {
 
 const STEPS_CYCLE = ["off", "on", "full"];
 const THINKING_CYCLE = ["off", "low", "medium", "high", "xhigh"];
+const STATUS_WORKING = "Working";
+const STATUS_STILL_WORKING = "Still working";
 
 function effectiveThinkingLevel() {
   const raw = (state.thinkingLevel || state.defaults.thinking || "off").toLowerCase();
@@ -3738,7 +3740,7 @@ function finishStream(sessionKey) {
     setSendButtonStopMode(false);
     ui.typingIndicator.classList.add("oc-hidden");
     const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
-    if (typingText) typingText.textContent = "Thinking";
+    if (typingText) typingText.textContent = STATUS_WORKING;
   }
   // Always try to drain queue for the finished session (even if user switched tabs)
   setTimeout(() => processQueue(), 500);
@@ -3760,11 +3762,11 @@ function restoreStreamUI() {
   if (ss.text) {
     updateStreamBubble();
     const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
-    if (typingText) typingText.textContent = "Working";
+    if (typingText) typingText.textContent = STATUS_WORKING;
     ui.typingIndicator.classList.remove("oc-hidden");
   } else {
     const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
-    if (typingText) typingText.textContent = "Thinking";
+    if (typingText) typingText.textContent = STATUS_WORKING;
     ui.typingIndicator.classList.remove("oc-hidden");
   }
   scrollToBottom();
@@ -3911,7 +3913,7 @@ function handleStreamEvent(payload) {
     }
   } else if (eventState === "lifecycle") {
     if (!ss.text && isActiveTab && typingText) {
-      typingText.textContent = "Thinking";
+      typingText.textContent = STATUS_WORKING;
       ui.typingIndicator.classList.remove("oc-hidden");
     }
   }
@@ -3944,7 +3946,7 @@ function handleStreamEvent(payload) {
     ss.items.push(item);
     if (isActiveTab) {
       if (shouldShowToolEvents()) appendToolCall(label, url, true, { toolCallId: resolvedToolCallId });
-      if (typingText) typingText.textContent = shouldShowToolEvents() ? label : "Thinking";
+      if (typingText) typingText.textContent = shouldShowToolEvents() ? label : STATUS_WORKING;
       ui.typingIndicator.classList.remove("oc-hidden");
     }
   } else if ((stream === "tool" || toolName) && phase === "update") {
@@ -3980,7 +3982,7 @@ function handleStreamEvent(payload) {
       } else {
         deactivateLastToolItem();
       }
-      if (typingText) typingText.textContent = "Thinking";
+      if (typingText) typingText.textContent = STATUS_WORKING;
       ui.typingIndicator.classList.remove("oc-hidden");
       scrollToBottom();
     }
@@ -4006,10 +4008,10 @@ function handleStreamEvent(payload) {
   } else if (stream === "lifecycle") {
     if (!isActiveTab) return;
     if (phase === "start") {
-      if (typingText) typingText.textContent = "Thinking";
+      if (typingText) typingText.textContent = STATUS_WORKING;
       ui.typingIndicator.classList.remove("oc-hidden");
     } else if (phase === "end") {
-      if (typingText) typingText.textContent = "Thinking";
+      if (typingText) typingText.textContent = STATUS_WORKING;
     } else if (phase === "error") {
       if (typingText) typingText.textContent = "Error";
       ui.typingIndicator.classList.remove("oc-hidden");
@@ -4220,7 +4222,7 @@ async function sendMessage(text) {
   setSendButtonStopMode(true);
   ui.typingIndicator.classList.remove("oc-hidden");
   const thinkText = ui.typingIndicator.querySelector(".openclaw-typing-text");
-  if (thinkText) thinkText.textContent = "Thinking";
+  if (thinkText) thinkText.textContent = STATUS_WORKING;
   scrollToBottom();
 
   ss.compactTimer = setTimeout(() => {
@@ -4228,7 +4230,7 @@ async function sendMessage(text) {
     if (current?.runId === runId && !current.text) {
       if (state.sessionKey === sendSessionKey) {
         const tt = ui.typingIndicator.querySelector(".openclaw-typing-text");
-        if (tt && tt.textContent === "Thinking") tt.textContent = "Still thinking";
+        if (tt && tt.textContent === STATUS_WORKING) tt.textContent = STATUS_STILL_WORKING;
       }
     }
   }, 15000);
