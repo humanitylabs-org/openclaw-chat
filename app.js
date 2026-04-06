@@ -2196,13 +2196,32 @@ function updateModelLabel() {
   updateDashboard();
 }
 
-// ─── Bar Controls (steps visibility) ────────────────────────────────
+// ─── Bar Controls (thinking effort + steps visibility) ──────────────
 
 const STEPS_CYCLE = ["off", "on", "full"];
+const THINKING_CYCLE = ["off", "low", "medium", "high", "xhigh"];
+
+function effectiveThinkingLevel() {
+  const raw = (state.thinkingLevel || state.defaults.thinking || "off").toLowerCase();
+  if (raw === "minimal") return "low";
+  return raw;
+}
+
+function formatThinkingLevel(level) {
+  if (level === "xhigh") return "very high";
+  return level || "off";
+}
 
 function updateBarControls() {
+  const thinkingEl = document.getElementById("bar-thinking");
   const stepsEl = document.getElementById("bar-verbose");
+  const thinkingMode = effectiveThinkingLevel();
   const mode = effectiveVerboseLevel();
+
+  if (thinkingEl) {
+    thinkingEl.textContent = "thinking effort: " + formatThinkingLevel(thinkingMode);
+    thinkingEl.classList.toggle("active", thinkingMode !== "off");
+  }
 
   if (stepsEl) {
     stepsEl.textContent = "show steps: " + mode;
@@ -2253,6 +2272,16 @@ async function cycleShowSteps() {
   const next = STEPS_CYCLE[(idx + 1) % STEPS_CYCLE.length];
   await setSessionControl("verboseLevel", next);
 }
+
+async function cycleThinkingEffort() {
+  const current = effectiveThinkingLevel();
+  const idx = THINKING_CYCLE.indexOf(current);
+  const next = THINKING_CYCLE[(idx + 1) % THINKING_CYCLE.length];
+  await setSessionControl("thinkingLevel", next);
+}
+
+document.getElementById("bar-thinking")?.addEventListener("click", () =>
+  cycleThinkingEffort());
 
 document.getElementById("bar-verbose")?.addEventListener("click", () =>
   cycleShowSteps());
