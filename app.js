@@ -6160,10 +6160,15 @@ function updateDefaultsPanel() {
     renderSelect("thinking", "Thinking Effort") +
     renderSelect("verbose", "Show Steps");
 
-  html += '<div style="margin-top:6px;font-size:11px;line-height:1.35;color:var(--text-muted);opacity:0.85">Saved live. Affects new tabs. Current tab may keep its model override.</div>';
+  const hasPending = hasModelPending();
+  const statusLine = hasPending
+    ? 'Changes are staged. Click Save to apply. Applies to new tabs. Current tab keeps its existing settings until reset/new tab.'
+    : 'Defaults are saved. Applies to new tabs. Current tab keeps its existing settings until reset/new tab.';
 
-  if (hasModelPending()) {
-    html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">save</button>';
+  html += '<div style="margin-top:6px;font-size:11px;line-height:1.35;color:var(--text-muted);opacity:0.85">' + statusLine + '</div>';
+
+  if (hasPending) {
+    html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">Save</button>';
   }
 
   el.innerHTML = html;
