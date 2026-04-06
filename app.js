@@ -466,6 +466,7 @@ const state = {
   streams: new Map(),
   runToSession: new Map(),
   finalizedRuns: new Map(),
+  toolTraceLog: {}, // { [sessionKey]: [{ runId, timestamp, items[] }] }
   streamEl: null,
   streamAssembler: null,
   gapRecoveryInFlight: false,
@@ -1944,6 +1945,7 @@ function updateMobileTabLabelInstant(tab) {
 async function resetTab(tab) {
   if (!state.gateway?.connected) return;
   delete state.tabCache[tab.key];
+  clearToolTrace(tab.key);
   const isHome = tab.key === "main";
   const title = isHome ? "Reset Home?" : `Reset "${tab.label}"?`;
   const msg = "You will be briefly disconnected while resetting. Just wait a few moments.";
@@ -1976,6 +1978,7 @@ async function closeTab(tab, currentKey) {
   if (!ok) return;
   state.tabDeleteInProgress = true;
   delete state.tabCache[tab.key];
+  clearToolTrace(tab.key);
   finishStream(tab.key);
 
   // Actually delete the session on the gateway
@@ -2659,6 +2662,23 @@ async function loadChatHistory(opts) {
       }
     }
 
+    // Re-attach persisted tool traces for this session so verbose history remains visible.
+    const traces = state.toolTraceLog[targetKey] || [];
+    if (traces.length > 0) {
+      for (const trace of traces) {
+        if (!trace?.runId || !Array.isArray(trace.items) || trace.items.length === 0) continue;
+        parsed.push({
+          role: "assistant",
+          text: "",
+          images: [],
+          timestamp: Number.isFinite(trace.timestamp) ? trace.timestamp : Date.now(),
+          toolTrace: trace.items,
+          syntheticToolRunId: trace.runId,
+        });
+      }
+      parsed.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    }
+
     // Cache the result
     state.tabCache[targetKey] = { messages: parsed, timestamp: Date.now() };
 
@@ -2790,6 +2810,19 @@ function renderMessages() {
   ui.messagesContainer.innerHTML = "";
   state.streamEl = null;
   for (const msg of state.messages) {
+    if (Array.isArray(msg.toolTrace)) {
+      if (shouldShowToolEvents()) {
+        msg.toolTrace.forEach((item, idx) => {
+          appendToolCall(item.label, item.url || undefined, false, {
+            toolCallId: `trace-${msg.syntheticToolRunId || "run"}-${idx}`,
+            detail: shouldShowToolOutput() ? (item.detail || "") : "",
+            isError: !!item.isError,
+          });
+        });
+      }
+      continue;
+    }
+
     if (msg.role === "assistant") {
       const hasContentTools = msg.contentBlocks?.some(b => b.type === "tool_use" || b.type === "toolCall") || false;
       if (hasContentTools && msg.contentBlocks) {
@@ -2813,8 +2846,10 @@ function renderMessages() {
               ui.messagesContainer.appendChild(bubble);
             }
           } else if (block.type === "tool_use" || block.type === "toolCall") {
-            const { label, url } = buildToolLabel(block.name || "", block.input || block.arguments || {});
-            appendToolCall(label, url);
+            if (shouldShowToolEvents()) {
+              const { label, url } = buildToolLabel(block.name || "", block.input || block.arguments || {});
+              appendToolCall(label, url);
+            }
           }
         }
         continue;
@@ -3468,6 +3503,38 @@ function noteFinalizedRun(runId) {
   }
 }
 
+function persistToolTrace(sessionKey, runId, items) {
+  const sk = str(sessionKey);
+  const rid = str(runId);
+  if (!sk || !rid || !Array.isArray(items) || items.length === 0) return;
+
+  const toolItems = items
+    .filter((item) => item?.type === "tool" && str(item.label).trim())
+    .map((item) => ({
+      label: str(item.label),
+      url: str(item.url),
+      detail: str(item.detail),
+      isError: !!item.isError,
+    }));
+  if (toolItems.length === 0) return;
+
+  const list = state.toolTraceLog[sk] || [];
+  const existingIdx = list.findIndex((t) => t?.runId === rid);
+  const entry = { runId: rid, timestamp: Date.now(), items: toolItems };
+  if (existingIdx >= 0) list[existingIdx] = entry;
+  else list.push(entry);
+
+  // keep recent traces only
+  if (list.length > 30) list.splice(0, list.length - 30);
+  state.toolTraceLog[sk] = list;
+}
+
+function clearToolTrace(sessionKey) {
+  const sk = str(sessionKey);
+  if (!sk) return;
+  delete state.toolTraceLog[sk];
+}
+
 if (!state.streamAssembler) state.streamAssembler = new UiStreamAssembler();
 
 function extractDeltaText(msg) {
@@ -3883,6 +3950,7 @@ function handleChatEvent(payload) {
     }
     if (finalText && finalText !== "(no output)") ss && (ss.text = finalText);
     if (runId) noteFinalizedRun(runId);
+    if (ss?.items?.length) persistToolTrace(eventSessionKey, runId, ss.items);
 
     // Upgrade tab title from assistant's response (better than user's choppy words)
     if (ss?.text) {
@@ -3908,6 +3976,7 @@ function handleChatEvent(payload) {
       if (partial && partial !== "(no output)") ss && (ss.text = partial);
     }
     if (runId) noteFinalizedRun(runId);
+    if (ss?.items?.length) persistToolTrace(eventSessionKey, runId, ss.items);
     if (isActiveTab && ss?.text) {
       state.messages.push({ role: "assistant", text: ss.text, images: [], timestamp: Date.now() });
     }
@@ -3916,6 +3985,7 @@ function handleChatEvent(payload) {
   } else if (chatState === "error") {
     if (runId && state.streamAssembler) state.streamAssembler.drop(runId);
     if (runId) noteFinalizedRun(runId);
+    if (ss?.items?.length) persistToolTrace(eventSessionKey, runId, ss.items);
     if (isActiveTab) {
       state.messages.push({
         role: "assistant",
