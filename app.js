@@ -416,6 +416,7 @@ const state = {
   // Agent/session defaults (from config)
   defaults: {
     model: "",
+    fallbacks: [],
     thinking: "",
     reasoning: "",
     verbose: "",
@@ -903,7 +904,14 @@ async function loadDefaults() {
       try { parsed = JSON.parse(result.raw); } catch {}
     }
     const ad = parsed?.agents?.defaults || cfg?.agents?.defaults || {};
-    const model = ad?.model?.primary || ad?.model || "";
+    const modelCfg = ad?.model;
+    const model = typeof modelCfg === "string"
+      ? modelCfg
+      : (modelCfg?.primary || "");
+    const fallbacks = normalizeFallbacks(
+      Array.isArray(modelCfg?.fallbacks) ? modelCfg.fallbacks : [],
+      model
+    );
     const thinking = ad?.thinkingDefault || "";
     const reasoning = ad?.reasoningDefault || "";
     const verbose = ad?.verboseDefault || "";
@@ -920,6 +928,7 @@ async function loadDefaults() {
 
     state.defaults = {
       model: typeof model === "string" ? model : "",
+      fallbacks,
       thinking,
       reasoning,
       verbose,
@@ -2043,6 +2052,27 @@ function shortModelName(fullId) {
   return model.replace(/^claude-/, "");
 }
 
+function normalizeFallbacks(list, primaryModel = "") {
+  const out = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(list) ? list : []) {
+    if (typeof raw !== "string") continue;
+    const id = raw.trim();
+    if (!id) continue;
+    if (primaryModel && id === primaryModel) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+function sameStringArray(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  return a.every((v, i) => v === b[i]);
+}
+
 function updateModelLabel() {
   if (!state.currentModel) {
     ui.modelLabel.textContent = "";
@@ -2163,6 +2193,183 @@ async function openModelPicker(opts = {}) {
     box.innerHTML = "<h3>No models available</h3>";
   }
 
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+}
+
+async function openFallbackPicker(opts = {}) {
+  let models = [];
+  try {
+    const result = await state.gateway?.request("models.list", {});
+    models = result?.models || [];
+  } catch { models = []; }
+
+  const primaryModel = opts.primary || state.pendingDefaults.model || state.defaults.model || "";
+  const selected = normalizeFallbacks(opts.current || [], primaryModel);
+
+  const allModels = models
+    .map((m) => ({
+      provider: m.provider || "unknown",
+      id: m.id || "",
+      name: m.name || m.id || "",
+      fullId: `${m.provider}/${m.id}`,
+    }))
+    .filter((m) => !!m.id && m.fullId !== primaryModel)
+    .sort((a, b) => `${a.provider}/${a.id}`.localeCompare(`${b.provider}/${b.id}`));
+
+  const modal = document.createElement("div");
+  modal.className = "modal-overlay";
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+
+  const box = document.createElement("div");
+  box.className = "modal";
+
+  function render() {
+    box.innerHTML = "";
+
+    const title = document.createElement("h3");
+    title.textContent = "Fallbacks";
+    box.appendChild(title);
+
+    const selectedLabel = document.createElement("div");
+    selectedLabel.className = "openclaw-picker-footer";
+    selectedLabel.style.marginTop = "0";
+    selectedLabel.textContent = "Order matters: top runs first";
+    box.appendChild(selectedLabel);
+
+    const selectedList = document.createElement("div");
+    selectedList.className = "openclaw-picker-list";
+
+    if (selected.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "openclaw-picker-row";
+      empty.style.opacity = "0.65";
+      empty.textContent = "No fallbacks selected";
+      selectedList.appendChild(empty);
+    } else {
+      selected.forEach((fullId, idx) => {
+        const row = document.createElement("div");
+        row.className = "openclaw-picker-row active";
+
+        const left = document.createElement("div");
+        left.className = "openclaw-picker-row-left";
+        left.innerHTML = `<span class="openclaw-picker-dot">${idx + 1}.</span><span>${shortModelName(fullId)}</span>`;
+
+        const right = document.createElement("div");
+        right.className = "openclaw-picker-row-right";
+
+        const upBtn = document.createElement("button");
+        upBtn.className = "openclaw-picker-back";
+        upBtn.style.padding = "2px 8px";
+        upBtn.style.fontSize = "12px";
+        upBtn.textContent = "↑";
+        upBtn.disabled = idx === 0;
+        upBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (idx <= 0) return;
+          const tmp = selected[idx - 1];
+          selected[idx - 1] = selected[idx];
+          selected[idx] = tmp;
+          render();
+        });
+
+        const downBtn = document.createElement("button");
+        downBtn.className = "openclaw-picker-back";
+        downBtn.style.padding = "2px 8px";
+        downBtn.style.fontSize = "12px";
+        downBtn.textContent = "↓";
+        downBtn.disabled = idx === selected.length - 1;
+        downBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (idx >= selected.length - 1) return;
+          const tmp = selected[idx + 1];
+          selected[idx + 1] = selected[idx];
+          selected[idx] = tmp;
+          render();
+        });
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "openclaw-picker-back";
+        removeBtn.style.padding = "2px 8px";
+        removeBtn.style.fontSize = "12px";
+        removeBtn.textContent = "remove";
+        removeBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selected.splice(idx, 1);
+          render();
+        });
+
+        right.appendChild(upBtn);
+        right.appendChild(downBtn);
+        right.appendChild(removeBtn);
+
+        row.appendChild(left);
+        row.appendChild(right);
+        selectedList.appendChild(row);
+      });
+    }
+
+    box.appendChild(selectedList);
+
+    const availableLabel = document.createElement("div");
+    availableLabel.className = "openclaw-picker-footer";
+    availableLabel.textContent = "Available models";
+    box.appendChild(availableLabel);
+
+    const availableList = document.createElement("div");
+    availableList.className = "openclaw-picker-list";
+
+    for (const m of allModels) {
+      const isSelected = selected.includes(m.fullId);
+      const row = document.createElement("div");
+      row.className = `openclaw-picker-row${isSelected ? " active" : ""}`;
+      row.innerHTML = `
+        <div class="openclaw-picker-row-left">
+          ${isSelected ? '<span class="openclaw-picker-dot">● </span>' : ""}
+          <span>${m.name}</span>
+        </div>
+        <div class="openclaw-picker-row-right">
+          <span class="openclaw-picker-meta">${m.provider}</span>
+        </div>
+      `;
+      row.addEventListener("click", () => {
+        const i = selected.indexOf(m.fullId);
+        if (i >= 0) selected.splice(i, 1);
+        else selected.push(m.fullId);
+        render();
+      });
+      availableList.appendChild(row);
+    }
+
+    box.appendChild(availableList);
+
+    const actions = document.createElement("div");
+    actions.style.display = "flex";
+    actions.style.gap = "8px";
+    actions.style.marginTop = "10px";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "openclaw-picker-back";
+    cancelBtn.style.flex = "1";
+    cancelBtn.style.padding = "8px 10px";
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.addEventListener("click", () => modal.remove());
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "hud-defaults-apply";
+    saveBtn.style.flex = "1";
+    saveBtn.style.margin = "0";
+    saveBtn.textContent = "Save";
+    saveBtn.addEventListener("click", () => {
+      opts.onSave?.(selected.slice(), modal);
+    });
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(saveBtn);
+    box.appendChild(actions);
+  }
+
+  render();
   modal.appendChild(box);
   document.body.appendChild(modal);
 }
@@ -4989,6 +5196,16 @@ function updateDefaultsPanel() {
   const pendingModel = state.pendingDefaults.model;
   const modelDisplay = shortModelName(pendingModel || d.model);
   const modelPending = pendingModel && pendingModel !== d.model;
+  const pendingPrimary = pendingModel || d.model;
+  const defaultFallbacks = normalizeFallbacks(d.fallbacks || [], d.model);
+  const effectiveFallbacks = normalizeFallbacks(
+    ("fallbacks" in state.pendingDefaults) ? state.pendingDefaults.fallbacks : defaultFallbacks,
+    pendingPrimary
+  );
+  const fallbacksPending = "fallbacks" in state.pendingDefaults;
+  const fallbackDisplay = effectiveFallbacks.length
+    ? effectiveFallbacks.map(shortModelName).join(" → ")
+    : "none";
 
   function renderSelect(key, label) {
     const isPending = key in state.pendingDefaults;
@@ -5011,6 +5228,10 @@ function updateDefaultsPanel() {
       '<span class="hud-defaults-label">Model</span>' +
       '<span class="hud-defaults-value hud-defaults-editable' + (modelPending ? ' hud-defaults-pending' : '') + '" id="hud-default-model">' + modelDisplay + '</span>' +
     '</div>' +
+    '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">Fallbacks</span>' +
+      '<span class="hud-defaults-value hud-defaults-editable' + (fallbacksPending ? ' hud-defaults-pending' : '') + '" id="hud-default-fallbacks">' + fallbackDisplay + '</span>' +
+    '</div>' +
     renderSelect("thinking", "Think") +
     renderSelect("verbose", "Verbose");
 
@@ -5030,7 +5251,41 @@ function updateDefaultsPanel() {
         } else {
           state.pendingDefaults.model = fullId;
         }
+
+        // Keep fallback list valid if primary changes.
+        const nextPrimary = state.pendingDefaults.model || d.model;
+        const fallbackSource = ("fallbacks" in state.pendingDefaults)
+          ? state.pendingDefaults.fallbacks
+          : defaultFallbacks;
+        const normalized = normalizeFallbacks(fallbackSource, nextPrimary);
+        if (sameStringArray(normalized, defaultFallbacks)) {
+          delete state.pendingDefaults.fallbacks;
+        } else {
+          state.pendingDefaults.fallbacks = normalized;
+        }
+
         updateDefaultsPanel();
+        updateBarControls();
+        modal.remove();
+      }
+    });
+  });
+
+  // Wire up fallback click
+  document.getElementById("hud-default-fallbacks")?.addEventListener("click", () => {
+    openFallbackPicker({
+      primary: state.pendingDefaults.model || d.model,
+      current: effectiveFallbacks,
+      onSave: (fallbacks, modal) => {
+        const nextPrimary = state.pendingDefaults.model || d.model;
+        const normalized = normalizeFallbacks(fallbacks, nextPrimary);
+        if (sameStringArray(normalized, defaultFallbacks)) {
+          delete state.pendingDefaults.fallbacks;
+        } else {
+          state.pendingDefaults.fallbacks = normalized;
+        }
+        updateDefaultsPanel();
+        updateBarControls();
         modal.remove();
       }
     });
@@ -5053,7 +5308,7 @@ function updateDefaultsPanel() {
 }
 
 function hasModelPending() {
-  return ["model", "thinking", "verbose"].some(k => k in state.pendingDefaults);
+  return ["model", "fallbacks", "thinking", "verbose"].some(k => k in state.pendingDefaults);
 }
 
 // ─── Schedule panel (reset + heartbeat) ──────────────────────────────
@@ -5260,8 +5515,16 @@ async function applyPendingDefaults() {
     for (const [key, val] of Object.entries(state.pendingDefaults)) {
       if (configKeys[key]) agentDefaultsPatch[configKeys[key]] = val || null;
     }
-    if (state.pendingDefaults.model) {
-      agentDefaultsPatch.model = { primary: state.pendingDefaults.model };
+    if (state.pendingDefaults.model || ("fallbacks" in state.pendingDefaults)) {
+      const nextPrimary = state.pendingDefaults.model || state.defaults.model || "";
+      const nextFallbacks = normalizeFallbacks(
+        ("fallbacks" in state.pendingDefaults) ? state.pendingDefaults.fallbacks : state.defaults.fallbacks,
+        nextPrimary
+      );
+      agentDefaultsPatch.model = {
+        primary: nextPrimary,
+        fallbacks: nextFallbacks,
+      };
     }
 
     if (Object.keys(agentDefaultsPatch).length === 0) {
@@ -5274,12 +5537,15 @@ async function applyPendingDefaults() {
     await state.gateway.request("config.patch", { raw, baseHash: hash });
 
     // Update local state
-    for (const key of ["model", "thinking", "verbose"]) {
+    for (const key of ["model", "fallbacks", "thinking", "verbose"]) {
       if (key in state.pendingDefaults) {
         state.defaults[key] = state.pendingDefaults[key];
         delete state.pendingDefaults[key];
       }
     }
+
+    // Ensure local defaults stay normalized against current primary.
+    state.defaults.fallbacks = normalizeFallbacks(state.defaults.fallbacks, state.defaults.model);
 
     // Reset active session so new model applies
     const activeTab = state.sessionKey || "main";
