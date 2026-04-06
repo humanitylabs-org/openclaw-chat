@@ -2654,18 +2654,38 @@ async function loadChatHistory(opts) {
       maybeInFlight = assistantHasToolCalls(last.content) && !assistantHasText(last.content);
     }
 
+    // Transcript-first: remember toolCall metadata by call id so corresponding
+    // toolResult rows can reuse the exact label/args from the same run.
+    const toolCallMetaById = new Map();
+
     let parsed = messages
       .filter(m => m.role === "user" || m.role === "assistant" || m.role === "toolResult")
       .map(m => {
         if (m.role === "toolResult") {
+          const toolCallId = str(m.toolCallId);
+          const meta = toolCallMetaById.get(toolCallId);
           return {
             role: "toolResult",
-            toolName: str(m.toolName),
-            toolCallId: str(m.toolCallId),
-            detail: summarizeToolResult(m),
+            toolName: str(m.toolName, str(meta?.name)),
+            toolArgs: meta?.args || {},
+            toolCallId,
+            detail: summarizeToolResult(m?.details ?? m?.content ?? m),
             isError: !!m.isError,
             timestamp: m.timestamp ?? Date.now(),
           };
+        }
+
+        if (m.role === "assistant" && Array.isArray(m.content)) {
+          for (const block of m.content) {
+            if (!block || typeof block !== "object") continue;
+            if (block.type !== "tool_use" && block.type !== "toolCall") continue;
+            const id = str(block.id, str(block.toolCallId));
+            if (!id) continue;
+            toolCallMetaById.set(id, {
+              name: str(block.name),
+              args: block.input || block.arguments || {},
+            });
+          }
         }
 
         const { text, images } = extractContent(m.content);
@@ -2895,7 +2915,7 @@ function renderMessages() {
   for (const msg of state.messages) {
     if (msg.role === "toolResult") {
       if (shouldShowToolEvents()) {
-        const { label, url } = buildToolLabel(msg.toolName || "", {});
+        const { label, url } = buildToolLabel(msg.toolName || "", msg.toolArgs || {});
         appendToolCall(label, url, false, {
           toolCallId: msg.toolCallId || "",
           detail: shouldShowToolOutput() ? (msg.detail || "") : "",
