@@ -2240,7 +2240,7 @@ async function setSessionControl(field, nextValue) {
     // Visibility toggles should affect full history immediately,
     // even when no stream is currently active.
     if (field === "verboseLevel" || field === "reasoningLevel") {
-      renderMessages();
+      renderMessages({ preserveScroll: true });
     }
 
     // Keep streaming UI in sync with button changes.
@@ -2619,6 +2619,37 @@ function hideLoading() {
   document.getElementById("oc-loading-indicator")?.remove();
 }
 
+function messagesEquivalent(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+
+  const normalize = (m) => {
+    if (!m || typeof m !== "object") return "";
+    if (m.role === "toolResult") {
+      return JSON.stringify({
+        role: "toolResult",
+        toolName: str(m.toolName),
+        toolCallId: str(m.toolCallId),
+        detail: str(m.detail),
+        isError: !!m.isError,
+      });
+    }
+    return JSON.stringify({
+      role: str(m.role),
+      text: str(m.text),
+      images: Array.isArray(m.images) ? m.images : [],
+      hasToolBlocks: !!m.hasToolBlocks,
+      isReasoning: !!m.isReasoning,
+      contentBlocks: Array.isArray(m.contentBlocks) ? m.contentBlocks : [],
+    });
+  };
+
+  for (let i = 0; i < a.length; i++) {
+    if (normalize(a[i]) !== normalize(b[i])) return false;
+  }
+  return true;
+}
+
 // ─── Chat Functions ──────────────────────────────────────────────────
 
 async function loadChatHistory(opts) {
@@ -2676,7 +2707,7 @@ async function loadChatHistory(opts) {
             toolCallId,
             detail: summarizeToolResult(m?.details ?? m?.content ?? m),
             isError: !!m.isError,
-            timestamp: m.timestamp ?? Date.now(),
+            timestamp: m.timestamp ?? 0,
           };
         }
 
@@ -2701,7 +2732,7 @@ async function loadChatHistory(opts) {
           role: m.role,
           text,
           images,
-          timestamp: m.timestamp ?? Date.now(),
+          timestamp: m.timestamp ?? 0,
           contentBlocks: Array.isArray(m.content) ? m.content : undefined,
           runId,
           hasToolBlocks,
@@ -2742,6 +2773,11 @@ async function loadChatHistory(opts) {
 
     state.historyInFlight[targetKey] = maybeInFlight;
 
+    const previous = (targetKey === state.sessionKey)
+      ? state.messages
+      : (state.tabCache[targetKey]?.messages || []);
+    const changed = !messagesEquivalent(parsed, previous);
+
     // Cache the result
     state.tabCache[targetKey] = { messages: parsed, timestamp: Date.now() };
 
@@ -2749,7 +2785,9 @@ async function loadChatHistory(opts) {
     if (targetKey === state.sessionKey) {
       state.messages = parsed;
       if (!background) hideLoading();
-      renderMessages();
+      if (!background || changed) {
+        renderMessages({ preserveScroll: background });
+      }
 
       // If a run was already in-flight before this page connected, keep polling
       // transcript history until the final assistant message lands.
@@ -2934,7 +2972,11 @@ function isReasoningAssistantMessage(msg) {
   return false;
 }
 
-function renderMessages() {
+function renderMessages(opts = {}) {
+  const forceBottom = !!opts.forceBottom;
+  const prevTop = ui.messagesContainer.scrollTop;
+  const wasNearBottom = isNearBottom(ui.messagesContainer);
+
   // Sync cache with current messages
   if (state.sessionKey && state.messages.length > 0) {
     state.tabCache[state.sessionKey] = { messages: [...state.messages], timestamp: Date.now() };
@@ -2953,6 +2995,7 @@ function renderMessages() {
           toolCallId: msg.toolCallId || "",
           detail: shouldShowToolOutput() ? (msg.detail || "") : "",
           isError: !!msg.isError,
+          noScroll: true,
         });
       }
       continue;
@@ -2983,7 +3026,7 @@ function renderMessages() {
           } else if (block.type === "tool_use" || block.type === "toolCall") {
             if (shouldShowToolEvents()) {
               const { label, url } = buildToolLabel(block.name || "", block.input || block.arguments || {});
-              appendToolCall(label, url);
+              appendToolCall(label, url, false, { noScroll: true });
             }
           }
         }
@@ -2993,7 +3036,12 @@ function renderMessages() {
 
     appendMessage(msg);
   }
-  scrollToBottom();
+
+  if (forceBottom || wasNearBottom) {
+    scrollToBottom();
+  } else {
+    ui.messagesContainer.scrollTop = prevTop;
+  }
 }
 
 function appendMessage(msg) {
@@ -3243,6 +3291,11 @@ function scrollToBottom() {
   });
 }
 
+function isNearBottom(el, threshold = 48) {
+  if (!el) return true;
+  return (el.scrollHeight - el.scrollTop - el.clientHeight) <= threshold;
+}
+
 // ─── Tool Call Display ───────────────────────────────────────────────
 
 function buildToolLabel(toolName, args) {
@@ -3330,6 +3383,7 @@ function appendToolCall(label, url, active = false, opts = {}) {
   const toolCallId = str(opts.toolCallId);
   const detail = str(opts.detail);
   const isError = !!opts.isError;
+  const noScroll = !!opts.noScroll;
 
   let el = toolCallId ? findToolItemEl(toolCallId) : null;
   if (!el) {
@@ -3359,7 +3413,7 @@ function appendToolCall(label, url, active = false, opts = {}) {
   }
 
   setToolDots(el, active);
-  scrollToBottom();
+  if (!noScroll) scrollToBottom();
 }
 
 function deactivateLastToolItem() {
