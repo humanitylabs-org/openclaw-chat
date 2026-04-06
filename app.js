@@ -5940,9 +5940,14 @@ function showTaskDetail(job, info) {
 // ─── Settings ─────────────────────────────────────────────────────
 
 const DEFAULT_OPTIONS = {
-  thinking: ["not set", "off", "low", "medium", "high"],
+  thinking: ["not set", "off", "low", "medium", "high", "xhigh"],
   verbose: ["not set", "off", "on", "full"],
 };
+
+function defaultOptionLabel(key, opt) {
+  if (opt === "xhigh") return "very high";
+  return opt;
+}
 
 const RESET_IDLE_MINUTES_OPTIONS = [60, 120, 240, 480, 720, 1440, 2880, 10080];
 const HEARTBEAT_OPTIONS = [
@@ -5983,7 +5988,7 @@ function updateDefaultsPanel() {
     const optionsHtml = options.map(opt => {
       const val = opt === "not set" ? "" : opt;
       const selected = val === current ? ' selected' : '';
-      return '<option value="' + val + '"' + selected + '>' + opt + '</option>';
+      return '<option value="' + val + '"' + selected + '>' + defaultOptionLabel(key, opt) + '</option>';
     }).join('');
     const cls = isPending ? ' hud-defaults-pending' : '';
     return '<div class="hud-defaults-row">' +
@@ -6001,8 +6006,8 @@ function updateDefaultsPanel() {
       '<span class="hud-defaults-label">Fallbacks</span>' +
       '<span class="hud-defaults-value hud-defaults-editable' + (fallbacksPending ? ' hud-defaults-pending' : '') + '" id="hud-default-fallbacks">' + fallbackDisplay + '</span>' +
     '</div>' +
-    renderSelect("thinking", "Think") +
-    renderSelect("verbose", "Verbose");
+    renderSelect("thinking", "Thinking Effort") +
+    renderSelect("verbose", "Show Steps");
 
   html += '<div style="margin-top:6px;font-size:11px;line-height:1.35;color:var(--text-muted);opacity:0.85">Saved live. Affects new tabs. Current tab may keep its model override.</div>';
 
