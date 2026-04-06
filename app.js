@@ -2655,8 +2655,19 @@ async function loadChatHistory(opts) {
     }
 
     let parsed = messages
-      .filter(m => m.role === "user" || m.role === "assistant")
+      .filter(m => m.role === "user" || m.role === "assistant" || m.role === "toolResult")
       .map(m => {
+        if (m.role === "toolResult") {
+          return {
+            role: "toolResult",
+            toolName: str(m.toolName),
+            toolCallId: str(m.toolCallId),
+            detail: summarizeToolResult(m),
+            isError: !!m.isError,
+            timestamp: m.timestamp ?? Date.now(),
+          };
+        }
+
         const { text, images } = extractContent(m.content);
         const runId = str(m.runId, str(m?.meta?.runId, str(m?.metadata?.runId)));
         const hasToolBlocks = Array.isArray(m.content)
@@ -2671,15 +2682,22 @@ async function loadChatHistory(opts) {
           hasToolBlocks,
         };
       })
-      .filter(m => (m.text.trim() || m.images.length > 0 || m.hasToolBlocks) && !m.text.startsWith("HEARTBEAT"));
+      .filter(m => {
+        if (m.role === "toolResult") return true;
+        return (m.text.trim() || m.images.length > 0 || m.hasToolBlocks) && !m.text.startsWith("HEARTBEAT");
+      });
 
     // Strip injected system messages from user messages
     parsed = parsed.map(m => {
+      if (m.role === "toolResult") return m;
       if (m.role === "user") {
         m.text = stripSystemMessages(m.text);
       }
       return m;
-    }).filter(m => m.text.trim() || m.images.length > 0 || m.hasToolBlocks);
+    }).filter(m => {
+      if (m.role === "toolResult") return true;
+      return m.text.trim() || m.images.length > 0 || m.hasToolBlocks;
+    });
 
     // Hide system-generated startup messages (not real user input)
     if (parsed.length > 0 && parsed[0].role === "user") {
@@ -2875,6 +2893,18 @@ function renderMessages() {
   ui.messagesContainer.innerHTML = "";
   state.streamEl = null;
   for (const msg of state.messages) {
+    if (msg.role === "toolResult") {
+      if (shouldShowToolEvents()) {
+        const { label, url } = buildToolLabel(msg.toolName || "", {});
+        appendToolCall(label, url, false, {
+          toolCallId: msg.toolCallId || "",
+          detail: shouldShowToolOutput() ? (msg.detail || "") : "",
+          isError: !!msg.isError,
+        });
+      }
+      continue;
+    }
+
     if (msg.role === "assistant") {
       const hasContentTools = msg.contentBlocks?.some(b => b.type === "tool_use" || b.type === "toolCall") || false;
       if (hasContentTools && msg.contentBlocks) {
