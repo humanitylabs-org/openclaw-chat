@@ -467,9 +467,12 @@ const state = {
   runToSession: new Map(),
   finalizedRuns: new Map(),
   historyInFlight: {}, // { [sessionKey]: boolean }
+  historyInFlightStartedAt: {}, // { [sessionKey]: epochMs }
   historyPollTimer: null,
   historyPollSession: "",
   historyPollSettled: 0,
+  workingSince: {}, // { [sessionKey]: epochMs }
+  workingTicker: null,
   streamEl: null,
   streamAssembler: null,
   gapRecoveryInFlight: false,
@@ -930,6 +933,7 @@ async function recoverFromEventGap(info) {
   if (state.streamAssembler) state.streamAssembler.clear();
   state.streams.clear();
   state.runToSession.clear();
+  clearWorkingSince();
   state.streamEl = null;
   setSendButtonStopMode(false);
   hideBanner();
@@ -2654,6 +2658,87 @@ function messagesEquivalent(a, b) {
   return true;
 }
 
+function normalizeEpochMs(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  // Heuristic: seconds-scale epoch timestamps are converted to ms.
+  if (n < 1e11) return Math.round(n * 1000);
+  return Math.round(n);
+}
+
+function messageRunId(m) {
+  return str(m?.runId, str(m?.meta?.runId, str(m?.metadata?.runId)));
+}
+
+function formatElapsedClock(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function getTypingTextEl() {
+  return ui.typingIndicator?.querySelector(".openclaw-typing-text") || null;
+}
+
+function renderTypingLabel(baseLabel = STATUS_WORKING, sessionKey = state.sessionKey) {
+  const el = getTypingTextEl();
+  if (!el) return;
+
+  const base = str(baseLabel, STATUS_WORKING).trim() || STATUS_WORKING;
+  el.dataset.baseLabel = base;
+
+  const startedAt = normalizeEpochMs(state.workingSince?.[sessionKey]);
+  if (startedAt && !/^error$/i.test(base)) {
+    el.textContent = `${base} · ${formatElapsedClock(Date.now() - startedAt)}`;
+  } else {
+    el.textContent = base;
+  }
+}
+
+function ensureWorkingTicker() {
+  if (state.workingTicker) return;
+  state.workingTicker = setInterval(() => {
+    if (ui.typingIndicator.classList.contains("oc-hidden")) return;
+    const sessionKey = state.sessionKey;
+    const startedAt = normalizeEpochMs(state.workingSince?.[sessionKey]);
+    if (!startedAt) return;
+
+    const el = getTypingTextEl();
+    if (!el) return;
+    const base = str(el.dataset.baseLabel, str(el.textContent, STATUS_WORKING));
+    if (!base || /^error$/i.test(base)) return;
+
+    el.textContent = `${base} · ${formatElapsedClock(Date.now() - startedAt)}`;
+  }, 1000);
+}
+
+function maybeStopWorkingTicker() {
+  if (!state.workingTicker) return;
+  const hasActive = Object.values(state.workingSince || {}).some(v => normalizeEpochMs(v) > 0);
+  if (hasActive) return;
+  clearInterval(state.workingTicker);
+  state.workingTicker = null;
+}
+
+function setWorkingSince(sessionKey, startedAtMs) {
+  if (!sessionKey) return;
+  const normalized = normalizeEpochMs(startedAtMs) || Date.now();
+  const existing = normalizeEpochMs(state.workingSince?.[sessionKey]);
+  state.workingSince[sessionKey] = existing ? Math.min(existing, normalized) : normalized;
+  ensureWorkingTicker();
+}
+
+function clearWorkingSince(sessionKey) {
+  if (!sessionKey) {
+    state.workingSince = {};
+    maybeStopWorkingTicker();
+    return;
+  }
+  delete state.workingSince[sessionKey];
+  maybeStopWorkingTicker();
+}
+
 // ─── Chat Functions ──────────────────────────────────────────────────
 
 async function loadChatHistory(opts) {
@@ -2688,10 +2773,38 @@ async function loadChatHistory(opts) {
     const runTail = messages.filter((m) => m?.role === "user" || m?.role === "assistant" || m?.role === "toolResult");
     const last = runTail.length > 0 ? runTail[runTail.length - 1] : null;
     let maybeInFlight = false;
+    let maybeInFlightStartedAt = 0;
     if (last?.role === "toolResult") {
       maybeInFlight = true;
     } else if (last?.role === "assistant") {
       maybeInFlight = assistantHasToolCalls(last.content) && !assistantHasText(last.content);
+    }
+
+    if (maybeInFlight) {
+      const activeRunId = messageRunId(last);
+      if (activeRunId) {
+        for (const entry of runTail) {
+          if (messageRunId(entry) !== activeRunId) continue;
+          const ts = normalizeEpochMs(entry?.timestamp);
+          if (ts) {
+            maybeInFlightStartedAt = ts;
+            break;
+          }
+        }
+      }
+
+      if (!maybeInFlightStartedAt) {
+        for (let i = runTail.length - 1; i >= 0; i--) {
+          if (runTail[i]?.role !== "user") continue;
+          const ts = normalizeEpochMs(runTail[i]?.timestamp);
+          if (ts) {
+            maybeInFlightStartedAt = ts;
+            break;
+          }
+        }
+      }
+
+      if (!maybeInFlightStartedAt) maybeInFlightStartedAt = Date.now();
     }
 
     // Transcript-first: remember toolCall metadata by call id so corresponding
@@ -2729,7 +2842,7 @@ async function loadChatHistory(opts) {
         }
 
         const { text, images } = extractContent(m.content);
-        const runId = str(m.runId, str(m?.meta?.runId, str(m?.metadata?.runId)));
+        const runId = messageRunId(m);
         const hasToolBlocks = Array.isArray(m.content)
           && m.content.some((b) => b?.type === "tool_use" || b?.type === "toolCall");
         return {
@@ -2776,6 +2889,8 @@ async function loadChatHistory(opts) {
     }
 
     state.historyInFlight[targetKey] = maybeInFlight;
+    if (maybeInFlightStartedAt) state.historyInFlightStartedAt[targetKey] = maybeInFlightStartedAt;
+    else delete state.historyInFlightStartedAt[targetKey];
 
     const previous = (targetKey === state.sessionKey)
       ? state.messages
@@ -2796,7 +2911,10 @@ async function loadChatHistory(opts) {
       // If a run was already in-flight before this page connected, keep polling
       // transcript history until the final assistant message lands.
       if (!state.streams.has(targetKey) && maybeInFlight) {
-        startHistoryInFlightPoll(targetKey);
+        setWorkingSince(targetKey, state.historyInFlightStartedAt[targetKey]);
+        renderTypingLabel(STATUS_WORKING, targetKey);
+        ui.typingIndicator.classList.remove("oc-hidden");
+        startHistoryInFlightPoll(targetKey, state.historyInFlightStartedAt[targetKey]);
       } else if (!maybeInFlight) {
         stopHistoryInFlightPoll(targetKey);
       }
@@ -2817,19 +2935,33 @@ function stopHistoryInFlightPoll(sessionKey) {
   state.historyPollSession = "";
   state.historyPollSettled = 0;
 
+  if (endedSession && !state.streams.has(endedSession)) {
+    clearWorkingSince(endedSession);
+    if (endedSession === state.sessionKey) {
+      ui.typingIndicator.classList.add("oc-hidden");
+      renderTypingLabel(STATUS_WORKING, endedSession);
+    }
+  }
+
   // When transcript polling settles for the active tab, try draining queue.
   if (endedSession && endedSession === state.sessionKey) {
     setTimeout(() => processQueue(), 50);
   }
 }
 
-function startHistoryInFlightPoll(sessionKey) {
+function startHistoryInFlightPoll(sessionKey, startedAtMs = 0) {
   if (!sessionKey) return;
   if (state.historyPollTimer && state.historyPollSession === sessionKey) return;
   stopHistoryInFlightPoll();
 
   state.historyPollSession = sessionKey;
   state.historyPollSettled = 0;
+  setWorkingSince(sessionKey, startedAtMs || state.historyInFlightStartedAt[sessionKey]);
+  if (sessionKey === state.sessionKey && !state.streams.has(sessionKey)) {
+    renderTypingLabel(STATUS_WORKING, sessionKey);
+    ui.typingIndicator.classList.remove("oc-hidden");
+  }
+
   state.historyPollTimer = setInterval(async () => {
     if (state.sessionKey !== sessionKey) {
       stopHistoryInFlightPoll(sessionKey);
@@ -2843,6 +2975,11 @@ function startHistoryInFlightPoll(sessionKey) {
     await loadChatHistory({ background: true, sessionKey });
     const stillInFlight = !!state.historyInFlight[sessionKey];
     if (stillInFlight) {
+      setWorkingSince(sessionKey, state.historyInFlightStartedAt[sessionKey]);
+      if (sessionKey === state.sessionKey && !state.streams.has(sessionKey)) {
+        renderTypingLabel(STATUS_WORKING, sessionKey);
+        ui.typingIndicator.classList.remove("oc-hidden");
+      }
       state.historyPollSettled = 0;
       return;
     }
@@ -3725,6 +3862,7 @@ function resolveStreamSession(payload) {
 function finishStream(sessionKey) {
   const sk = sessionKey ?? state.sessionKey;
   const ss = state.streams.get(sk);
+  clearWorkingSince(sk);
   if (ss) {
     if (ss.compactTimer) clearTimeout(ss.compactTimer);
     if (ss.workingTimer) clearTimeout(ss.workingTimer);
@@ -3739,8 +3877,7 @@ function finishStream(sessionKey) {
     state.streamEl = null;
     setSendButtonStopMode(false);
     ui.typingIndicator.classList.add("oc-hidden");
-    const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
-    if (typingText) typingText.textContent = STATUS_WORKING;
+    renderTypingLabel(STATUS_WORKING, sk);
   }
   // Always try to drain queue for the finished session (even if user switched tabs)
   setTimeout(() => processQueue(), 500);
@@ -3749,6 +3886,7 @@ function finishStream(sessionKey) {
 function restoreStreamUI() {
   const ss = state.streams.get(state.sessionKey);
   if (!ss) return;
+  setWorkingSince(state.sessionKey, ss.startedAtMs || Date.now());
   setSendButtonStopMode(!ss.background);
   for (const item of ss.items) {
     if (item.type === "tool" && shouldShowToolEvents()) {
@@ -3761,12 +3899,10 @@ function restoreStreamUI() {
   }
   if (ss.text) {
     updateStreamBubble();
-    const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
-    if (typingText) typingText.textContent = STATUS_WORKING;
+    renderTypingLabel(STATUS_WORKING, state.sessionKey);
     ui.typingIndicator.classList.remove("oc-hidden");
   } else {
-    const typingText = ui.typingIndicator.querySelector(".openclaw-typing-text");
-    if (typingText) typingText.textContent = STATUS_WORKING;
+    renderTypingLabel(STATUS_WORKING, state.sessionKey);
     ui.typingIndicator.classList.remove("oc-hidden");
   }
   scrollToBottom();
@@ -3865,8 +4001,10 @@ function handleStreamEvent(payload) {
     const matched = matchActiveSessionKey(payload);
     if (matched && (stream === "tool" || stream === "lifecycle" || stream === "fallback" || eventState === "lifecycle")) {
       const runId = str(payload.runId, str(payloadData?.runId));
+      const startedAtMs = normalizeEpochMs(payloadData?.timestamp) || normalizeEpochMs(payload?.timestamp) || Date.now();
       const ss = {
         runId: runId || "startup-" + Date.now(),
+        startedAtMs,
         text: null,
         toolCalls: [],
         items: [],
@@ -3877,6 +4015,7 @@ function handleStreamEvent(payload) {
         background: true,  // not user-initiated — don't block sending
       };
       state.streams.set(matched, ss);
+      setWorkingSince(matched, startedAtMs);
       if (runId) state.runToSession.set(runId, matched);
       sessionKey = matched;
       isActiveTab = true;
@@ -3888,6 +4027,11 @@ function handleStreamEvent(payload) {
   }
 
   const ss = state.streams.get(sessionKey);
+  if (ss && !ss.startedAtMs) {
+    ss.startedAtMs = normalizeEpochMs(payloadData?.timestamp) || normalizeEpochMs(payload?.timestamp) || Date.now();
+  }
+  if (ss) setWorkingSince(sessionKey, ss.startedAtMs);
+
   const incomingRunId = str(payload.runId, str(payloadData?.runId));
   if (incomingRunId) {
     ss.runId = incomingRunId;
@@ -3902,18 +4046,19 @@ function handleStreamEvent(payload) {
       if (!ss.workingTimer) {
         ss.workingTimer = setTimeout(() => {
           if (state.streams.has(sessionKey) && isActiveTab && ui.typingIndicator.classList.contains("oc-hidden")) {
-            if (typingText) typingText.textContent = "Working";
+            renderTypingLabel(STATUS_WORKING, sessionKey);
             ui.typingIndicator.classList.remove("oc-hidden");
           }
           ss.workingTimer = null;
         }, 500);
       }
     } else if (!ss.text && !ss.lastDeltaTime && isActiveTab) {
+      renderTypingLabel(STATUS_WORKING, sessionKey);
       ui.typingIndicator.classList.remove("oc-hidden");
     }
   } else if (eventState === "lifecycle") {
     if (!ss.text && isActiveTab && typingText) {
-      typingText.textContent = STATUS_WORKING;
+      renderTypingLabel(STATUS_WORKING, sessionKey);
       ui.typingIndicator.classList.remove("oc-hidden");
     }
   }
@@ -3946,7 +4091,7 @@ function handleStreamEvent(payload) {
     ss.items.push(item);
     if (isActiveTab) {
       if (shouldShowToolEvents()) appendToolCall(label, url, true, { toolCallId: resolvedToolCallId });
-      if (typingText) typingText.textContent = shouldShowToolEvents() ? label : STATUS_WORKING;
+      renderTypingLabel(shouldShowToolEvents() ? label : STATUS_WORKING, sessionKey);
       ui.typingIndicator.classList.remove("oc-hidden");
     }
   } else if ((stream === "tool" || toolName) && phase === "update") {
@@ -3961,7 +4106,7 @@ function handleStreamEvent(payload) {
         isError: !!item.isError,
       });
       ui.typingIndicator.classList.remove("oc-hidden");
-      if (typingText) typingText.textContent = item.label;
+      renderTypingLabel(item.label, sessionKey);
     }
   } else if ((stream === "tool" || toolName) && phase === "result") {
     const item = getToolEntry(ss, toolCallId);
@@ -3982,7 +4127,7 @@ function handleStreamEvent(payload) {
       } else {
         deactivateLastToolItem();
       }
-      if (typingText) typingText.textContent = STATUS_WORKING;
+      renderTypingLabel(STATUS_WORKING, sessionKey);
       ui.typingIndicator.classList.remove("oc-hidden");
       scrollToBottom();
     }
@@ -4008,12 +4153,12 @@ function handleStreamEvent(payload) {
   } else if (stream === "lifecycle") {
     if (!isActiveTab) return;
     if (phase === "start") {
-      if (typingText) typingText.textContent = STATUS_WORKING;
+      renderTypingLabel(STATUS_WORKING, sessionKey);
       ui.typingIndicator.classList.remove("oc-hidden");
     } else if (phase === "end") {
-      if (typingText) typingText.textContent = STATUS_WORKING;
+      renderTypingLabel(STATUS_WORKING, sessionKey);
     } else if (phase === "error") {
-      if (typingText) typingText.textContent = "Error";
+      renderTypingLabel("Error", sessionKey);
       ui.typingIndicator.classList.remove("oc-hidden");
     }
   }
@@ -4204,9 +4349,11 @@ async function sendMessage(text) {
 
   const runId = generateId();
   const sendSessionKey = state.sessionKey;
+  const startedAtMs = Date.now();
 
   const ss = {
     runId,
+    startedAtMs,
     text: null,
     toolCalls: [],
     items: [],
@@ -4218,11 +4365,11 @@ async function sendMessage(text) {
   };
   state.streams.set(sendSessionKey, ss);
   state.runToSession.set(runId, sendSessionKey);
+  setWorkingSince(sendSessionKey, startedAtMs);
 
   setSendButtonStopMode(true);
   ui.typingIndicator.classList.remove("oc-hidden");
-  const thinkText = ui.typingIndicator.querySelector(".openclaw-typing-text");
-  if (thinkText) thinkText.textContent = STATUS_WORKING;
+  renderTypingLabel(STATUS_WORKING, sendSessionKey);
   scrollToBottom();
 
   ss.compactTimer = setTimeout(() => {
@@ -4230,7 +4377,9 @@ async function sendMessage(text) {
     if (current?.runId === runId && !current.text) {
       if (state.sessionKey === sendSessionKey) {
         const tt = ui.typingIndicator.querySelector(".openclaw-typing-text");
-        if (tt && tt.textContent === STATUS_WORKING) tt.textContent = STATUS_STILL_WORKING;
+        if (tt && str(tt.dataset.baseLabel) === STATUS_WORKING) {
+          renderTypingLabel(STATUS_STILL_WORKING, sendSessionKey);
+        }
       }
     }
   }, 15000);
