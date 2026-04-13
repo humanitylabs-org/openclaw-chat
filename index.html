@@ -291,12 +291,12 @@
     .openclaw-tab-home {
       flex: 0 0 auto !important;
       max-width: none !important;
-      min-width: 46px !important;
-      width: 46px;
+      min-width: 48px !important;
+      width: 48px;
       padding: 0;
       position: relative;
-      border-radius: 999px;
-      margin-right: 6px;
+      border-radius: 12px;
+      margin-right: 5px;
       justify-content: center;
       background: transparent;
       border-color: transparent;
@@ -324,9 +324,9 @@
       overflow: visible;
     }
     .openclaw-home-node {
-      width: 30px;
-      height: 30px;
-      border-radius: 999px;
+      width: 32px;
+      height: 28px;
+      border-radius: 9px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -353,7 +353,8 @@
       border-color: color-mix(in srgb, var(--text-faint) 45%, transparent);
       background: var(--background-primary);
       box-shadow:
-        0 0 0 1px color-mix(in srgb, var(--text-faint) 24%, transparent),
+        0 0 0 1px color-mix(in srgb, var(--text-faint) 20%, transparent),
+        inset 0 2px 0 color-mix(in srgb, var(--text-faint) 30%, transparent),
         inset 0 1px 0 rgba(255,255,255,0.05);
     }
     .openclaw-tab-home:hover .openclaw-home-node {
@@ -1442,7 +1443,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=151">
+  <link rel="stylesheet" href="/theme.css?v=152">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -1985,7 +1986,7 @@
 
   </div>
 
-  <script src="/app.js?v=151"></script>
+  <script src="/app.js?v=152"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
