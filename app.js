@@ -1877,7 +1877,7 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
 
     if (isHome) {
-      label.textContent = "Home";
+      label.innerHTML = '<span class="openclaw-home-chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg></span><span class="openclaw-home-chip-text">Home</span>';
       label.title = state.homeMirrorSessionKey ? "Home (synced from your channel)" : "Home";
     } else {
       label.textContent = tab.label;
@@ -1924,7 +1924,7 @@ async function _renderTabsInner() {
     tabEl.appendChild(row);
 
     const meter = document.createElement("div");
-    meter.className = "openclaw-tab-meter";
+    meter.className = "openclaw-tab-meter" + (isHome ? " openclaw-tab-meter-home" : "");
     const fill = document.createElement("div");
     fill.className = "openclaw-tab-meter-fill";
     fill.style.width = tab.pct + "%";
@@ -1971,10 +1971,20 @@ async function _renderTabsInner() {
 
   const addBtn = document.createElement("div");
   addBtn.className = "openclaw-tab openclaw-tab-add";
+  const addRow = document.createElement("div");
+  addRow.className = "openclaw-tab-row";
   const addLabel = document.createElement("span");
   addLabel.className = "openclaw-tab-label";
   addLabel.textContent = "+ New Tab";
-  addBtn.appendChild(addLabel);
+  addRow.appendChild(addLabel);
+  addBtn.appendChild(addRow);
+  const addMeter = document.createElement("div");
+  addMeter.className = "openclaw-tab-meter openclaw-tab-meter-ghost";
+  const addFill = document.createElement("div");
+  addFill.className = "openclaw-tab-meter-fill";
+  addFill.style.width = "0%";
+  addMeter.appendChild(addFill);
+  addBtn.appendChild(addMeter);
   addBtn.addEventListener("click", () => createNewTab());
   fragment.appendChild(addBtn);
 
