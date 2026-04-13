@@ -2997,6 +2997,7 @@ function messagesEquivalent(a, b) {
       role: str(m.role),
       text: str(m.text),
       images: Array.isArray(m.images) ? m.images : [],
+      audios: Array.isArray(m.audios) ? m.audios : [],
       hasToolBlocks: !!m.hasToolBlocks,
       isReasoning: !!m.isReasoning,
       contentBlocks: Array.isArray(m.contentBlocks) ? m.contentBlocks : [],
@@ -3193,7 +3194,7 @@ async function loadChatHistory(opts) {
           }
         }
 
-        const { text, images } = extractContent(m.content);
+        const { text, images, audios } = extractContent(m.content);
         const runId = messageRunId(m);
         const hasToolBlocks = Array.isArray(m.content)
           && m.content.some((b) => b?.type === "tool_use" || b?.type === "toolCall");
@@ -3201,6 +3202,7 @@ async function loadChatHistory(opts) {
           role: m.role,
           text,
           images,
+          audios,
           timestamp: m.timestamp ?? 0,
           contentBlocks: Array.isArray(m.content) ? m.content : undefined,
           runId,
@@ -3210,7 +3212,7 @@ async function loadChatHistory(opts) {
       })
       .filter(m => {
         if (m.role === "toolResult") return true;
-        return (m.text.trim() || m.images.length > 0 || m.hasToolBlocks) && !m.text.startsWith("HEARTBEAT");
+        return (m.text.trim() || m.images.length > 0 || m.audios.length > 0 || m.hasToolBlocks) && !m.text.startsWith("HEARTBEAT");
       });
 
     // Strip injected system messages from user messages
@@ -3222,7 +3224,7 @@ async function loadChatHistory(opts) {
       return m;
     }).filter(m => {
       if (m.role === "toolResult") return true;
-      return m.text.trim() || m.images.length > 0 || m.hasToolBlocks;
+      return m.text.trim() || m.images.length > 0 || m.audios.length > 0 || m.hasToolBlocks;
     });
 
     // Hide system-generated startup messages (not real user input)
@@ -3378,38 +3380,131 @@ function stripSystemMessages(text) {
   return cleaned.join("\n").trim();
 }
 
+function mediaUrlFromSource(source) {
+  if (!source) return "";
+  if (typeof source === "string") return source.trim();
+  if (typeof source.url === "string") return source.url.trim();
+  if (typeof source.data === "string") {
+    const mediaType = source.media_type || source.mediaType || source.mimeType || "application/octet-stream";
+    return `data:${mediaType};base64,${source.data}`;
+  }
+  return "";
+}
+
+function imageFromBlock(block) {
+  if (!block || typeof block !== "object") return "";
+  if (block.type === "tool_file") {
+    const fileType = String(block.file_type || block.fileType || "").toLowerCase();
+    if (!fileType.startsWith("image/")) return "";
+    return mediaUrlFromSource(block.url || block.file_url || block.fileUrl || block.source);
+  }
+  if (block.type === "image" || block.type === "input_image") {
+    return mediaUrlFromSource(block.source || block.image || block.image_url);
+  }
+  if (block.type === "image_url") {
+    return mediaUrlFromSource(block.image_url || block.source || block.image);
+  }
+  return "";
+}
+
+function audioFromBlock(block) {
+  if (!block || typeof block !== "object") return "";
+  if (block.type === "tool_file") {
+    const fileType = String(block.file_type || block.fileType || "").toLowerCase();
+    if (!fileType.startsWith("audio/")) return "";
+    return mediaUrlFromSource(block.url || block.file_url || block.fileUrl || block.source);
+  }
+  if (block.type === "audio" || block.type === "input_audio") {
+    return mediaUrlFromSource(block.source || block.audio || block.audio_url || block.input_audio);
+  }
+  return "";
+}
+
+function extractMediaRefs(text) {
+  const images = [];
+  const audios = [];
+  if (typeof text !== "string" || !text) return { images, audios };
+
+  const mediaLineRe = /^MEDIA:\s*([^\s\n]+)$/gm;
+  let mm;
+  while ((mm = mediaLineRe.exec(text)) !== null) {
+    const raw = (mm[1] || "").trim();
+    if (!raw) continue;
+    const lower = raw.toLowerCase();
+    if (/\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(lower) || lower.startsWith("data:image/")) images.push(raw);
+    if (/\.(mp3|opus|ogg|wav|m4a|mp4|webm)(\?|#|$)/i.test(lower) || lower.startsWith("data:audio/")) audios.push(raw);
+  }
+
+  const imageDataRe = /(?:^|\n)(data:(?:image\/[^;]+);base64,[A-Za-z0-9+/=\n]+)/g;
+  let im;
+  while ((im = imageDataRe.exec(text)) !== null) {
+    images.push((im[1] || "").trim());
+  }
+
+  const audioDataRe = /(?:^|\n)(data:(?:audio\/[^;]+);base64,[A-Za-z0-9+/=\n]+)/g;
+  let am;
+  while ((am = audioDataRe.exec(text)) !== null) {
+    audios.push((am[1] || "").trim());
+  }
+
+  return { images, audios };
+}
+
+function dedupeStrings(values) {
+  const out = [];
+  const seen = new Set();
+  for (const v of values || []) {
+    if (typeof v !== "string") continue;
+    const key = v.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+
 function extractContent(content) {
   let text = "";
   const images = [];
+  const audios = [];
 
   if (typeof content === "string") {
     text = content;
   } else if (Array.isArray(content)) {
     for (const c of content) {
-      if (c.type === "text") {
+      if (c?.type === "text") {
         text += (text ? "\n" : "") + (c.text || "");
-      } else if (c.type === "tool_result") {
+      } else if (c?.type === "tool_result") {
         const trContent = c.content;
         if (typeof trContent === "string") {
           text += (text ? "\n" : "") + trContent;
         } else if (Array.isArray(trContent)) {
           for (const tc of trContent) {
             if (tc?.type === "text" && tc.text) text += (text ? "\n" : "") + tc.text;
+            const tImg = imageFromBlock(tc);
+            if (tImg) images.push(tImg);
+            const tAudio = audioFromBlock(tc);
+            if (tAudio) audios.push(tAudio);
           }
         }
-      } else if (c.type === "image_url" && c.image_url?.url) {
-        images.push(c.image_url.url);
       }
+
+      const img = imageFromBlock(c);
+      if (img) images.push(img);
+
+      const audio = audioFromBlock(c);
+      if (audio) audios.push(audio);
     }
   }
 
-  const dataUriRegex = /(?:^|\n)data:(image\/[^;]+);base64,[A-Za-z0-9+/=\n]+/g;
-  let match;
-  while ((match = dataUriRegex.exec(text)) !== null) {
-    images.push(match[0].replace(/^\n/, "").trim());
-  }
+  const refs = extractMediaRefs(text);
+  images.push(...refs.images);
+  audios.push(...refs.audios);
+
   text = text.replace(/\n?data:image\/[^;]+;base64,[A-Za-z0-9+/=\n]+/g, "").trim();
+  text = text.replace(/\n?data:audio\/[^;]+;base64,[A-Za-z0-9+/=\n]+/g, "").trim();
   text = text.replace(/^\[Attached image:.*?\]\s*/gm, "").trim();
+  text = text.replace(/^\[Attached voice message:.*?\]\s*/gm, "").trim();
   text = text.replace(/^File saved at:.*$/gm, "").trim();
   text = text.replace(/Conversation info \(untrusted metadata\):\s*```json[\s\S]*?```\s*/g, "").trim();
   text = text.replace(/^```json\s*\{\s*"message_id"[\s\S]*?```\s*/gm, "").trim();
@@ -3417,7 +3512,12 @@ function extractContent(content) {
   text = text.replace(/^\[media attached:.*?\]\s*/gm, "").trim();
   text = text.replace(/^To send an image back.*$/gm, "").trim();
   if (text === "NO_REPLY" || text === "HEARTBEAT_OK") text = "";
-  return { text, images };
+
+  return {
+    text,
+    images: dedupeStrings(images),
+    audios: dedupeStrings(audios),
+  };
 }
 
 function cleanText(text) {
@@ -3427,7 +3527,7 @@ function cleanText(text) {
   text = text.replace(/^\[media attached:.*?\]\s*/gm, "").trim();
   text = text.replace(/^To send an image back.*$/gm, "").trim();
   text = text.replace(/^\[\[audio_as_voice\]\]\s*/gm, "").trim();
-  text = text.replace(/^MEDIA:\/[^\n]+$/gm, "").trim();
+  text = text.replace(/^MEDIA:\s*[^\n]+$/gm, "").trim();
   text = text.replace(/^VOICE:[^\s\n]+$/gm, "").trim();
   text = text.replace(/^AUDIO_DATA:[^\n]+$/gm, "").trim();
   if (text === "NO_REPLY" || text === "HEARTBEAT_OK") return "";
@@ -3436,13 +3536,18 @@ function cleanText(text) {
 
 function extractVoiceRefs(text) {
   const refs = [];
-  const re = /^VOICE:([^\s\n]+\.(?:mp3|opus|ogg|wav|m4a|mp4))$/gm;
+  const voiceRe = /^VOICE:([^\s\n]+\.(?:mp3|opus|ogg|wav|m4a|mp4|webm))$/gm;
   let match;
-  while ((match = re.exec(text)) !== null) refs.push(match[1].trim());
-  return refs;
+  while ((match = voiceRe.exec(text || "")) !== null) refs.push(match[1].trim());
+
+  const mediaRefs = extractMediaRefs(text || "").audios;
+  refs.push(...mediaRefs);
+  return dedupeStrings(refs);
 }
 
 function buildVoiceUrl(voicePath) {
+  if (!voicePath) return "";
+  if (/^(https?:|data:|blob:)/i.test(voicePath)) return voicePath;
   const gwUrl = state.gatewayUrl || "";
   const httpUrl = gwUrl.replace(/^ws(s?):\/\//, "http$1://");
   return `${httpUrl}/${voicePath}`;
@@ -3516,6 +3621,38 @@ function renderMessages(opts = {}) {
               for (const ap of blockAudio) renderAudioPlayer(bubble, ap);
               ui.messagesContainer.appendChild(bubble);
             }
+          } else if (block.type === "image" || block.type === "image_url" || block.type === "input_image") {
+            const src = imageFromBlock(block);
+            if (src) {
+              const bubble = document.createElement("div");
+              bubble.className = "openclaw-msg openclaw-msg-assistant";
+              const imgContainer = document.createElement("div");
+              imgContainer.className = "openclaw-msg-images";
+              const img = document.createElement("img");
+              img.className = "openclaw-msg-img";
+              img.src = src;
+              img.loading = "lazy";
+              img.addEventListener("click", () => {
+                const overlay = document.createElement("div");
+                overlay.className = "openclaw-img-overlay";
+                const fullImg = document.createElement("img");
+                fullImg.src = src;
+                overlay.appendChild(fullImg);
+                overlay.addEventListener("click", () => overlay.remove());
+                document.body.appendChild(overlay);
+              });
+              imgContainer.appendChild(img);
+              bubble.appendChild(imgContainer);
+              ui.messagesContainer.appendChild(bubble);
+            }
+          } else if (block.type === "audio" || block.type === "input_audio") {
+            const src = audioFromBlock(block);
+            if (src) {
+              const bubble = document.createElement("div");
+              bubble.className = "openclaw-msg openclaw-msg-assistant";
+              renderAudioPlayer(bubble, src);
+              ui.messagesContainer.appendChild(bubble);
+            }
           } else if (block.type === "tool_use" || block.type === "toolCall") {
             if (shouldShowToolEvents()) {
               const { label, url } = buildToolLabel(block.name || "", block.input || block.arguments || {});
@@ -3565,7 +3702,10 @@ function appendMessage(msg) {
     bubble.appendChild(imgContainer);
   }
 
-  const allAudio = msg.text ? extractVoiceRefs(msg.text) : [];
+  const allAudio = dedupeStrings([
+    ...(msg.text ? extractVoiceRefs(msg.text) : []),
+    ...(Array.isArray(msg.audios) ? msg.audios : []),
+  ]);
 
   let displayText = "";
   if (typeof msg.text === "string") displayText = msg.text;
@@ -3576,7 +3716,7 @@ function appendMessage(msg) {
     }
   }
 
-  if (msg.role === "assistant") displayText = cleanText(displayText);
+  displayText = cleanText(displayText);
 
   if (displayText) {
     const textDiv = document.createElement("div");
@@ -4678,13 +4818,17 @@ async function sendMessage(text) {
   let fullMessage = text;
   const displayText = text;
   const userImages = [];
+  const userAudios = [];
   const gatewayAttachments = [];
 
   if (state.pendingAttachments.length > 0) {
     for (const att of state.pendingAttachments) {
       if (att.base64 && att.mimeType) {
-        gatewayAttachments.push({ type: "image", mimeType: att.mimeType, content: att.base64 });
-        userImages.push(`data:${att.mimeType};base64,${att.base64}`);
+        const attachmentType = att.attachmentType || (att.mimeType.startsWith("audio/") ? "audio" : "image");
+        gatewayAttachments.push({ type: attachmentType, mimeType: att.mimeType, content: att.base64 });
+        const dataUrl = `data:${att.mimeType};base64,${att.base64}`;
+        if (attachmentType === "audio") userAudios.push(dataUrl);
+        else userImages.push(dataUrl);
       } else {
         fullMessage = (fullMessage ? fullMessage + "\n\n" : "") + att.content;
       }
@@ -4698,7 +4842,13 @@ async function sendMessage(text) {
     ui.attachPreview.innerHTML = "";
   }
 
-  state.messages.push({ role: "user", text: displayText || fullMessage, images: userImages, timestamp: Date.now() });
+  state.messages.push({
+    role: "user",
+    text: displayText || fullMessage,
+    images: userImages,
+    audios: userAudios,
+    timestamp: Date.now(),
+  });
   renderMessages();
 
   // Auto-rename "Untitled" tabs based on first message
@@ -4803,6 +4953,7 @@ async function handleFileSelect() {
   for (const file of Array.from(files)) {
     try {
       const isImage = file.type.startsWith("image/");
+      const isAudio = file.type.startsWith("audio/");
       const isText = file.type.startsWith("text/") ||
         ["application/json", "application/yaml", "application/xml", "application/javascript"].includes(file.type) ||
         /\.(md|txt|json|csv|yaml|yml|js|ts|py|html|css|xml|toml|ini|sh|log)$/i.test(file.name);
@@ -4814,6 +4965,16 @@ async function handleFileSelect() {
           content: `[Attached image: ${file.name}]`,
           base64: resized.base64,
           mimeType: resized.mimeType,
+          attachmentType: "image",
+        });
+      } else if (isAudio) {
+        const { base64, mimeType } = await readFileAsBase64(file);
+        state.pendingAttachments.push({
+          name: file.name,
+          content: `[Attached voice message: ${file.name}]`,
+          base64,
+          mimeType: mimeType || file.type || "audio/webm",
+          attachmentType: "audio",
         });
       } else if (isText) {
         const content = await file.text();
@@ -4880,6 +5041,26 @@ function resizeImage(file, maxSide, quality) {
   });
 }
 
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = typeof reader.result === "string" ? reader.result : "";
+      const comma = raw.indexOf(",");
+      if (comma < 0) {
+        reject(new Error("Invalid data URL"));
+        return;
+      }
+      const header = raw.slice(0, comma);
+      const base64 = raw.slice(comma + 1);
+      const mimeMatch = header.match(/^data:([^;]+);base64$/i);
+      resolve({ base64, mimeType: mimeMatch?.[1] || file.type || "application/octet-stream" });
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function renderAttachPreview() {
   ui.attachPreview.innerHTML = "";
   if (state.pendingAttachments.length === 0) {
@@ -4894,10 +5075,22 @@ function renderAttachPreview() {
     chip.className = "openclaw-attach-chip";
 
     if (att.base64 && att.mimeType) {
-      const img = document.createElement("img");
-      img.className = "openclaw-attach-thumb";
-      img.src = `data:${att.mimeType};base64,${att.base64}`;
-      chip.appendChild(img);
+      if (att.attachmentType === "audio" || att.mimeType.startsWith("audio/")) {
+        const icon = document.createElement("span");
+        icon.className = "openclaw-attach-thumb";
+        icon.style.display = "inline-flex";
+        icon.style.alignItems = "center";
+        icon.style.justifyContent = "center";
+        icon.style.fontSize = "11px";
+        icon.style.color = "var(--text-faint)";
+        icon.textContent = "🔊";
+        chip.appendChild(icon);
+      } else {
+        const img = document.createElement("img");
+        img.className = "openclaw-attach-thumb";
+        img.src = `data:${att.mimeType};base64,${att.base64}`;
+        chip.appendChild(img);
+      }
     }
 
     const name = document.createElement("span");
@@ -4944,16 +5137,21 @@ function getSTTConfig() {
   };
 }
 
+function canCaptureVoice() {
+  return !!(navigator?.mediaDevices?.getUserMedia);
+}
+
 function updateSendButton() {
   // Don't override stop/queue mode icons
   if (ui.sendBtn?.classList.contains('stop-mode')) { updateStopSendIcon(); return; }
 
   const hasContent = ui.messageInput.value.trim() || state.pendingAttachments.length > 0;
   const sttReady = isSTTConfigured();
+  const voiceReady = canCaptureVoice();
 
   if (hasContent || voiceState.recording || voiceState.transcribing) {
     ui.sendBtn.classList.remove("oc-opacity-low");
-  } else if (!sttReady) {
+  } else if (!sttReady && !voiceReady) {
     ui.sendBtn.classList.add("oc-opacity-low");
   } else {
     ui.sendBtn.classList.remove("oc-opacity-low");
@@ -4967,7 +5165,7 @@ function updateSendButton() {
     ui.sendBtn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>';
     ui.sendBtn.classList.remove("oc-opacity-low", "mic-mode", "recording");
     ui.sendBtn.classList.add("transcribing");
-  } else if (!hasContent && sttReady) {
+  } else if (!hasContent && (sttReady || voiceReady)) {
     ui.sendBtn.innerHTML = MIC_ICON;
     ui.sendBtn.classList.remove("recording", "transcribing");
     ui.sendBtn.classList.add("mic-mode");
@@ -5004,24 +5202,41 @@ async function handleMicClick() {
       const blob = new Blob(voiceState.audioChunks, { type: voiceState.mediaRecorder.mimeType });
       const config = getSTTConfig();
       const ext = voiceState.mediaRecorder.mimeType.includes("webm") ? "webm" : "m4a";
+      const fileName = `voice-${Date.now()}.${ext}`;
 
       try {
-        const formData = new FormData();
-        formData.append("file", blob, `recording.${ext}`);
-        formData.append("model", config.model);
-
-        const response = await fetch(config.url, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${config.key}` },
-          body: formData,
+        const { base64, mimeType } = await readFileAsBase64(blob);
+        state.pendingAttachments.push({
+          name: fileName,
+          content: `[Attached voice message: ${fileName}]`,
+          base64,
+          mimeType: mimeType || blob.type || "audio/webm",
+          attachmentType: "audio",
         });
+        renderAttachPreview();
+      } catch (attachErr) {
+        console.warn("Failed to stage voice attachment:", attachErr);
+      }
 
-        if (!response.ok) throw new Error(`STT failed: ${response.status}`);
-        const result = await response.json();
-        const text = result.text || "";
-        if (text) {
-          ui.messageInput.value = text;
-          autoResize();
+      try {
+        if (config.key) {
+          const formData = new FormData();
+          formData.append("file", blob, `recording.${ext}`);
+          formData.append("model", config.model);
+
+          const response = await fetch(config.url, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${config.key}` },
+            body: formData,
+          });
+
+          if (!response.ok) throw new Error(`STT failed: ${response.status}`);
+          const result = await response.json();
+          const text = result.text || "";
+          if (text) {
+            ui.messageInput.value = text;
+            autoResize();
+          }
         }
       } catch (err) {
         console.error("Transcription failed:", err);
