@@ -724,7 +724,7 @@ const state = {
   tabCache: {},  // { [sessionKey]: { messages: [...], timestamp: number } }
   tabDrafts: JSON.parse(localStorage.getItem('tabDrafts') || '{}'),
   messageQueue: JSON.parse(localStorage.getItem('messageQueue') || '{}'),  // { [sessionKey]: [{ text, images, timestamp }] }
-  tabRenameState: {}, // { [sessionKey]: { userText, pending, attempted, inFlight, manual, autoEligible } }
+  tabRenameState: {}, // { [sessionKey]: { userText, pending, attempted, inFlight, manual, autoEligible, fallbackTimer } }
   workSummaries: loadStoredWorkSummaries(), // { [sessionKey]: [{ id, ms, at, outcome }] }
 
   // Unread tracking
@@ -2053,7 +2053,10 @@ async function _renderTabsInner() {
 
   const liveTabKeys = new Set(state.tabSessions.map(t => t.key));
   for (const key of Object.keys(state.tabRenameState || {})) {
-    if (!liveTabKeys.has(key)) delete state.tabRenameState[key];
+    if (!liveTabKeys.has(key)) {
+      clearTabRenameFallback(state.tabRenameState[key]);
+      delete state.tabRenameState[key];
+    }
   }
 
   for (const tab of state.tabSessions) {
@@ -3587,6 +3590,9 @@ async function loadChatHistory(opts) {
         parsed.splice(insertIdx, 0, summary.message);
       }
     }
+
+    // Recover lost rename state after refresh/reconnect.
+    maybeRecoverUntitledRename(targetKey, parsed);
 
     state.historyInFlight[targetKey] = maybeInFlight;
     if (maybeInFlightStartedAt) state.historyInFlightStartedAt[targetKey] = maybeInFlightStartedAt;
@@ -5197,6 +5203,11 @@ function handleChatEvent(payload) {
       : extractDeltaText(payload.message);
     if (text) {
       ss.text = text;
+
+      // Try naming as soon as we have first assistant text (not only at final).
+      const sk = eventSessionKey.startsWith(agentPrefix()) ? eventSessionKey.slice(agentPrefix().length) : eventSessionKey;
+      void upgradeTabTitle(sk, ss.text);
+
       if (isActiveTab) {
         // Keep progress feedback visible during post-delta quiet periods.
         // Hiding this caused a frozen-looking UI while the run was still active.
