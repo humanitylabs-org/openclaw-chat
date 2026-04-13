@@ -3136,21 +3136,25 @@ function workSummaryMessagesForSession(sessionKey) {
   const key = normalizeSessionKey(sessionKey);
   if (!key) return [];
   const list = Array.isArray(state.workSummaries?.[key]) ? state.workSummaries[key] : [];
-  return list
+  const valid = list
     .filter((entry) => Number(entry?.ms || 0) > 0)
-    .sort((a, b) => (Number(a?.at || 0) - Number(b?.at || 0)))
-    .map((entry) => ({
-      runId: runIdFromWorkSummaryId(entry?.id),
-      at: Number(entry?.at || 0) || Date.now(),
-      message: {
-        role: "assistant",
-        text: formatWorkSummaryText(entry),
-        images: [],
-        audios: [],
-        timestamp: Number(entry?.at || 0) || Date.now(),
-        isWorkSummary: true,
-      },
-    }));
+    .sort((a, b) => (Number(a?.at || 0) - Number(b?.at || 0)));
+  if (valid.length === 0) return [];
+
+  // Keep UI clean: show only the latest completed-run summary in chat.
+  const entry = valid[valid.length - 1];
+  return [{
+    runId: runIdFromWorkSummaryId(entry?.id),
+    at: Number(entry?.at || 0) || Date.now(),
+    message: {
+      role: "assistant",
+      text: formatWorkSummaryText(entry),
+      images: [],
+      audios: [],
+      timestamp: Number(entry?.at || 0) || Date.now(),
+      isWorkSummary: true,
+    },
+  }];
 }
 
 function recordWorkSummary(sessionKey, runId, durationMs, outcome = "completed") {
@@ -3354,15 +3358,23 @@ async function loadChatHistory(opts) {
         }
 
         if (insertIdx < 0) {
-          // Global fallback: place before the last assistant text bubble (not after entire transcript).
-          let lastAssistantIdx = -1;
-          for (let i = parsed.length - 1; i >= 0; i--) {
-            if (parsed[i]?.role === "assistant") {
-              lastAssistantIdx = i;
-              break;
+          // Timestamp fallback: place near its own completion time rather than clustering at the end.
+          const at = Number(summary?.at || 0);
+          if (at > 0) {
+            let idx = parsed.findIndex((m) => Number(m?.timestamp || 0) >= at && m?.role === "assistant");
+            if (idx < 0) idx = parsed.findIndex((m) => Number(m?.timestamp || 0) >= at);
+            insertIdx = idx >= 0 ? idx : parsed.length;
+          } else {
+            // Last-resort fallback: just before the trailing assistant response.
+            let lastAssistantIdx = -1;
+            for (let i = parsed.length - 1; i >= 0; i--) {
+              if (parsed[i]?.role === "assistant") {
+                lastAssistantIdx = i;
+                break;
+              }
             }
+            insertIdx = lastAssistantIdx >= 0 ? lastAssistantIdx : parsed.length;
           }
-          insertIdx = lastAssistantIdx >= 0 ? lastAssistantIdx : parsed.length;
         }
 
         parsed.splice(insertIdx, 0, summary.message);
