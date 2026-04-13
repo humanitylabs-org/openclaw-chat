@@ -1373,9 +1373,10 @@ async function loadDefaults() {
     const reasoning = ad?.reasoningDefault || "";
     const verbose = ad?.verboseDefault || "";
     const parsedIdleTimeoutSeconds = Number(ad?.llm?.idleTimeoutSeconds);
-    const llmIdleTimeoutSeconds = Number.isFinite(parsedIdleTimeoutSeconds) && parsedIdleTimeoutSeconds > 0
+    const resolvedIdleTimeout = Number.isFinite(parsedIdleTimeoutSeconds) && parsedIdleTimeoutSeconds > 0
       ? Math.round(parsedIdleTimeoutSeconds)
       : 60;
+    const llmIdleTimeoutSeconds = Math.min(300, Math.max(60, resolvedIdleTimeout));
 
     const resetCfg = parsed?.session?.reset || cfg?.session?.reset || {};
     const resetMode = resetCfg?.mode === "idle" ? "idle" : "daily";
@@ -7245,6 +7246,7 @@ function defaultOptionLabel(key, opt) {
 }
 
 const RESET_IDLE_MINUTES_OPTIONS = [60, 120, 240, 480, 720, 1440, 2880, 10080];
+const LLM_IDLE_TIMEOUT_OPTIONS = [60, 90, 120, 180, 240, 300];
 const HEARTBEAT_OPTIONS = [
   { value: "0m", label: "off" },
   { value: "30m", label: "30 min" },
@@ -7275,6 +7277,23 @@ function updateDefaultsPanel() {
   const fallbackDisplay = effectiveFallbacks.length
     ? effectiveFallbacks.map(shortModelName).join(" → ")
     : "none";
+  const pendingIdleTimeoutRaw = Number(state.pendingDefaults.llmIdleTimeoutSeconds);
+  const defaultIdleTimeoutRaw = Number(d.llmIdleTimeoutSeconds);
+  const currentIdleTimeout = Math.min(
+    300,
+    Math.max(
+      60,
+      Number.isFinite(pendingIdleTimeoutRaw)
+        ? Math.round(pendingIdleTimeoutRaw)
+        : (Number.isFinite(defaultIdleTimeoutRaw) ? Math.round(defaultIdleTimeoutRaw) : 60)
+    )
+  );
+  const selectedIdleTimeout = LLM_IDLE_TIMEOUT_OPTIONS.includes(currentIdleTimeout)
+    ? currentIdleTimeout
+    : LLM_IDLE_TIMEOUT_OPTIONS.reduce((best, sec) => (
+      Math.abs(sec - currentIdleTimeout) < Math.abs(best - currentIdleTimeout) ? sec : best
+    ), LLM_IDLE_TIMEOUT_OPTIONS[0] || 60);
+  const idleTimeoutPending = "llmIdleTimeoutSeconds" in state.pendingDefaults;
 
   function renderSelect(key, label) {
     const isPending = key in state.pendingDefaults;
@@ -7292,6 +7311,19 @@ function updateDefaultsPanel() {
     '</div>';
   }
 
+  function renderIdleTimeoutSelect() {
+    const cls = idleTimeoutPending ? ' hud-defaults-pending' : '';
+    const optionsHtml = LLM_IDLE_TIMEOUT_OPTIONS.map(sec => {
+      const selected = sec === selectedIdleTimeout ? ' selected' : '';
+      return '<option value="' + sec + '"' + selected + '>' + sec + 's</option>';
+    }).join('');
+
+    return '<div class="hud-defaults-row">' +
+      '<span class="hud-defaults-label">Model idle timeout (max 300s)</span>' +
+      '<select class="hud-defaults-select" data-default-key="llmIdleTimeoutSeconds"' + cls + '>' + optionsHtml + '</select>' +
+    '</div>';
+  }
+
   let html =
     '<div class="hud-defaults-row">' +
       '<span class="hud-defaults-label">Model</span>' +
@@ -7301,6 +7333,7 @@ function updateDefaultsPanel() {
       '<span class="hud-defaults-label">Fallbacks</span>' +
       '<span class="hud-defaults-value hud-defaults-editable' + (fallbacksPending ? ' hud-defaults-pending' : '') + '" id="hud-default-fallbacks">' + fallbackDisplay + '</span>' +
     '</div>' +
+    renderIdleTimeoutSelect() +
     renderSelect("thinking", "Thinking Effort") +
     renderSelect("verbose", "Show Steps");
 
@@ -7371,8 +7404,14 @@ function updateDefaultsPanel() {
   el.querySelectorAll('.hud-defaults-select').forEach(sel => {
     sel.addEventListener('change', () => {
       const key = sel.dataset.defaultKey;
-      const val = sel.value;
-      if (val === (state.defaults[key] || "")) {
+      const numericKeys = new Set(["llmIdleTimeoutSeconds"]);
+      const val = numericKeys.has(key) ? Number(sel.value) : sel.value;
+      const cur = state.defaults[key];
+      const same = numericKeys.has(key)
+        ? Number(val) === Number(cur)
+        : String(val ?? "") === String(cur ?? "");
+
+      if (same) {
         delete state.pendingDefaults[key];
       } else {
         state.pendingDefaults[key] = val;
@@ -7384,7 +7423,7 @@ function updateDefaultsPanel() {
 }
 
 function hasModelPending() {
-  return ["model", "fallbacks", "thinking", "verbose"].some(k => k in state.pendingDefaults);
+  return ["model", "fallbacks", "thinking", "verbose", "llmIdleTimeoutSeconds"].some(k => k in state.pendingDefaults);
 }
 
 // ─── Schedule panel (reset + heartbeat) ──────────────────────────────
@@ -7585,6 +7624,13 @@ async function applyPendingDefaults() {
     for (const [key, val] of Object.entries(state.pendingDefaults)) {
       if (configKeys[key]) agentDefaultsPatch[configKeys[key]] = val || null;
     }
+
+    if ("llmIdleTimeoutSeconds" in state.pendingDefaults) {
+      const rawSecs = Number(state.pendingDefaults.llmIdleTimeoutSeconds);
+      const idleTimeoutSeconds = Math.min(300, Math.max(60, Number.isFinite(rawSecs) ? Math.round(rawSecs) : 60));
+      agentDefaultsPatch.llm = { idleTimeoutSeconds };
+    }
+
     if (state.pendingDefaults.model || ("fallbacks" in state.pendingDefaults)) {
       const nextPrimary = state.pendingDefaults.model || state.defaults.model || "";
       const nextFallbacks = normalizeFallbacks(
@@ -7607,7 +7653,7 @@ async function applyPendingDefaults() {
     await state.gateway.request("config.patch", { raw, baseHash: hash });
 
     // Update local state
-    for (const key of ["model", "fallbacks", "thinking", "verbose"]) {
+    for (const key of ["model", "fallbacks", "thinking", "verbose", "llmIdleTimeoutSeconds"]) {
       if (key in state.pendingDefaults) {
         state.defaults[key] = state.pendingDefaults[key];
         delete state.pendingDefaults[key];
@@ -7920,11 +7966,11 @@ function updateSubagentsPanel() {
 async function loadSubagents(prefetchedSessions) {
   const container = document.getElementById("hud-subagents-list");
   if (!container || !state.gateway?.connected) return;
-  
+
   // Show searching state
   const current = container.querySelector('.hud-subagent-row');
   if (!current) container.innerHTML = '<div class="hud-empty-hint hud-searching">checking…</div>';
-  
+
   try {
     let sessions;
     if (prefetchedSessions) {
@@ -7933,29 +7979,51 @@ async function loadSubagents(prefetchedSessions) {
       const result = await state.gateway.request("sessions.list", {});
       sessions = result?.sessions || [];
     }
+
     const prefix = agentPrefix();
-    const subs = sessions.filter(s => s.key.startsWith(prefix) && s.key.includes(":subagent:"));
-    
+    const subs = sessions
+      .filter(s => s.key.startsWith(prefix) && s.key.includes(":subagent:"))
+      .sort((a, b) => {
+        const aOn = !!(a.active || a.running || a.status === "running");
+        const bOn = !!(b.active || b.running || b.status === "running");
+        if (aOn !== bOn) return aOn ? -1 : 1;
+        const aTs = Number(a.updatedAt || a.lastMessageAt || a.createdAt || 0);
+        const bTs = Number(b.updatedAt || b.lastMessageAt || b.createdAt || 0);
+        return bTs - aTs;
+      });
+
     if (subs.length === 0) {
       container.innerHTML = '<div class="hud-empty-hint">none running</div>';
       return;
     }
+
+    const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
     container.innerHTML = "";
-    
     for (const sub of subs) {
       const id = sub.key.split(":subagent:")[1] || sub.key;
-      const shortId = id.length > 8 ? id.slice(0, 8) : id;
-      const isActive = sub.active || sub.running || false;
-      const tokens = sub.totalTokens || 0;
-      const tokStr = tokens > 1000 ? Math.round(tokens / 1000) + "k" : tokens + "";
-      
+      const shortId = id.length > 10 ? id.slice(0, 10) : id;
+      const isActive = !!(sub.active || sub.running || sub.status === "running");
+      const tokens = Number(sub.totalTokens || 0);
+      const tokStr = tokens >= 1000 ? Math.round(tokens / 1000) + "k" : String(tokens);
+      const model = shortModelName(sub.model || "");
+      const whenMs = Number(sub.updatedAt || sub.lastMessageAt || sub.createdAt || 0);
+      const when = whenMs ? cronTimeAgo(whenMs) : "unknown";
+      const statusLabel = isActive ? "running" : (sub.status || "idle");
+      const title = esc(sub.key);
+      const safeId = id.replace(/'/g, "\\'");
+
       const row = document.createElement("div");
       row.className = "hud-subagent-row";
+      row.title = title;
       row.innerHTML =
         '<span class="hud-status-dot ' + (isActive ? 'on' : 'off') + '"></span>' +
-        '<span class="hud-subagent-id">' + shortId + '</span>' +
-        '<span class="hud-subagent-tokens">' + tokStr + ' tok</span>' +
-        '<button class="hud-subagent-kill" title="Kill sub-agent" onclick="killSubagent(\'' + id.replace(/'/g, "\\'") + '\')">✕</button>';
+        '<span class="hud-subagent-id" style="display:flex;flex-direction:column;gap:1px;min-width:0">' +
+          '<span style="font-family:var(--font-mono,monospace);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(shortId) + '</span>' +
+          '<span style="font-size:10px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(statusLabel + ' · ' + when + (model ? (' · ' + model) : '')) + '</span>' +
+        '</span>' +
+        '<span class="hud-subagent-tokens" title="Total tokens">' + tokStr + ' tok</span>' +
+        '<button class="hud-subagent-kill" title="Kill sub-agent" onclick="killSubagent(\'' + safeId + '\')">✕</button>';
       container.appendChild(row);
     }
   } catch (err) {
