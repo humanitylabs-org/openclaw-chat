@@ -1376,7 +1376,7 @@ async function loadDefaults() {
     const resolvedIdleTimeout = Number.isFinite(parsedIdleTimeoutSeconds) && parsedIdleTimeoutSeconds > 0
       ? Math.round(parsedIdleTimeoutSeconds)
       : 60;
-    const llmIdleTimeoutSeconds = Math.min(300, Math.max(60, resolvedIdleTimeout));
+    const llmIdleTimeoutSeconds = normalizeIdleTimeoutSeconds(resolvedIdleTimeout, 60);
 
     const resetCfg = parsed?.session?.reset || cfg?.session?.reset || {};
     const resetMode = resetCfg?.mode === "idle" ? "idle" : "daily";
@@ -7245,8 +7245,33 @@ function defaultOptionLabel(key, opt) {
   return opt;
 }
 
+function normalizeIdleTimeoutSeconds(raw, fallback = 60) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return Math.max(60, Math.round(Number(fallback) || 60));
+  return Math.max(60, Math.round(n));
+}
+
+function buildIdleTimeoutOptions(currentSec) {
+  const out = [];
+  const seen = new Set();
+
+  const push = (value, label) => {
+    const sec = normalizeIdleTimeoutSeconds(value, RECOMMENDED_LLM_IDLE_TIMEOUT_SECONDS);
+    if (seen.has(sec)) return;
+    seen.add(sec);
+    out.push({ value: sec, label });
+  };
+
+  push(currentSec, `Current (${normalizeIdleTimeoutSeconds(currentSec)}s)`);
+  push(RECOMMENDED_LLM_IDLE_TIMEOUT_SECONDS, `Recommended (${RECOMMENDED_LLM_IDLE_TIMEOUT_SECONDS}s · 10m)`);
+  push(VERY_HIGH_LLM_IDLE_TIMEOUT_SECONDS, `Very high (${VERY_HIGH_LLM_IDLE_TIMEOUT_SECONDS}s · 20m)`);
+
+  return out;
+}
+
 const RESET_IDLE_MINUTES_OPTIONS = [60, 120, 240, 480, 720, 1440, 2880, 10080];
-const LLM_IDLE_TIMEOUT_OPTIONS = [60, 90, 120, 180, 240, 300];
+const RECOMMENDED_LLM_IDLE_TIMEOUT_SECONDS = 600;
+const VERY_HIGH_LLM_IDLE_TIMEOUT_SECONDS = 1200;
 const HEARTBEAT_OPTIONS = [
   { value: "0m", label: "off" },
   { value: "30m", label: "30 min" },
@@ -7279,20 +7304,12 @@ function updateDefaultsPanel() {
     : "none";
   const pendingIdleTimeoutRaw = Number(state.pendingDefaults.llmIdleTimeoutSeconds);
   const defaultIdleTimeoutRaw = Number(d.llmIdleTimeoutSeconds);
-  const currentIdleTimeout = Math.min(
-    300,
-    Math.max(
-      60,
-      Number.isFinite(pendingIdleTimeoutRaw)
-        ? Math.round(pendingIdleTimeoutRaw)
-        : (Number.isFinite(defaultIdleTimeoutRaw) ? Math.round(defaultIdleTimeoutRaw) : 60)
-    )
+  const currentIdleTimeout = normalizeIdleTimeoutSeconds(
+    Number.isFinite(pendingIdleTimeoutRaw)
+      ? Math.round(pendingIdleTimeoutRaw)
+      : (Number.isFinite(defaultIdleTimeoutRaw) ? Math.round(defaultIdleTimeoutRaw) : 60),
+    60
   );
-  const selectedIdleTimeout = LLM_IDLE_TIMEOUT_OPTIONS.includes(currentIdleTimeout)
-    ? currentIdleTimeout
-    : LLM_IDLE_TIMEOUT_OPTIONS.reduce((best, sec) => (
-      Math.abs(sec - currentIdleTimeout) < Math.abs(best - currentIdleTimeout) ? sec : best
-    ), LLM_IDLE_TIMEOUT_OPTIONS[0] || 60);
   const idleTimeoutPending = "llmIdleTimeoutSeconds" in state.pendingDefaults;
 
   function renderSelect(key, label) {
@@ -7313,13 +7330,14 @@ function updateDefaultsPanel() {
 
   function renderIdleTimeoutSelect() {
     const cls = idleTimeoutPending ? ' hud-defaults-pending' : '';
-    const optionsHtml = LLM_IDLE_TIMEOUT_OPTIONS.map(sec => {
-      const selected = sec === selectedIdleTimeout ? ' selected' : '';
-      return '<option value="' + sec + '"' + selected + '>' + sec + 's</option>';
+    const options = buildIdleTimeoutOptions(currentIdleTimeout);
+    const optionsHtml = options.map(opt => {
+      const selected = Number(opt.value) === Number(currentIdleTimeout) ? ' selected' : '';
+      return '<option value="' + opt.value + '"' + selected + '>' + opt.label + '</option>';
     }).join('');
 
     return '<div class="hud-defaults-row">' +
-      '<span class="hud-defaults-label">Model idle timeout (max 300s)</span>' +
+      '<span class="hud-defaults-label">Model idle timeout</span>' +
       '<select class="hud-defaults-select" data-default-key="llmIdleTimeoutSeconds"' + cls + '>' + optionsHtml + '</select>' +
     '</div>';
   }
@@ -7342,7 +7360,7 @@ function updateDefaultsPanel() {
     ? 'Changes are staged. Click Save to apply. Applies to new tabs. Current tab keeps its existing settings.'
     : 'Defaults are saved. Applies to new tabs. Current tab keeps its existing settings.';
 
-  html += '<div style="margin-top:6px;font-size:11px;line-height:1.35;color:var(--text-muted);opacity:0.85">' + statusLine + ' Model idle timeout applies immediately after save/restart.</div>';
+  html += '<div style="margin-top:6px;font-size:11px;line-height:1.35;color:var(--text-muted);opacity:0.85">' + statusLine + ' Model idle timeout applies after save/restart. Recommended: 600s.</div>';
 
   if (hasPending) {
     html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">Save</button>';
@@ -7627,7 +7645,7 @@ async function applyPendingDefaults() {
 
     if ("llmIdleTimeoutSeconds" in state.pendingDefaults) {
       const rawSecs = Number(state.pendingDefaults.llmIdleTimeoutSeconds);
-      const idleTimeoutSeconds = Math.min(300, Math.max(60, Number.isFinite(rawSecs) ? Math.round(rawSecs) : 60));
+      const idleTimeoutSeconds = normalizeIdleTimeoutSeconds(rawSecs, RECOMMENDED_LLM_IDLE_TIMEOUT_SECONDS);
       agentDefaultsPatch.llm = { idleTimeoutSeconds };
     }
 
