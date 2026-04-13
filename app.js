@@ -3157,6 +3157,51 @@ function workSummaryMessagesForSession(sessionKey) {
   }];
 }
 
+function findLastAssistantIdx(messages) {
+  let idx = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role === "assistant" && !messages[i]?.isReasoning) return i;
+    if (idx < 0 && messages[i]?.role === "assistant") idx = i;
+  }
+  return idx;
+}
+
+function findWorkSummaryInsertIndex(parsed, summaryRunId, summaryAt) {
+  const runId = str(summaryRunId);
+
+  if (runId) {
+    let lastToolIdx = -1;
+    let assistantIdx = -1;
+    for (let i = 0; i < parsed.length; i++) {
+      const m = parsed[i];
+      if (m?.role === "toolResult" && str(m?.runId) === runId) lastToolIdx = i;
+      if (assistantIdx < 0 && m?.role === "assistant" && str(m?.runId) === runId && !m?.isReasoning) assistantIdx = i;
+      if (assistantIdx < 0 && m?.role === "assistant" && str(m?.runId) === runId) assistantIdx = i;
+    }
+    if (lastToolIdx >= 0) return lastToolIdx + 1;
+    if (assistantIdx >= 0) return assistantIdx;
+  }
+
+  // Generic UI-first placement: after the nearest trailing tool calls, before final answer.
+  const lastAssistantIdx = findLastAssistantIdx(parsed);
+  if (lastAssistantIdx >= 0) {
+    for (let i = lastAssistantIdx - 1; i >= 0; i--) {
+      if (parsed[i]?.role === "toolResult") return i + 1;
+    }
+  }
+
+  // Timestamp fallback (for unusual transcripts with sparse role metadata).
+  const at = Number(summaryAt || 0);
+  if (at > 0) {
+    let idx = parsed.findIndex((m) => Number(m?.timestamp || 0) >= at && m?.role === "assistant" && !m?.isReasoning);
+    if (idx < 0) idx = parsed.findIndex((m) => Number(m?.timestamp || 0) >= at && m?.role === "assistant");
+    if (idx < 0) idx = parsed.findIndex((m) => Number(m?.timestamp || 0) >= at);
+    if (idx >= 0) return idx;
+  }
+
+  return lastAssistantIdx >= 0 ? lastAssistantIdx : parsed.length;
+}
+
 function recordWorkSummary(sessionKey, runId, durationMs, outcome = "completed") {
   const key = normalizeSessionKey(sessionKey);
   const ms = Math.max(0, Number(durationMs || 0));
@@ -3336,47 +3381,7 @@ async function loadChatHistory(opts) {
     const workSummaryMessages = workSummaryMessagesForSession(targetKey);
     if (workSummaryMessages.length > 0) {
       for (const summary of workSummaryMessages) {
-        const summaryRunId = str(summary?.runId);
-        let insertIdx = -1;
-
-        if (summaryRunId) {
-          // Preferred placement: right after the tool-call sequence for this run.
-          let lastToolIdx = -1;
-          for (let i = 0; i < parsed.length; i++) {
-            const m = parsed[i];
-            if (m?.role === "toolResult" && str(m?.runId) === summaryRunId) lastToolIdx = i;
-          }
-          if (lastToolIdx >= 0) {
-            insertIdx = lastToolIdx + 1;
-          } else {
-            // Fallback: place before the assistant's final output for that run.
-            insertIdx = parsed.findIndex((m) => m?.role === "assistant" && str(m?.runId) === summaryRunId && !m?.isReasoning);
-            if (insertIdx < 0) {
-              insertIdx = parsed.findIndex((m) => m?.role === "assistant" && str(m?.runId) === summaryRunId);
-            }
-          }
-        }
-
-        if (insertIdx < 0) {
-          // Timestamp fallback: place near its own completion time rather than clustering at the end.
-          const at = Number(summary?.at || 0);
-          if (at > 0) {
-            let idx = parsed.findIndex((m) => Number(m?.timestamp || 0) >= at && m?.role === "assistant");
-            if (idx < 0) idx = parsed.findIndex((m) => Number(m?.timestamp || 0) >= at);
-            insertIdx = idx >= 0 ? idx : parsed.length;
-          } else {
-            // Last-resort fallback: just before the trailing assistant response.
-            let lastAssistantIdx = -1;
-            for (let i = parsed.length - 1; i >= 0; i--) {
-              if (parsed[i]?.role === "assistant") {
-                lastAssistantIdx = i;
-                break;
-              }
-            }
-            insertIdx = lastAssistantIdx >= 0 ? lastAssistantIdx : parsed.length;
-          }
-        }
-
+        const insertIdx = findWorkSummaryInsertIndex(parsed, summary?.runId, summary?.at);
         parsed.splice(insertIdx, 0, summary.message);
       }
     }
