@@ -3194,21 +3194,36 @@ function findWorkSummaryInsertIndex(parsed, summaryRunId, summaryAt) {
 
   if (runId) {
     let lastToolIdx = -1;
-    let lastAssistantIdx = -1;
+    let firstAssistantIdx = -1;
+    let firstAssistantAnyIdx = -1;
     for (let i = 0; i < parsed.length; i++) {
       const m = parsed[i];
       if (m?.role === "toolResult" && str(m?.runId) === runId) lastToolIdx = i;
-      if (m?.role === "assistant" && str(m?.runId) === runId && !m?.isReasoning) lastAssistantIdx = i;
-      else if (m?.role === "assistant" && str(m?.runId) === runId && lastAssistantIdx < 0) lastAssistantIdx = i;
+      if (m?.role === "assistant" && str(m?.runId) === runId) {
+        if (firstAssistantAnyIdx < 0) firstAssistantAnyIdx = i;
+        if (!m?.isReasoning && firstAssistantIdx < 0) firstAssistantIdx = i;
+      }
     }
-    // Prefer after the run's final assistant answer.
-    if (lastAssistantIdx >= 0) return lastAssistantIdx + 1;
+
+    // Preferred placement: directly under tool call blocks, before the run's answer text.
+    if (lastToolIdx >= 0 && firstAssistantIdx >= 0) return Math.min(lastToolIdx + 1, firstAssistantIdx);
+    if (lastToolIdx >= 0 && firstAssistantAnyIdx >= 0) return Math.min(lastToolIdx + 1, firstAssistantAnyIdx);
     if (lastToolIdx >= 0) return lastToolIdx + 1;
+
+    // No tool rows captured for this run — place before first assistant output for that run.
+    if (firstAssistantIdx >= 0) return firstAssistantIdx;
+    if (firstAssistantAnyIdx >= 0) return firstAssistantAnyIdx;
   }
 
-  // Generic placement: after the latest assistant answer.
+  // Generic placement: under trailing tool rows, before latest assistant answer.
   const lastAssistantIdx = findLastAssistantIdx(parsed);
-  if (lastAssistantIdx >= 0) return lastAssistantIdx + 1;
+  if (lastAssistantIdx >= 0) {
+    for (let i = lastAssistantIdx - 1; i >= 0; i--) {
+      if (parsed[i]?.role === "toolResult") return i + 1;
+    }
+  }
+
+  if (lastAssistantIdx >= 0) return lastAssistantIdx;
 
   // Timestamp fallback (for unusual transcripts with sparse role metadata).
   const at = Number(summaryAt || 0);
