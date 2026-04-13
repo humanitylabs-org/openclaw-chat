@@ -697,6 +697,7 @@ const state = {
     resetAtHour: 4,
     resetIdleMinutes: 240,
     heartbeatEvery: "1h",
+    llmIdleTimeoutSeconds: 60,
   },
   
   // Pending default changes (not yet applied to config)
@@ -1143,8 +1144,8 @@ async function startChat() {
 
       if (ss.background) continue;
 
-      if (silentMs >= STREAM_SILENCE_HARD_MS) {
-        markStreamStalled(sk, ss, `silent for ${Math.round(silentMs / 1000)}s`);
+      if (silentMs >= streamSilenceHardMs()) {
+        markStreamStalled(sk, ss, `silent for ${Math.round(silentMs / 1000)}s`, silentMs);
         continue;
       }
 
@@ -1371,6 +1372,10 @@ async function loadDefaults() {
     const thinking = ad?.thinkingDefault || "";
     const reasoning = ad?.reasoningDefault || "";
     const verbose = ad?.verboseDefault || "";
+    const parsedIdleTimeoutSeconds = Number(ad?.llm?.idleTimeoutSeconds);
+    const llmIdleTimeoutSeconds = Number.isFinite(parsedIdleTimeoutSeconds) && parsedIdleTimeoutSeconds > 0
+      ? Math.round(parsedIdleTimeoutSeconds)
+      : 60;
 
     const resetCfg = parsed?.session?.reset || cfg?.session?.reset || {};
     const resetMode = resetCfg?.mode === "idle" ? "idle" : "daily";
@@ -1392,6 +1397,7 @@ async function loadDefaults() {
       resetAtHour,
       resetIdleMinutes,
       heartbeatEvery,
+      llmIdleTimeoutSeconds,
     };
     
     // Parse TTS config
@@ -2728,9 +2734,24 @@ const STATUS_STILL_WORKING = "Still working";
 const STATUS_FINISHING_UP = "Finishing up";
 const FINISHING_UP_SILENCE_MS = 3_000;
 const STREAM_SILENCE_RECOVERY_MS = 60_000;
-const STREAM_SILENCE_HARD_MS = 180_000;
-const HISTORY_IN_FLIGHT_MAX_MS = 180_000;
+const STREAM_SILENCE_HARD_FLOOR_MS = 180_000;
+const HISTORY_IN_FLIGHT_FLOOR_MS = 180_000;
+const UI_IDLE_GRACE_MS = 30_000;
 const TRANSCRIPT_IN_FLIGHT_MAX_AGE_MS = 5 * 60 * 1000;
+
+function resolvedLlmIdleTimeoutMs() {
+  const sec = Number(state?.defaults?.llmIdleTimeoutSeconds);
+  if (Number.isFinite(sec) && sec > 0) return Math.round(sec * 1000);
+  return 60_000;
+}
+
+function streamSilenceHardMs() {
+  return Math.max(STREAM_SILENCE_HARD_FLOOR_MS, resolvedLlmIdleTimeoutMs() + UI_IDLE_GRACE_MS);
+}
+
+function historyInFlightMaxMs() {
+  return Math.max(HISTORY_IN_FLIGHT_FLOOR_MS, resolvedLlmIdleTimeoutMs() + UI_IDLE_GRACE_MS);
+}
 
 function effectiveThinkingLevel() {
   const raw = (state.thinkingLevel || state.defaults.thinking || "off").toLowerCase();
@@ -3685,17 +3706,12 @@ function startHistoryInFlightPoll(sessionKey, startedAtMs = 0) {
     }
 
     const pollAgeMs = Date.now() - (state.historyPollStartedAt || Date.now());
-    if (pollAgeMs >= HISTORY_IN_FLIGHT_MAX_MS) {
+    if (pollAgeMs >= historyInFlightMaxMs()) {
       console.warn(`[watchdog] In-flight poll timed out for ${sessionKey} after ${Math.round(pollAgeMs / 1000)}s`);
       delete state.historyInFlight[sessionKey];
       delete state.historyInFlightStartedAt[sessionKey];
       stopHistoryInFlightPoll(sessionKey);
-      if (sessionKey === state.sessionKey) {
-        showBanner("Run stalled — no updates. Retry to continue.");
-        setTimeout(() => {
-          if (!state.streams.has(sessionKey)) hideBanner();
-        }, 5000);
-      }
+      notifyRunTimeout(sessionKey, pollAgeMs);
       return;
     }
 
@@ -4779,7 +4795,60 @@ async function runWatchdogRecovery(sessionKey, ss) {
   }
 }
 
-function markStreamStalled(sessionKey, ss, reason = "No updates received") {
+function timeoutNoticeText(waitedMs = 0) {
+  const ms = Math.max(Number(waitedMs || 0), resolvedLlmIdleTimeoutMs());
+  const sec = Math.max(1, Math.round(ms / 1000));
+  return `⚠️ No response from model after ${sec}s. This is usually an upstream timeout, not a UI crash. Send again to retry.`;
+}
+
+function appendAssistantNotice(sessionKey, text) {
+  const key = normalizeSessionKey(sessionKey || state.sessionKey) || state.sessionKey;
+  const notice = {
+    role: "assistant",
+    text: str(text),
+    images: [],
+    audios: [],
+    timestamp: Date.now(),
+    isSystemNotice: true,
+  };
+
+  const activeList = key === state.sessionKey
+    ? state.messages
+    : (Array.isArray(state.tabCache?.[key]?.messages) ? state.tabCache[key].messages : []);
+  const last = Array.isArray(activeList) && activeList.length > 0 ? activeList[activeList.length - 1] : null;
+  if (last?.role === "assistant" && str(last?.text).trim() === notice.text.trim()) return;
+
+  if (Array.isArray(state.tabCache?.[key]?.messages)) {
+    state.tabCache[key] = {
+      ...state.tabCache[key],
+      messages: [...state.tabCache[key].messages, notice],
+      timestamp: Date.now(),
+    };
+  }
+
+  if (key !== state.sessionKey) {
+    markUnread(key);
+    fireNotification(key, notice.text);
+    return;
+  }
+
+  state.messages.push(notice);
+  renderMessages();
+}
+
+function notifyRunTimeout(sessionKey, waitedMs = 0) {
+  const text = timeoutNoticeText(waitedMs);
+  appendAssistantNotice(sessionKey, text);
+
+  if (sessionKey === state.sessionKey) {
+    showBanner("Run timed out — send again to retry.");
+    setTimeout(() => {
+      if (!state.streams.has(sessionKey)) hideBanner();
+    }, 5000);
+  }
+}
+
+function markStreamStalled(sessionKey, ss, reason = "No updates received", waitedMs = 0) {
   if (!sessionKey || !ss) return;
   if (ss.stalledAtMs) return;
   ss.stalledAtMs = Date.now();
@@ -4790,13 +4859,7 @@ function markStreamStalled(sessionKey, ss, reason = "No updates received") {
   delete state.historyInFlight[sessionKey];
   delete state.historyInFlightStartedAt[sessionKey];
   finishStream(sessionKey);
-
-  if (sessionKey === state.sessionKey) {
-    showBanner("Run stalled — no updates. Retry to continue.");
-    setTimeout(() => {
-      if (!state.streams.has(sessionKey)) hideBanner();
-    }, 5000);
-  }
+  notifyRunTimeout(sessionKey, waitedMs);
 }
 
 function finishStream(sessionKey) {
@@ -5795,11 +5858,14 @@ function handleSendOrQueue() {
   // Only treat as "streaming" if it's a user-initiated stream (not background/startup)
   let isStreaming = !!ss && !ss.background;
 
-  // Safety: if stream exists but is stale (no delta for 60s), clean it up
+  // Safety: if stream exists but is stale, clean it up and show a clear timeout notice.
   if (isStreaming) {
-    if (ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > 60000)) {
-      console.warn("[queue] Cleaning up stale stream (no delta for 60s+)");
+    const staleThresholdMs = streamSilenceHardMs();
+    if (ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > staleThresholdMs)) {
+      const silentMs = Date.now() - ss.lastDeltaTime;
+      console.warn(`[queue] Cleaning up stale stream (no delta for ${Math.round(silentMs / 1000)}s)`);
       finishStream(state.sessionKey);
+      notifyRunTimeout(state.sessionKey, silentMs);
       isStreaming = false;
     }
   }
