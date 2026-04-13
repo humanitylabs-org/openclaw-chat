@@ -115,9 +115,9 @@
     .openclaw-tab-bar {
       flex-shrink: 0;
       display: flex;
-      align-items: flex-end;
-      gap: 2px;
-      padding: 0 3px;
+      align-items: stretch;
+      gap: 4px;
+      padding: 0 6px;
       margin: 0;
       overflow: hidden;
       border-bottom: 1px solid var(--background-modifier-border);
@@ -140,12 +140,14 @@
       min-width: 0;
       flex: 1 1 0;
       max-width: 33.33%;
-      border-radius: 8px 8px 0 0;
+      border-radius: 7px 7px 0 0;
       position: relative;
       overflow: hidden;
       border: 1px solid var(--background-modifier-border);
       border-bottom-color: var(--background-modifier-border);
       opacity: 1;
+      height: calc(var(--header-height) - 1px);
+      box-sizing: border-box;
     }
     .openclaw-tab:hover {
       background: var(--background-modifier-hover);
@@ -169,6 +171,7 @@
       display: flex;
       align-items: center;
       gap: 5px;
+      min-height: 15px;
     }
     .openclaw-tab-label {
       font-size: 12px;
@@ -214,7 +217,7 @@
       background: rgba(128,128,128,0.15);
       border-radius: 1.5px;
       overflow: hidden;
-      margin-top: 4px;
+      margin-top: auto;
       margin-bottom: 3px;
     }
     .openclaw-tab-meter-fill {
@@ -226,19 +229,26 @@
       width: 0%;
     }
     .openclaw-tab-add {
-      opacity: 0.5;
       flex: 0 0 auto !important;
-      background: transparent;
-      padding: 6px 12px;
+      max-width: none !important;
+      min-width: 108px;
+      padding: 5px 12px 0 12px;
       font-size: 12px;
-      border-radius: 8px 8px 0 0;
-      min-width: auto !important;
+      color: var(--text-muted);
     }
-    .openclaw-tab-add:hover { opacity: 1; background: rgba(128,128,128,0.1); }
-    .openclaw-tab-add .openclaw-tab-meter { display: none; }
+    .openclaw-tab-add:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
     .openclaw-tab-add .openclaw-tab-label {
       white-space: nowrap;
       flex: none;
+      font-weight: 500;
+    }
+    .openclaw-tab-add::after {
+      content: "";
+      display: block;
+      height: 3px;
+      margin-top: auto;
+      margin-bottom: 3px;
+      opacity: 0;
     }
 
     /* Reset button on non-home tabs (shows alongside ×) */
@@ -251,10 +261,12 @@
     .openclaw-tab-home {
       flex: 0 0 auto !important;
       max-width: none !important;
-      min-width: 92px !important;
+      min-width: 88px !important;
       width: auto;
-      padding: 5px 10px 0 10px;
+      padding: 5px 13px 0 13px;
       position: relative;
+      border-radius: 999px;
+      margin-right: 2px;
     }
     .openclaw-tab-home .openclaw-tab-row {
       justify-content: flex-start;
@@ -262,6 +274,13 @@
       padding-right: 16px;
     }
     .openclaw-tab-home .openclaw-tab-label { font-weight: 600; }
+    .openclaw-tab-home.active {
+      border-top-width: 1px;
+      border-bottom-color: var(--background-modifier-border);
+      margin-bottom: 0;
+      padding-top: 5px;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-faint) 30%, transparent);
+    }
     .openclaw-tab-home .openclaw-tab-close {
       display: none;
     }
@@ -1363,7 +1382,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=145">
+  <link rel="stylesheet" href="/theme.css?v=146">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -1906,7 +1925,7 @@
 
   </div>
 
-  <script src="/app.js?v=145"></script>
+  <script src="/app.js?v=146"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
