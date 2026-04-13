@@ -130,32 +130,40 @@
       flex-direction: column;
       align-items: stretch;
       gap: 0;
-      padding: 6px 8px 0 8px;
+      padding: 5px 10px 0 10px;
       font-size: 12px;
       cursor: pointer;
       white-space: nowrap;
-      color: var(--text-faint);
-      transition: all 0.15s;
-      background: transparent;
+      color: var(--text-muted);
+      transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+      background: var(--background-secondary);
       min-width: 0;
       flex: 1 1 0;
       max-width: 33.33%;
       border-radius: 8px 8px 0 0;
       position: relative;
       overflow: hidden;
-      opacity: 0.7;
+      border: 1px solid var(--background-modifier-border);
+      border-bottom-color: var(--background-modifier-border);
+      opacity: 1;
     }
-    .openclaw-tab:hover { background: rgba(128,128,128,0.08); color: var(--text-muted); opacity: 0.85; }
+    .openclaw-tab:hover {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+      border-color: color-mix(in srgb, var(--background-modifier-border) 70%, var(--text-faint) 30%);
+    }
     .openclaw-tab.active {
       background: var(--background-primary);
       color: var(--text-normal);
       border: 1px solid var(--background-modifier-border);
+      border-top-width: 2px;
       border-bottom: 1px solid var(--background-primary);
       margin-bottom: -1px;
+      padding-top: 4px;
       padding-bottom: 1px;
-      opacity: 1;
       font-weight: 600;
       z-index: 1;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
     }
     .openclaw-tab-row {
       display: flex;
@@ -243,54 +251,17 @@
     .openclaw-tab-home {
       flex: 0 0 auto !important;
       max-width: none !important;
-      min-width: 146px !important;
+      min-width: 92px !important;
       width: auto;
-      padding: 6px 10px 0 10px;
-      opacity: 0.7;
+      padding: 5px 10px 0 10px;
       position: relative;
     }
-    .openclaw-tab-home.active { opacity: 1; }
-    .openclaw-tab-home:hover { opacity: 0.9; }
     .openclaw-tab-home .openclaw-tab-row {
       justify-content: flex-start;
-      gap: 6px;
-      padding-right: 18px;
+      gap: 4px;
+      padding-right: 16px;
     }
-    .openclaw-tab-home .openclaw-tab-label.openclaw-tab-home-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-    }
-    .openclaw-tab-home .openclaw-tab-home-label svg {
-      width: 15px;
-      height: 15px;
-      fill: var(--text-muted);
-      transition: fill 0.2s;
-      flex-shrink: 0;
-    }
-    .openclaw-tab-home.active .openclaw-tab-home-label svg {
-      fill: var(--text-normal);
-    }
-    .openclaw-tab-home .openclaw-home-label-text {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-normal);
-      white-space: nowrap;
-    }
-    .openclaw-tab-home .openclaw-home-source {
-      display: inline-flex;
-      align-items: center;
-      font-size: 10px;
-      line-height: 1.2;
-      font-weight: 600;
-      color: var(--text-muted);
-      border: 1px solid var(--background-modifier-border);
-      border-radius: 999px;
-      padding: 1px 5px;
-      white-space: nowrap;
-      opacity: 0.8;
-    }
+    .openclaw-tab-home .openclaw-tab-label { font-weight: 600; }
     .openclaw-tab-home .openclaw-tab-close {
       display: none;
     }
@@ -1392,7 +1363,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=144">
+  <link rel="stylesheet" href="/theme.css?v=145">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -1935,7 +1906,7 @@
 
   </div>
 
-  <script src="/app.js?v=144"></script>
+  <script src="/app.js?v=145"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}

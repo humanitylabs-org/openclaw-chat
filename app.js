@@ -1474,9 +1474,7 @@ function renderMobileTabSwitcher() {
   const idx = currentIdx >= 0 ? currentIdx : 0;
 
   if (current.key === "main") {
-    const homeHint = state.homeMirrorSessionKey ? ' <span class="oc-home-switcher-hint">Telegram</span>' : "";
-    label.innerHTML = '<span class="oc-home-switcher-label"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;opacity:0.85"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg><span>Home</span>' + homeHint + '</span>';
-    label.title = "";
+    label.textContent = "Home";
     label.style.cursor = "";
     label.ondblclick = null;
   } else {
@@ -1635,7 +1633,7 @@ function renderHamburgerDropdown() {
     const label = document.createElement("span");
     label.className = "oc-dd-label";
     if (isHome) {
-      label.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;opacity:0.75"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg> Home' + (state.homeMirrorSessionKey ? ' <span class="oc-home-switcher-hint">Telegram</span>' : '');
+      label.textContent = "Home";
     } else {
       label.textContent = tab.label;
       label.title = "Double-click to rename";
@@ -1879,10 +1877,8 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
 
     if (isHome) {
-      const sourceHint = state.homeMirrorSessionKey ? '<span class="openclaw-home-source">Telegram</span>' : '';
-      label.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg><span class="openclaw-home-label-text">Home</span>' + sourceHint;
-      label.classList.add('openclaw-tab-home-label');
-      label.title = state.homeMirrorSessionKey ? "Home (synced with Telegram chat)" : "Home";
+      label.textContent = "Home";
+      label.title = state.homeMirrorSessionKey ? "Home (synced from your channel)" : "Home";
     } else {
       label.textContent = tab.label;
       label.addEventListener("dblclick", (e) => {
@@ -2231,9 +2227,7 @@ function updateMobileTabLabelInstant(tab) {
   if (!label) return;
 
   if (tab.key === "main") {
-    const homeHint = state.homeMirrorSessionKey ? ' <span class="oc-home-switcher-hint">Telegram</span>' : "";
-    label.innerHTML = '<span class="oc-home-switcher-label"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;opacity:0.85"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg><span>Home</span>' + homeHint + '</span>';
-    label.title = "";
+    label.textContent = "Home";
     label.ondblclick = null;
   } else {
     label.textContent = tab.label || "Untitled";
