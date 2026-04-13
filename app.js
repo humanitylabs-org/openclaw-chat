@@ -85,6 +85,36 @@ function parseSmartTitlePayload(text) {
   return sanitizeSmartTabTitle(raw);
 }
 
+function deriveFallbackTabTitle(userText, assistantText) {
+  const sources = [str(userText), str(assistantText)];
+
+  for (const source of sources) {
+    let text = truncateForTabNamer(source, 220);
+    if (!text) continue;
+
+    text = text
+      .replace(/^\s*(hey|hi|hello|yo)\b[:,!\-\s]*/i, "")
+      .replace(/^\s*please\b[:,!\-\s]*/i, "")
+      .replace(/^\s*(can|could|would)\s+you\s+/i, "")
+      .replace(/^\s*i\s+need\s+(you\s+to\s+)?/i, "")
+      .replace(/^\s*help\s+me\s+(to\s+)?/i, "")
+      .replace(/^\s*let'?s\s+/i, "")
+      .replace(/[.?!][\s\S]*$/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!text) continue;
+
+    const words = text.split(/\s+/).filter(Boolean);
+    if (words.length === 0) continue;
+
+    const candidate = sanitizeSmartTabTitle(words.slice(0, TAB_NAMER_MAX_WORDS).join(" "));
+    if (candidate) return candidate;
+  }
+
+  return "";
+}
+
 function buildSmartTabNamerPrompt(userText, assistantText) {
   const user = truncateForTabNamer(userText, 420) || "(none)";
   const assistant = truncateForTabNamer(stripSystemMessages(assistantText), 560) || "(none)";
@@ -302,7 +332,10 @@ async function upgradeTabTitle(sessionKey, assistantText) {
   meta.inFlight = true;
 
   try {
-    const title = await requestSmartTabTitle(sessionKey, meta.userText, assistantText);
+    let title = await requestSmartTabTitle(sessionKey, meta.userText, assistantText);
+    if (!title) {
+      title = deriveFallbackTabTitle(meta.userText, assistantText);
+    }
     if (!title) {
       void cleanupSmartTabNamerSession(sessionKey);
       return;
@@ -3583,7 +3616,8 @@ async function loadChatHistory(opts) {
       }
     }
 
-    const workSummaryMessages = workSummaryMessagesForSession(targetKey);
+    const runLooksActive = maybeInFlight || state.streams.has(targetKey) || !!state.historyInFlight?.[targetKey];
+    const workSummaryMessages = runLooksActive ? [] : workSummaryMessagesForSession(targetKey);
     if (workSummaryMessages.length > 0) {
       for (const summary of workSummaryMessages) {
         const insertIdx = findWorkSummaryInsertIndex(parsed, summary?.runId, summary?.at);
