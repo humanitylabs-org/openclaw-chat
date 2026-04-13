@@ -116,7 +116,7 @@
       flex-shrink: 0;
       display: flex;
       align-items: flex-end;
-      gap: 4px;
+      gap: 3px;
       padding: 0 6px;
       margin: 0;
       overflow: hidden;
@@ -158,14 +158,13 @@
       background: var(--background-primary);
       color: var(--text-normal);
       border: 1px solid var(--background-modifier-border);
-      border-top-width: 2px;
       border-bottom: 1px solid var(--background-primary);
       margin-bottom: -1px;
-      padding-top: 4px;
-      padding-bottom: 1px;
       font-weight: 600;
       z-index: 1;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      box-shadow:
+        inset 0 2px 0 color-mix(in srgb, var(--text-faint) 42%, transparent),
+        inset 0 1px 0 rgba(255,255,255,0.04);
     }
     .openclaw-tab-row {
       display: flex;
@@ -231,18 +230,23 @@
     .openclaw-tab-add {
       flex: 0 0 auto !important;
       max-width: none !important;
-      min-width: 112px;
-      padding: 5px 12px 0 12px;
-      font-size: 12px;
+      min-width: 34px;
+      width: 34px;
+      padding: 5px 0 0 0;
       color: var(--text-muted);
     }
     .openclaw-tab-add:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+    .openclaw-tab-add .openclaw-tab-row { justify-content: center; }
     .openclaw-tab-add .openclaw-tab-label {
-      white-space: nowrap;
-      flex: none;
+      font-size: 16px;
+      line-height: 1;
       font-weight: 500;
+      flex: none;
+      min-width: auto;
+      letter-spacing: 0;
     }
     .openclaw-tab-meter-ghost { opacity: 0; }
+    .openclaw-tab-add-icon { user-select: none; }
 
     /* Reset button on non-home tabs (shows alongside ×) */
     .openclaw-tab-reset {
@@ -254,27 +258,28 @@
     .openclaw-tab-home {
       flex: 0 0 auto !important;
       max-width: none !important;
-      min-width: 116px !important;
-      width: auto;
-      padding: 5px 11px 0 11px;
+      min-width: 34px !important;
+      width: 34px;
+      padding: 5px 0 0 0;
       position: relative;
       border-radius: 999px;
       margin-right: 4px;
     }
     .openclaw-tab-home .openclaw-tab-row {
-      justify-content: flex-start;
-      gap: 6px;
-      padding-right: 16px;
+      justify-content: center;
+      gap: 0;
+      padding-right: 0;
     }
     .openclaw-tab-home .openclaw-tab-label {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 0;
       font-weight: 600;
+      flex: none;
     }
-    .openclaw-home-chip-icon {
-      width: 16px;
-      height: 16px;
+    .openclaw-home-node {
+      width: 18px;
+      height: 18px;
       border-radius: 999px;
       display: inline-flex;
       align-items: center;
@@ -283,46 +288,26 @@
       color: var(--text-faint);
       flex-shrink: 0;
     }
-    .openclaw-home-chip-icon svg {
-      width: 11px;
-      height: 11px;
+    .openclaw-home-node svg {
+      width: 12px;
+      height: 12px;
       display: block;
     }
-    .openclaw-home-chip-text { white-space: nowrap; }
     .openclaw-tab-meter-home { opacity: 0; }
     .openclaw-tab-home.active {
-      border-top-width: 1px;
       border-bottom: 1px solid var(--background-primary);
       margin-bottom: -1px;
-      padding-top: 5px;
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-faint) 30%, transparent);
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--text-faint) 26%, transparent),
+        inset 0 2px 0 color-mix(in srgb, var(--text-faint) 32%, transparent);
     }
-    .openclaw-tab-home.active .openclaw-home-chip-icon {
+    .openclaw-tab-home.active .openclaw-home-node {
       color: var(--text-normal);
       background: color-mix(in srgb, var(--text-faint) 18%, transparent);
     }
     .openclaw-tab-home .openclaw-tab-close {
       display: none;
     }
-    /* Reset button inline in home tab row */
-    .openclaw-tab-home .openclaw-home-reset {
-      position: absolute;
-      right: 6px;
-      top: 50%;
-      transform: translateY(-50%);
-      opacity: 0;
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 4px;
-      transition: opacity 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .openclaw-tab-home:hover .openclaw-home-reset {
-      opacity: 0.4;
-    }
-    .openclaw-tab-home .openclaw-home-reset:hover { opacity: 1 !important; background: rgba(128,128,128,0.25); }
 
     /* Drag reorder */
     .openclaw-tab.oc-dragging {
@@ -1402,7 +1387,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=147">
+  <link rel="stylesheet" href="/theme.css?v=148">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -1945,7 +1930,7 @@
 
   </div>
 
-  <script src="/app.js?v=147"></script>
+  <script src="/app.js?v=148"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}

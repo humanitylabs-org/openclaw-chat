@@ -1830,21 +1830,50 @@ async function _renderTabsInner() {
     .filter(s => {
       const sk = s.key.slice(prefix.length);
       return sk !== "main";
-    })
-    .sort((a, b) => (a.createdAt || a.updatedAt || 0) - (b.createdAt || b.updatedAt || 0));
-
-  const savedOrder = JSON.parse(localStorage.getItem("tabOrder") || "[]");
-  if (savedOrder.length > 0) {
-    const orderMap = new Map(savedOrder.map((k, i) => [k, i]));
-    others.sort((a, b) => {
-      const skA = a.key.slice(prefix.length);
-      const skB = b.key.slice(prefix.length);
-      const oA = orderMap.has(skA) ? orderMap.get(skA) : 9999;
-      const oB = orderMap.has(skB) ? orderMap.get(skB) : 9999;
-      if (oA !== oB) return oA - oB;
-      return (a.createdAt || a.updatedAt || 0) - (b.createdAt || b.updatedAt || 0);
     });
+
+  // Stable tab ordering:
+  // 1) keep explicit local order when present,
+  // 2) append new tabs deterministically,
+  // 3) persist normalized order to prevent random re-shuffles on re-render.
+  const otherKeys = others.map((s) => s.key.slice(prefix.length));
+  const rawSavedOrder = JSON.parse(localStorage.getItem("tabOrder") || "[]");
+  const rawSavedOrderArray = Array.isArray(rawSavedOrder)
+    ? rawSavedOrder.filter((k) => typeof k === "string")
+    : [];
+  const savedOrder = rawSavedOrderArray.filter((k) => otherKeys.includes(k));
+
+  const missingKeys = otherKeys.filter((k) => !savedOrder.includes(k));
+  const sessionByKey = new Map(others.map((s) => [s.key.slice(prefix.length), s]));
+  missingKeys.sort((a, b) => {
+    const sa = sessionByKey.get(a);
+    const sb = sessionByKey.get(b);
+    const ta = sa?.createdAt || sa?.updatedAt || 0;
+    const tb = sb?.createdAt || sb?.updatedAt || 0;
+    if (ta !== tb) return ta - tb;
+    return a.localeCompare(b);
+  });
+
+  const stableOrder = [...savedOrder, ...missingKeys];
+  const shouldPersistOrder =
+    stableOrder.length !== rawSavedOrderArray.length
+    || stableOrder.some((k, i) => rawSavedOrderArray[i] !== k);
+  if (shouldPersistOrder) {
+    localStorage.setItem("tabOrder", JSON.stringify(stableOrder));
   }
+
+  const orderMap = new Map(stableOrder.map((k, i) => [k, i]));
+  others.sort((a, b) => {
+    const skA = a.key.slice(prefix.length);
+    const skB = b.key.slice(prefix.length);
+    const oA = orderMap.has(skA) ? orderMap.get(skA) : 9999;
+    const oB = orderMap.has(skB) ? orderMap.get(skB) : 9999;
+    if (oA !== oB) return oA - oB;
+    const ta = a.createdAt || a.updatedAt || 0;
+    const tb = b.createdAt || b.updatedAt || 0;
+    if (ta !== tb) return ta - tb;
+    return skA.localeCompare(skB);
+  });
 
   for (const s of others) {
     const sk = s.key.slice(prefix.length);
@@ -1877,7 +1906,7 @@ async function _renderTabsInner() {
     label.className = "openclaw-tab-label";
 
     if (isHome) {
-      label.innerHTML = '<span class="openclaw-home-chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg></span><span class="openclaw-home-chip-text">Home</span>';
+      label.innerHTML = '<span class="openclaw-home-node" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg></span>';
       label.title = state.homeMirrorSessionKey ? "Home (synced from your channel)" : "Home";
     } else {
       label.textContent = tab.label;
@@ -1893,12 +1922,7 @@ async function _renderTabsInner() {
     actionBtn.className = "openclaw-tab-close";
 
     if (isHome) {
-      const homeReset = document.createElement("span");
-      homeReset.className = "openclaw-home-reset";
-      homeReset.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-12.28L1 10"/></svg>';
-      homeReset.title = "Reset conversation";
-      homeReset.addEventListener("click", (e) => { e.stopPropagation(); resetTab(tab); });
-      row.appendChild(homeReset);
+      // Command-center home node stays clean/icon-only; reset remains available in chat commands.
     } else {
       const resetBtn = document.createElement("span");
       resetBtn.className = "openclaw-tab-close openclaw-tab-reset";
@@ -1974,8 +1998,9 @@ async function _renderTabsInner() {
   const addRow = document.createElement("div");
   addRow.className = "openclaw-tab-row";
   const addLabel = document.createElement("span");
-  addLabel.className = "openclaw-tab-label";
-  addLabel.textContent = "+ New Tab";
+  addLabel.className = "openclaw-tab-label openclaw-tab-add-icon";
+  addLabel.textContent = "+";
+  addLabel.title = "New tab";
   addRow.appendChild(addLabel);
   addBtn.appendChild(addRow);
   const addMeter = document.createElement("div");
