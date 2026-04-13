@@ -2002,17 +2002,10 @@ async function _renderTabsInner() {
   addRow.className = "openclaw-tab-row";
   const addLabel = document.createElement("span");
   addLabel.className = "openclaw-tab-label openclaw-tab-add-icon";
-  addLabel.textContent = "+";
+  addLabel.innerHTML = '<span class="openclaw-add-node" aria-hidden="true">+</span>';
   addLabel.title = "New tab";
   addRow.appendChild(addLabel);
   addBtn.appendChild(addRow);
-  const addMeter = document.createElement("div");
-  addMeter.className = "openclaw-tab-meter openclaw-tab-meter-ghost";
-  const addFill = document.createElement("div");
-  addFill.className = "openclaw-tab-meter-fill";
-  addFill.style.width = "0%";
-  addMeter.appendChild(addFill);
-  addBtn.appendChild(addMeter);
   addBtn.addEventListener("click", () => createNewTab());
   fragment.appendChild(addBtn);
 

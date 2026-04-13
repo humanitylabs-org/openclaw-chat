@@ -230,23 +230,56 @@
     .openclaw-tab-add {
       flex: 0 0 auto !important;
       max-width: none !important;
-      min-width: 34px;
-      width: 34px;
-      padding: 5px 0 0 0;
+      min-width: 44px;
+      width: 44px;
+      padding: 0;
       color: var(--text-muted);
+      justify-content: center;
+      background: transparent;
+      border-color: transparent;
+      border-bottom-color: transparent;
+      box-shadow: none;
+      overflow: visible;
     }
-    .openclaw-tab-add:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
-    .openclaw-tab-add .openclaw-tab-row { justify-content: center; }
+    .openclaw-tab-add:hover {
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      color: var(--text-normal);
+    }
+    .openclaw-tab-add .openclaw-tab-row {
+      justify-content: center;
+      gap: 0;
+      padding-right: 0;
+      min-height: 0;
+    }
     .openclaw-tab-add .openclaw-tab-label {
-      font-size: 16px;
-      line-height: 1;
-      font-weight: 500;
+      font-size: inherit;
       flex: none;
       min-width: auto;
-      letter-spacing: 0;
+      overflow: visible;
     }
-    .openclaw-tab-meter-ghost { opacity: 0; }
     .openclaw-tab-add-icon { user-select: none; }
+    .openclaw-add-node {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--background-modifier-border);
+      background: var(--background-secondary);
+      color: var(--text-faint);
+      font-size: 19px;
+      line-height: 1;
+      font-weight: 400;
+      transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .openclaw-tab-add:hover .openclaw-add-node {
+      color: var(--text-normal);
+      border-color: color-mix(in srgb, var(--text-faint) 35%, transparent);
+      background: var(--background-primary);
+    }
 
     /* Reset button on non-home tabs (shows alongside ×) */
     .openclaw-tab-reset {
@@ -258,8 +291,8 @@
     .openclaw-tab-home {
       flex: 0 0 auto !important;
       max-width: none !important;
-      min-width: 36px !important;
-      width: 36px;
+      min-width: 44px !important;
+      width: 44px;
       padding: 0;
       position: relative;
       border-radius: 999px;
@@ -291,8 +324,8 @@
       overflow: visible;
     }
     .openclaw-home-node {
-      width: 22px;
-      height: 22px;
+      width: 28px;
+      height: 28px;
       border-radius: 999px;
       display: inline-flex;
       align-items: center;
@@ -304,8 +337,8 @@
       transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
     }
     .openclaw-home-node svg {
-      width: 12px;
-      height: 12px;
+      width: 14px;
+      height: 14px;
       display: block;
     }
     .openclaw-tab-home.active {
@@ -1409,7 +1442,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=149">
+  <link rel="stylesheet" href="/theme.css?v=150">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -1952,7 +1985,7 @@
 
   </div>
 
-  <script src="/app.js?v=149"></script>
+  <script src="/app.js?v=150"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
