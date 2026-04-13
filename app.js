@@ -3127,19 +3127,29 @@ function formatWorkSummaryText(entry) {
   return `Worked for ${clock}`;
 }
 
+function runIdFromWorkSummaryId(id) {
+  const raw = String(id || "");
+  return raw.startsWith("run:") ? raw.slice(4) : "";
+}
+
 function workSummaryMessagesForSession(sessionKey) {
   const key = normalizeSessionKey(sessionKey);
   if (!key) return [];
   const list = Array.isArray(state.workSummaries?.[key]) ? state.workSummaries[key] : [];
   return list
     .filter((entry) => Number(entry?.ms || 0) > 0)
+    .sort((a, b) => (Number(a?.at || 0) - Number(b?.at || 0)))
     .map((entry) => ({
-      role: "assistant",
-      text: formatWorkSummaryText(entry),
-      images: [],
-      audios: [],
-      timestamp: Number(entry?.at || 0) || Date.now(),
-      isWorkSummary: true,
+      runId: runIdFromWorkSummaryId(entry?.id),
+      at: Number(entry?.at || 0) || Date.now(),
+      message: {
+        role: "assistant",
+        text: formatWorkSummaryText(entry),
+        images: [],
+        audios: [],
+        timestamp: Number(entry?.at || 0) || Date.now(),
+        isWorkSummary: true,
+      },
     }));
 }
 
@@ -3245,11 +3255,13 @@ async function loadChatHistory(opts) {
         if (m.role === "toolResult") {
           const toolCallId = str(m.toolCallId);
           const meta = toolCallMetaById.get(toolCallId);
+          const runId = messageRunId(m);
           return {
             role: "toolResult",
             toolName: str(m.toolName, str(meta?.name)),
             toolArgs: meta?.args || {},
             toolCallId,
+            runId,
             detail: summarizeToolResult(m?.details ?? m?.content ?? m),
             isError: !!m.isError,
             timestamp: m.timestamp ?? 0,
@@ -3319,7 +3331,42 @@ async function loadChatHistory(opts) {
 
     const workSummaryMessages = workSummaryMessagesForSession(targetKey);
     if (workSummaryMessages.length > 0) {
-      parsed = [...parsed, ...workSummaryMessages];
+      for (const summary of workSummaryMessages) {
+        const summaryRunId = str(summary?.runId);
+        let insertIdx = -1;
+
+        if (summaryRunId) {
+          // Preferred placement: right after the tool-call sequence for this run.
+          let lastToolIdx = -1;
+          for (let i = 0; i < parsed.length; i++) {
+            const m = parsed[i];
+            if (m?.role === "toolResult" && str(m?.runId) === summaryRunId) lastToolIdx = i;
+          }
+          if (lastToolIdx >= 0) {
+            insertIdx = lastToolIdx + 1;
+          } else {
+            // Fallback: place before the assistant's final output for that run.
+            insertIdx = parsed.findIndex((m) => m?.role === "assistant" && str(m?.runId) === summaryRunId && !m?.isReasoning);
+            if (insertIdx < 0) {
+              insertIdx = parsed.findIndex((m) => m?.role === "assistant" && str(m?.runId) === summaryRunId);
+            }
+          }
+        }
+
+        if (insertIdx < 0) {
+          // Global fallback: place before the last assistant text bubble (not after entire transcript).
+          let lastAssistantIdx = -1;
+          for (let i = parsed.length - 1; i >= 0; i--) {
+            if (parsed[i]?.role === "assistant") {
+              lastAssistantIdx = i;
+              break;
+            }
+          }
+          insertIdx = lastAssistantIdx >= 0 ? lastAssistantIdx : parsed.length;
+        }
+
+        parsed.splice(insertIdx, 0, summary.message);
+      }
     }
 
     state.historyInFlight[targetKey] = maybeInFlight;
