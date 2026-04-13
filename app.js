@@ -16,6 +16,7 @@ function str(v, fallback = "") {
 const TAB_NAMER_SUFFIX = ":tab-namer";
 const TAB_NAMER_MAX_CHARS = 30;
 const TAB_NAMER_MAX_WORDS = 5;
+const TAB_NAMER_FALLBACK_MS = 10000;
 
 function cleanTextForTitle(text) {
   return (text || "")
@@ -110,6 +111,26 @@ function ensureTabRenameMeta(sessionKey) {
   if (!sessionKey) return {};
   if (!state.tabRenameState[sessionKey]) state.tabRenameState[sessionKey] = {};
   return state.tabRenameState[sessionKey];
+}
+
+function clearTabRenameFallback(meta) {
+  if (!meta?.fallbackTimer) return;
+  clearTimeout(meta.fallbackTimer);
+  meta.fallbackTimer = null;
+}
+
+function scheduleTabRenameFallback(sessionKey, delayMs = TAB_NAMER_FALLBACK_MS) {
+  if (!sessionKey || sessionKey === "main") return;
+  const meta = ensureTabRenameMeta(sessionKey);
+  clearTabRenameFallback(meta);
+
+  if (meta.manual || meta.attempted || meta.inFlight || !meta.pending) return;
+
+  meta.fallbackTimer = setTimeout(() => {
+    const current = ensureTabRenameMeta(sessionKey);
+    if (current.manual || current.attempted || current.inFlight || !current.pending) return;
+    void upgradeTabTitle(sessionKey, "");
+  }, Math.max(1000, delayMs));
 }
 
 function isUntitledLikeLabel(label, sessionKey = "") {
@@ -230,6 +251,7 @@ async function cleanupSmartTabNamerSession(sessionKey) {
 function markTabTitleManual(sessionKey) {
   if (!sessionKey) return;
   const meta = ensureTabRenameMeta(sessionKey);
+  clearTabRenameFallback(meta);
   meta.manual = true;
   meta.autoEligible = false;
   meta.pending = false;
@@ -241,6 +263,8 @@ function markTabTitleManual(sessionKey) {
 
 function resetTabRenameState(sessionKey, cleanupNamer = false) {
   if (!sessionKey) return;
+  const meta = state.tabRenameState[sessionKey];
+  if (meta) clearTabRenameFallback(meta);
   delete state.tabRenameState[sessionKey];
   if (cleanupNamer) void cleanupSmartTabNamerSession(sessionKey);
 }
@@ -259,6 +283,7 @@ async function autoRenameTab(sessionKey, messageText) {
   meta.autoEligible = true;
   meta.userText = truncateForTabNamer(messageText, 420);
   meta.pending = true;
+  scheduleTabRenameFallback(sessionKey);
 }
 
 /** Run AI tab naming after first assistant response and patch label once. */
@@ -271,6 +296,7 @@ async function upgradeTabTitle(sessionKey, assistantText) {
   const meta = ensureTabRenameMeta(sessionKey);
   if (meta.manual || meta.attempted || meta.inFlight || !meta.pending) return;
 
+  clearTabRenameFallback(meta);
   meta.pending = false;
   meta.attempted = true;
   meta.inFlight = true;
@@ -308,8 +334,42 @@ async function upgradeTabTitle(sessionKey, assistantText) {
   } catch {
     void cleanupSmartTabNamerSession(sessionKey);
   } finally {
+    clearTabRenameFallback(meta);
     meta.inFlight = false;
     delete meta.userText;
+  }
+}
+
+function maybeRecoverUntitledRename(sessionKey, parsedMessages) {
+  if (!sessionKey || sessionKey === "main") return;
+  if (!Array.isArray(parsedMessages) || parsedMessages.length === 0) return;
+
+  const tab = state.tabSessions.find(t => t.key === sessionKey);
+  if (!tab) return;
+
+  const meta = ensureTabRenameMeta(sessionKey);
+  if (meta.manual || meta.attempted || meta.inFlight || meta.pending) return;
+
+  const eligible = Boolean(meta.autoEligible) || isUntitledLikeLabel(tab.label, sessionKey);
+  if (!eligible) return;
+
+  const firstUser = parsedMessages.find((m) => m?.role === "user" && str(m?.text).trim());
+  if (!firstUser) return;
+
+  const firstAssistant = parsedMessages.find((m) => {
+    if (m?.role !== "assistant") return false;
+    const txt = str(m?.text).trim();
+    return !!txt && txt !== "HEARTBEAT_OK" && txt !== "NO_REPLY";
+  });
+
+  meta.autoEligible = true;
+  meta.userText = truncateForTabNamer(firstUser.text, 420);
+  meta.pending = true;
+
+  if (firstAssistant?.text) {
+    void upgradeTabTitle(sessionKey, firstAssistant.text);
+  } else {
+    scheduleTabRenameFallback(sessionKey, 1200);
   }
 }
 
@@ -2662,6 +2722,8 @@ const STEPS_CYCLE = ["off", "on", "full"];
 const THINKING_CYCLE = ["off", "low", "medium", "high", "xhigh"];
 const STATUS_WORKING = "Working";
 const STATUS_STILL_WORKING = "Still working";
+const STATUS_FINISHING_UP = "Finishing up";
+const FINISHING_UP_SILENCE_MS = 3_000;
 const STREAM_SILENCE_RECOVERY_MS = 60_000;
 const STREAM_SILENCE_HARD_MS = 180_000;
 const HISTORY_IN_FLIGHT_MAX_MS = 180_000;
@@ -3142,11 +3204,30 @@ function getTypingTextEl() {
   return ui.typingIndicator?.querySelector(".openclaw-typing-text") || null;
 }
 
+function resolvePassiveProgressLabel(sessionKey = state.sessionKey) {
+  const ss = state.streams.get(sessionKey);
+  if (!ss) return STATUS_WORKING;
+
+  const hasActiveTool = Array.isArray(ss.items)
+    && ss.items.some((item) => item?.type === "tool" && item.active);
+  if (hasActiveTool) return STATUS_WORKING;
+
+  const hasText = !!str(ss.text).trim();
+  const lastDeltaAt = normalizeEpochMs(ss.lastDeltaTime);
+  if (!hasText || !lastDeltaAt) return STATUS_WORKING;
+
+  const quietMs = Math.max(0, Date.now() - lastDeltaAt);
+  return quietMs >= FINISHING_UP_SILENCE_MS ? STATUS_FINISHING_UP : STATUS_WORKING;
+}
+
 function renderTypingLabel(baseLabel = STATUS_WORKING, sessionKey = state.sessionKey) {
   const el = getTypingTextEl();
   if (!el) return;
 
-  const base = str(baseLabel, STATUS_WORKING).trim() || STATUS_WORKING;
+  let base = str(baseLabel, STATUS_WORKING).trim() || STATUS_WORKING;
+  if (base === STATUS_WORKING) {
+    base = resolvePassiveProgressLabel(sessionKey);
+  }
   el.dataset.baseLabel = base;
 
   const startedAt = normalizeEpochMs(state.workingSince?.[sessionKey]);
@@ -3167,7 +3248,12 @@ function ensureWorkingTicker() {
 
     const el = getTypingTextEl();
     if (!el) return;
-    const base = str(el.dataset.baseLabel, str(el.textContent, STATUS_WORKING));
+
+    let base = str(el.dataset.baseLabel, str(el.textContent, STATUS_WORKING));
+    if (base === STATUS_WORKING || base === STATUS_FINISHING_UP) {
+      base = resolvePassiveProgressLabel(sessionKey);
+      el.dataset.baseLabel = base;
+    }
     if (!base || /^error$/i.test(base)) return;
 
     el.textContent = `${base} · ${formatElapsedClock(Date.now() - startedAt)}`;
