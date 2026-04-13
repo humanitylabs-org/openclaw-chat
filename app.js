@@ -257,6 +257,32 @@ function normalizeGatewayUrl(raw) {
   return url.replace(/\/+$/, "");
 }
 
+function parseConnectionConfig() {
+  try {
+    const conn = JSON.parse(localStorage.getItem('connection') || '{}');
+    const raw = (conn.gatewayUrl || state.gatewayUrl || '').trim();
+    if (!raw) return null;
+    let normalized = raw;
+    if (normalized.startsWith('wss://')) normalized = 'https://' + normalized.slice(6);
+    else if (normalized.startsWith('ws://')) normalized = 'http://' + normalized.slice(5);
+    return new URL(normalized);
+  } catch {
+    return null;
+  }
+}
+
+function isTailnetHostname(hostname = '') {
+  return /\.ts\.net$/i.test(hostname) || /\.beta\.tailscale\.net$/i.test(hostname);
+}
+
+function serviceUrlFromConnection(port, path = '') {
+  const base = parseConnectionConfig();
+  if (!base) return null;
+  const protocol = (base.protocol === 'https:' || base.protocol === 'wss:') ? 'https:' : 'http:';
+  const suffix = path.startsWith('/') || !path ? path : '/' + path;
+  return `${protocol}//${base.hostname}:${port}${suffix}`;
+}
+
 function toBase64Url(bytes) {
   let binary = "";
   for (const b of bytes) binary += String.fromCharCode(b);
@@ -547,6 +573,7 @@ const state = {
   gatewayRestarting: false,
   reconnectSince: 0,
   reconnectHintTimer: null,
+  onboardingHintShown: false,
   
   // TTS config from gateway
   ttsConfig: {},
@@ -948,6 +975,10 @@ async function startChat() {
   setTimeout(() => processQueue(), 1000);
   // Immediately sync model from server (don't wait for first 15s interval)
   updateContextMeter();
+  if (typeof preloadAllEmbeds === 'function') {
+    setTimeout(() => preloadAllEmbeds(), 250);
+  }
+  maybeShowTailnetOnboardingHint();
 
   // Guard: only set up recurring timers/listeners once
   if (!state._chatInitialized) {
@@ -1025,6 +1056,18 @@ async function startChat() {
   });
 
   } // end _chatInitialized guard
+}
+
+function maybeShowTailnetOnboardingHint() {
+  if (state.onboardingHintShown) return;
+  const conn = parseConnectionConfig();
+  if (!conn) return;
+  state.onboardingHintShown = true;
+  if (isTailnetHostname(conn.hostname)) return;
+  showReconnectBanner('Tip: Browser/Terminal panels work best with a Tailscale host URL (*.ts.net). Click for details.');
+  setTimeout(() => {
+    if (!state.reconnecting && state.gateway?.connected) hideReconnectBanner();
+  }, 9000);
 }
 
 function clearReconnectHintTimer() {
@@ -1221,6 +1264,50 @@ async function loadDefaults() {
   }
 }
 
+function cleanIdentityValue(raw = '') {
+  return String(raw)
+    .replace(/\*\*/g, '')
+    .replace(/^[-*]\s*/, '')
+    .trim();
+}
+
+function parseIdentityMarkdown(content = '') {
+  if (typeof content !== 'string' || !content.trim()) return {};
+  const nameMatch = content.match(/(?:^|\n)\s*(?:[-*]\s*)?(?:\*\*)?Name(?:\*\*)?\s*:\s*([^\n]+)/i);
+  const emojiMatch = content.match(/(?:^|\n)\s*(?:[-*]\s*)?(?:\*\*)?Emoji(?:\*\*)?\s*:\s*([^\n]+)/i);
+  const name = cleanIdentityValue(nameMatch?.[1] || '');
+  const emojiRaw = cleanIdentityValue(emojiMatch?.[1] || '');
+  const emoji = emojiRaw ? emojiRaw.split(/\s+/)[0] : '';
+  return {
+    name: name || '',
+    emoji: emoji || '',
+  };
+}
+
+function hasGenericAgentIdentity(agent) {
+  const name = String(agent?.name || '').trim();
+  const emoji = String(agent?.emoji || '').trim();
+  const genericName = !name || name.toLowerCase() === 'main' || name.toLowerCase() === 'agent';
+  const genericEmoji = !emoji || emoji === '🤖';
+  return genericName || genericEmoji;
+}
+
+async function hydrateAgentIdentity(agent) {
+  if (!state.gateway?.connected || !agent?.id || !hasGenericAgentIdentity(agent)) return agent;
+  try {
+    const result = await state.gateway.request('agents.files.get', { agentId: agent.id, name: 'IDENTITY.md' });
+    const content = result?.file?.content || '';
+    const parsed = parseIdentityMarkdown(content);
+    return {
+      ...agent,
+      name: parsed.name || agent.name,
+      emoji: parsed.emoji || agent.emoji,
+    };
+  } catch {
+    return agent;
+  }
+}
+
 async function loadAgents() {
   if (!state.gateway?.connected) return;
   try {
@@ -1228,12 +1315,14 @@ async function loadAgents() {
     const agentList = result?.agents || [];
     if (agentList.length === 0) agentList.push({ id: "main" });
 
-    state.agents = agentList.map(a => ({
+    const normalized = agentList.map(a => ({
       id: a.id || "main",
       name: a.identity?.name || a.name || a.id || "Agent",
       emoji: a.identity?.emoji || "🤖",
       creature: a.creature || "",
     }));
+
+    state.agents = await Promise.all(normalized.map((agent) => hydrateAgentIdentity(agent)));
 
     const saved = state.activeAgent;
     const active = state.agents.find(a => a.id === saved.id) || state.agents[0];
@@ -6076,25 +6165,26 @@ async function loadAgentDropdown() {
   if (!container || !state.gateway?.connected) return;
 
   try {
-    const result = await state.gateway.request('agents.list', {});
-    const agents = result?.agents || [];
+    await loadAgents();
+    const agents = (Array.isArray(state.agents) && state.agents.length > 0)
+      ? state.agents
+      : [{ id: state.activeAgent?.id || 'main', name: state.activeAgent?.name || 'Main', emoji: state.activeAgent?.emoji || '🤖', creature: '' }];
     container.innerHTML = '';
 
     for (const agent of agents) {
-      const isActive = agent.id === (state.activeAgent?.id || result?.defaultId);
+      const isActive = agent.id === (state.activeAgent?.id || 'main');
       const btn = document.createElement('button');
       btn.className = 'hud-agent-dropdown-item' + (isActive ? ' active' : '');
-      btn.innerHTML = `<span class="agent-dot"></span><span>${agent.identity?.emoji || '🤖'} ${agent.identity?.name || agent.id}</span>`;
+      btn.innerHTML = `<span class="agent-dot"></span><span>${agent.emoji || '🤖'} ${agent.name || agent.id}</span>`;
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         closeAgentDropdown();
         if (!isActive) {
-          // Map agents.list format to switchAgent format
           switchAgent({
             id: agent.id,
-            name: agent.identity?.name || agent.id,
-            emoji: agent.identity?.emoji || '🤖',
-            creature: agent.identity?.creature || '',
+            name: agent.name || agent.id,
+            emoji: agent.emoji || '🤖',
+            creature: agent.creature || '',
           });
         }
       });
@@ -7278,6 +7368,7 @@ function closeDashboard() {
     if (!url || !token) return;
     state.gatewayUrl = url;
     state.token = token;
+    state.onboardingHintShown = false;
     localStorage.setItem('connection', JSON.stringify({ gatewayUrl: url, token: token }));
     startChat().catch(err => console.error('Connect failed:', err));
     updateDashboard();
@@ -7293,6 +7384,7 @@ function closeDashboard() {
     localStorage.removeItem('deviceApproved');
     state.gatewayUrl = '';
     state.token = '';
+    state.onboardingHintShown = false;
     document.getElementById('landing').style.display = '';
     document.querySelector('.app').style.display = 'none';
   });
@@ -7381,11 +7473,7 @@ function closeDashboard() {
       storageKey: 'browserPanelOpen',
       iframe: null,
       getUrl() {
-        try {
-          const conn = JSON.parse(localStorage.getItem('connection') || '{}');
-          const url = new URL(conn.gatewayUrl || '');
-          return 'https://' + url.hostname + ':6080/embed.html';
-        } catch { return null; }
+        return serviceUrlFromConnection(6080, '/embed.html');
       }
     },
     terminal: {
@@ -7399,11 +7487,7 @@ function closeDashboard() {
       storageKey: 'terminalPanelOpen',
       iframe: null,
       getUrl() {
-        try {
-          const conn = JSON.parse(localStorage.getItem('connection') || '{}');
-          const url = new URL(conn.gatewayUrl || '');
-          return 'https://' + url.hostname + ':7681';
-        } catch { return null; }
+        return serviceUrlFromConnection(7681, '');
       }
     },
   };
@@ -7478,16 +7562,61 @@ function closeDashboard() {
     document.getElementById(cfg.dotId)?.classList.toggle('connected', connected);
   }
 
+  function embedKind(cfg) {
+    return cfg === panels.browser ? 'browser' : 'terminal';
+  }
+
+  function renderEmbedHint(cfg, body, reasonText = '') {
+    if (!body) return;
+    const existing = body.querySelector('.hud-embed-prereq');
+    if (existing) existing.remove();
+
+    const conn = parseConnectionConfig();
+    const host = conn?.hostname || 'your-gateway.tailnet.ts.net';
+    const tailnetOk = isTailnetHostname(host);
+    const kind = embedKind(cfg);
+    const title = kind === 'browser' ? 'Browser prerequisites' : 'Terminal prerequisites';
+    const port = kind === 'browser' ? '6080' : '7681';
+    const serviceName = kind === 'browser' ? 'remote-browser (noVNC)' : 'web-terminal (ttyd)';
+
+    const hint = document.createElement('div');
+    hint.className = 'hud-embed-prereq';
+    hint.innerHTML =
+      '<div class="hud-embed-prereq-title">' + title + '</div>' +
+      (reasonText ? '<div class="hud-embed-prereq-reason">' + reasonText + '</div>' : '') +
+      '<div class="hud-embed-prereq-line">• Gateway URL should be a tailnet host (example: <code>https://your-server.ts.net</code>).</div>' +
+      '<div class="hud-embed-prereq-line">• Tailscale Serve must expose <code>:' + port + '</code> on that host.</div>' +
+      '<div class="hud-embed-prereq-line">• Service must be running: <code>' + serviceName + '</code>.</div>' +
+      (!tailnetOk ? '<div class="hud-embed-prereq-warn">Current host looks non-tailnet. Browser/Terminal may fail outside tailnet.</div>' : '') +
+      '<div class="hud-embed-prereq-actions">' +
+        '<button class="hud-embed-prereq-btn" data-embed-kind="' + kind + '">Run setup check in chat</button>' +
+      '</div>';
+
+    const btn = hint.querySelector('.hud-embed-prereq-btn');
+    btn?.addEventListener('click', () => {
+      if (kind === 'browser') {
+        sendControlAction('Check Browser panel prerequisites for this gateway: verify Tailscale Serve :6080 mapping, remote-browser service status, and noVNC availability. If broken, fix and confirm.');
+      } else {
+        sendControlAction('Check Terminal panel prerequisites for this gateway: verify Tailscale Serve :7681 mapping and web-terminal (ttyd) service status. If broken, fix and confirm.');
+      }
+    });
+
+    body.appendChild(hint);
+  }
+
   // Preload iframes on connect — they load in the background so they're
   // instant when the user opens the panel. Iframes are never destroyed,
   // just hidden/shown via the section collapse.
   function preloadIframe(cfg) {
     if (cfg.iframe) return;
-    const url = cfg.getUrl();
-    if (!url) return;
-
     const body = document.getElementById(cfg.bodyId);
     if (!body) return;
+
+    const url = cfg.getUrl();
+    if (!url) {
+      renderEmbedHint(cfg, body, 'Missing gateway URL. Connect to your gateway first.');
+      return;
+    }
 
     // Show loading spinner
     if (!body.querySelector('.hud-embed-loading')) {
@@ -7510,13 +7639,16 @@ function closeDashboard() {
       updateDots(cfg, true);
       const loader = body.querySelector('.hud-embed-loading');
       if (loader) { loader.style.opacity = '0'; loader.style.transition = 'opacity 0.3s'; setTimeout(() => loader.remove(), 300); }
+      const hint = body.querySelector('.hud-embed-prereq');
+      if (hint) hint.remove();
       iframe.style.opacity = '1';
     });
     setTimeout(() => {
       if (!loaded) {
         updateDots(cfg, false);
         const txt = body.querySelector('.hud-embed-loading-text');
-        if (txt) txt.textContent = 'Taking longer than usual…';
+        if (txt) txt.textContent = 'Still connecting…';
+        renderEmbedHint(cfg, body, 'This usually means prerequisites are missing on the server.');
       }
     }, 8000);
 
@@ -7537,7 +7669,6 @@ function closeDashboard() {
       // Simple toggle — no accordion
       setState(cfg, 'open');
       if (!cfg.iframe) preloadIframe(cfg);
-      else if (cfg.iframe) { cfg.iframe.src = cfg.iframe.src; } // refresh on open
     } else {
       setState(cfg, 'closed');
     }
@@ -7586,6 +7717,14 @@ function closeDashboard() {
   function refresh(cfg, e) {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     if (cfg.iframe) { updateDots(cfg, false); cfg.iframe.src = cfg.iframe.src; }
+  }
+
+  function destroyIframe(cfg) {
+    if (!cfg?.iframe) return;
+    try { cfg.iframe.remove(); } catch {}
+    cfg.iframe = null;
+    cfg.ready = false;
+    updateDots(cfg, false);
   }
 
   // Wire up each panel

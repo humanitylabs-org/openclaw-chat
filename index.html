@@ -1392,7 +1392,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=143">
+  <link rel="stylesheet" href="/theme.css?v=144">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -1935,7 +1935,7 @@
 
   </div>
 
-  <script src="/app.js?v=143"></script>
+  <script src="/app.js?v=144"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
@@ -1974,7 +1974,7 @@
           <input type="password" id="connect-modal-token" placeholder="Paste your token" autocomplete="off">
         </div>
         <button class="connect-modal-btn" id="connect-modal-btn">Connect</button>
-        <p class="connect-modal-hint">Stored locally on this device only.</p>
+        <p class="connect-modal-hint">Stored locally on this device only.<br>For Browser + Terminal, use your <code style="font-size:10px">*.ts.net</code> gateway URL and expose ports <code style="font-size:10px">:6080</code> + <code style="font-size:10px">:7681</code> via Tailscale Serve.</p>
       </div>
     </div>
   </div>
@@ -2003,6 +2003,7 @@
         if (typeof state !== 'undefined') {
           state.gatewayUrl = url;
           state.token = token;
+          state.onboardingHintShown = false;
           startChat().then(function() { updateDashboard(); }).catch(function(err) { console.error('Connect failed:', err); });
         }
       });

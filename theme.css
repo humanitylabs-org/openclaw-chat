@@ -4857,3 +4857,73 @@ html body .dashboard .hud-disconnect-link {
   html body .dashboard .hud-defaults-select,
   html body .dashboard .hud-settings-input { font-size: 12px !important; }
 }
+
+/* Embed setup guidance card (shown when browser/terminal checks fail) */
+.hud-embed-prereq {
+  margin: 8px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.hud-embed-prereq-title {
+  color: var(--text-normal);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.hud-embed-prereq-reason {
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+
+.hud-embed-prereq-line {
+  margin: 3px 0;
+}
+
+.hud-embed-prereq-warn {
+  margin-top: 6px;
+  color: #fbbf24;
+}
+
+.hud-embed-prereq-actions {
+  margin-top: 8px;
+}
+
+.hud-embed-prereq-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-normal);
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.hud-embed-prereq-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .hud-embed-prereq {
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .hud-embed-prereq-warn {
+  color: #b45309;
+}
+
+[data-theme="light"] .hud-embed-prereq-btn {
+  border-color: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-normal);
+}
+
+[data-theme="light"] .hud-embed-prereq-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
