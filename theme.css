@@ -4927,3 +4927,44 @@ html body .dashboard .hud-disconnect-link {
 [data-theme="light"] .hud-embed-prereq-btn:hover {
   background: rgba(0, 0, 0, 0.08);
 }
+
+/* Utility node coherence pass (tabs + panel opener + export) */
+html body .dash-menu-btn {
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  margin: 0 8px 0 2px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--background-modifier-border) !important;
+  background: var(--background-secondary) !important;
+  color: var(--text-faint) !important;
+  opacity: 1 !important;
+  align-self: center !important;
+  box-shadow: none !important;
+}
+
+html body .dash-menu-btn:hover {
+  color: var(--text-normal) !important;
+  border-color: color-mix(in srgb, var(--text-faint) 35%, transparent) !important;
+  background: var(--background-primary) !important;
+}
+
+html body .oc-float-export {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-faint);
+  box-shadow: none;
+  top: calc(var(--header-height) + 7px);
+}
+
+html body .oc-float-export:hover {
+  color: var(--text-normal);
+  border-color: color-mix(in srgb, var(--text-faint) 35%, transparent);
+  background: var(--background-primary);
+}
