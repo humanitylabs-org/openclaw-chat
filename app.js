@@ -5112,9 +5112,12 @@ function handleChatEvent(payload) {
     if (text) {
       ss.text = text;
       if (isActiveTab) {
-        ui.typingIndicator.classList.add("oc-hidden");
+        // Keep progress feedback visible during post-delta quiet periods.
+        // Hiding this caused a frozen-looking UI while the run was still active.
         hideBanner();
         updateStreamBubble();
+        renderTypingLabel(STATUS_WORKING, eventSessionKey);
+        ui.typingIndicator.classList.remove("oc-hidden");
       }
     }
   } else if (chatState === "final") {
