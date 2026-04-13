@@ -4986,3 +4986,22 @@ html body .oc-float-export:hover {
     pointer-events: none !important;
   }
 }
+
+/* Persistent run-duration summary bubble */
+.openclaw-msg-work-summary {
+  align-self: flex-start;
+  max-width: max-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 72%, transparent);
+  color: var(--text-faint);
+  font-size: 11.5px;
+  line-height: 1.25;
+  margin-top: 2px;
+}
+
+.openclaw-msg-work-summary .openclaw-msg-text {
+  font-size: inherit;
+  line-height: inherit;
+}

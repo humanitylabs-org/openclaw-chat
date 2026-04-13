@@ -531,6 +531,16 @@ async function deleteSessionWithFallback(gateway, key, deleteTranscript = true) 
 
 // ─── App State ───────────────────────────────────────────────────────
 
+const WORK_SUMMARIES_KEY = "workSummariesV1";
+function loadStoredWorkSummaries() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(WORK_SUMMARIES_KEY) || "{}");
+    return raw && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
 const state = {
   gatewayUrl: "",
   token: "",
@@ -591,6 +601,7 @@ const state = {
   tabDrafts: JSON.parse(localStorage.getItem('tabDrafts') || '{}'),
   messageQueue: JSON.parse(localStorage.getItem('messageQueue') || '{}'),  // { [sessionKey]: [{ text, images, timestamp }] }
   tabRenameState: {}, // { [sessionKey]: { userText, pending, attempted, inFlight, manual } }
+  workSummaries: loadStoredWorkSummaries(), // { [sessionKey]: [{ id, ms, at, outcome }] }
 
   // Unread tracking
   unreadCounts: {},  // { [sessionKey]: number }
@@ -2285,6 +2296,7 @@ async function resetTab(tab) {
   if (!state.gateway?.connected) return;
   resetTabRenameState(tab.key, true);
   delete state.tabCache[tab.key];
+  clearWorkSummaries(tab.key);
   const isHome = tab.key === "main";
   const title = isHome
     ? (state.homeMirrorSessionKey ? "Reset Home (Telegram)?" : "Reset Home?")
@@ -2320,6 +2332,7 @@ async function closeTab(tab, currentKey) {
   state.tabDeleteInProgress = true;
   resetTabRenameState(tab.key, false);
   delete state.tabCache[tab.key];
+  clearWorkSummaries(tab.key);
   finishStream(tab.key);
 
   // Actually delete the session on the gateway
@@ -3091,6 +3104,68 @@ function clearWorkingSince(sessionKey) {
   maybeStopWorkingTicker();
 }
 
+function saveWorkSummaries() {
+  try {
+    localStorage.setItem(WORK_SUMMARIES_KEY, JSON.stringify(state.workSummaries || {}));
+  } catch {}
+}
+
+function clearWorkSummaries(sessionKey) {
+  const key = normalizeSessionKey(sessionKey);
+  if (!key) return;
+  if (!state.workSummaries || !state.workSummaries[key]) return;
+  delete state.workSummaries[key];
+  saveWorkSummaries();
+}
+
+function formatWorkSummaryText(entry) {
+  const ms = Math.max(0, Number(entry?.ms || 0));
+  const clock = formatElapsedClock(ms);
+  const outcome = String(entry?.outcome || "completed").toLowerCase();
+  if (outcome === "aborted") return `Worked for ${clock} (stopped)`;
+  if (outcome === "error") return `Worked for ${clock} (error)`;
+  return `Worked for ${clock}`;
+}
+
+function workSummaryMessagesForSession(sessionKey) {
+  const key = normalizeSessionKey(sessionKey);
+  if (!key) return [];
+  const list = Array.isArray(state.workSummaries?.[key]) ? state.workSummaries[key] : [];
+  return list
+    .filter((entry) => Number(entry?.ms || 0) > 0)
+    .map((entry) => ({
+      role: "assistant",
+      text: formatWorkSummaryText(entry),
+      images: [],
+      audios: [],
+      timestamp: Number(entry?.at || 0) || Date.now(),
+      isWorkSummary: true,
+    }));
+}
+
+function recordWorkSummary(sessionKey, runId, durationMs, outcome = "completed") {
+  const key = normalizeSessionKey(sessionKey);
+  const ms = Math.max(0, Number(durationMs || 0));
+  if (!key || ms < 8000) return; // keep chat clean for tiny/instant runs
+
+  const id = runId ? `run:${runId}` : `time:${Date.now()}`;
+  const list = Array.isArray(state.workSummaries?.[key]) ? [...state.workSummaries[key]] : [];
+
+  if (runId && list.some((entry) => entry?.id === id)) return;
+  if (!runId && list.length > 0) {
+    const prev = list[list.length - 1];
+    if (prev && Math.abs(Number(prev.ms || 0) - ms) < 1200 && (Date.now() - Number(prev.at || 0)) < 12000) {
+      return;
+    }
+  }
+
+  list.push({ id, ms, at: Date.now(), outcome });
+  if (list.length > 60) list.splice(0, list.length - 60);
+
+  state.workSummaries[key] = list;
+  saveWorkSummaries();
+}
+
 // ─── Chat Functions ──────────────────────────────────────────────────
 
 async function loadChatHistory(opts) {
@@ -3240,6 +3315,11 @@ async function loadChatHistory(opts) {
       if (isSystemStartup) {
         parsed = parsed.slice(1);
       }
+    }
+
+    const workSummaryMessages = workSummaryMessagesForSession(targetKey);
+    if (workSummaryMessages.length > 0) {
+      parsed = [...parsed, ...workSummaryMessages];
     }
 
     state.historyInFlight[targetKey] = maybeInFlight;
@@ -3679,6 +3759,7 @@ function appendMessage(msg) {
   const cls = msg.role === "user" ? "openclaw-msg-user" : "openclaw-msg-assistant";
   const bubble = document.createElement("div");
   bubble.className = `openclaw-msg ${cls}`;
+  if (msg.isWorkSummary) bubble.classList.add("openclaw-msg-work-summary");
 
   if (msg.images && msg.images.length > 0) {
     const imgContainer = document.createElement("div");
@@ -4701,12 +4782,22 @@ function handleChatEvent(payload) {
   const isActiveTab = eventSessionKey === state.sessionKey;
   const chatState = str(payload.state);
   const runId = str(payload.runId, str(ss?.runId));
+  const estimateDurationMs = () => {
+    const startedAt = normalizeEpochMs(ss?.startedAtMs || state.historyInFlightStartedAt?.[eventSessionKey]);
+    if (!startedAt) return 0;
+    return Math.max(0, Date.now() - startedAt);
+  };
 
   if (runId && state.finalizedRuns.has(runId) && (chatState === "delta" || chatState === "final")) {
     return;
   }
 
   if (!ss && (chatState === "final" || chatState === "aborted" || chatState === "error")) {
+    const durationMs = estimateDurationMs();
+    if (chatState === "final") recordWorkSummary(eventSessionKey, runId, durationMs, "completed");
+    else if (chatState === "aborted") recordWorkSummary(eventSessionKey, runId, durationMs, "aborted");
+    else if (chatState === "error") recordWorkSummary(eventSessionKey, runId, durationMs, "error");
+
     if (runId) {
       noteFinalizedRun(runId);
       if (state.streamAssembler) state.streamAssembler.drop(runId);
@@ -4745,6 +4836,8 @@ function handleChatEvent(payload) {
       }
     }
   } else if (chatState === "final") {
+    recordWorkSummary(eventSessionKey, runId, estimateDurationMs(), "completed");
+
     let finalText = "";
     if (runId && state.streamAssembler) {
       finalText = state.streamAssembler.finalize(runId, payload.message, shouldShowThinkingInStream(), str(payload.errorMessage));
@@ -4773,6 +4866,8 @@ function handleChatEvent(payload) {
       delete state.tabCache[eventSessionKey];
     }
   } else if (chatState === "aborted") {
+    recordWorkSummary(eventSessionKey, runId, estimateDurationMs(), "aborted");
+
     if (runId && state.streamAssembler) {
       const partial = state.streamAssembler.finalize(runId, payload.message, shouldShowThinkingInStream(), str(payload.errorMessage));
       if (partial && partial !== "(no output)") ss && (ss.text = partial);
@@ -4784,6 +4879,8 @@ function handleChatEvent(payload) {
     finishStream(eventSessionKey);
     if (isActiveTab) renderMessages();
   } else if (chatState === "error") {
+    recordWorkSummary(eventSessionKey, runId, estimateDurationMs(), "error");
+
     if (runId && state.streamAssembler) state.streamAssembler.drop(runId);
     if (runId) noteFinalizedRun(runId);
     if (isActiveTab) {
