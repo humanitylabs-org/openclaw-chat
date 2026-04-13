@@ -1695,15 +1695,16 @@
 
 /* ── Reconnect banner ─────────────────────────────────── */
 .oc-reconnect-banner {
-  background: rgba(255, 170, 50, 0.15);
-  color: #ffaa32;
+  background: rgba(255, 170, 50, 0.22);
+  color: #ffd08a;
   text-align: center;
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.02em;
-  border-bottom: 1px solid rgba(255, 170, 50, 0.2);
+  border-bottom: 1px solid rgba(255, 170, 50, 0.35);
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 /* Desktop: keep control-panel toggle anchored in one spot */

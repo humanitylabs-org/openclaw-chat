@@ -545,6 +545,8 @@ const state = {
   // Connection state for reconnect UX
   reconnecting: false,
   gatewayRestarting: false,
+  reconnectSince: 0,
+  reconnectHintTimer: null,
   
   // TTS config from gateway
   ttsConfig: {},
@@ -585,6 +587,9 @@ const state = {
   pendingAttachments: [],
   sending: false,
   processingQueue: false,
+
+  // Auto-scroll behavior: keep following output only while user is at bottom
+  autoScrollPinned: true,
 
 };
 
@@ -788,6 +793,10 @@ const ui = {
   typingIndicator: $("typing-indicator"),
   modelLabel: $("model-label"),
 };
+
+ui.messagesContainer?.addEventListener("scroll", () => {
+  state.autoScrollPinned = isNearBottom(ui.messagesContainer, 72);
+}, { passive: true });
 
 // ─── Onboarding Flow ─────────────────────────────────────────────────
 
@@ -1018,10 +1027,28 @@ async function startChat() {
   } // end _chatInitialized guard
 }
 
+function clearReconnectHintTimer() {
+  if (state.reconnectHintTimer) {
+    clearTimeout(state.reconnectHintTimer);
+    state.reconnectHintTimer = null;
+  }
+}
+
+function scheduleReconnectHint() {
+  clearReconnectHintTimer();
+  state.reconnectHintTimer = setTimeout(() => {
+    if (state.gateway?.connected) return;
+    showReconnectBanner("Still reconnecting. Open control panel (☰) to verify gateway URL/token.");
+    if (ui.messageInput) ui.messageInput.placeholder = "Connection issue — open control panel";
+  }, 18000);
+}
+
 function updateConnectionStatus(connected) {
   if (connected) {
+    clearReconnectHintTimer();
     state.reconnecting = false;
     state.gatewayRestarting = false;
+    state.reconnectSince = 0;
     ui.sendBtn.classList.remove("oc-hidden");
     ui.messageInput.disabled = false;
     updateComposerPlaceholder();
@@ -1031,12 +1058,15 @@ function updateConnectionStatus(connected) {
     ui.sendBtn.classList.add("oc-hidden");
     ui.messageInput.disabled = true;
     if (state.gatewayRestarting) {
+      clearReconnectHintTimer();
       ui.messageInput.placeholder = "Gateway restarting…";
       showReconnectBanner("Gateway restarting — reconnecting…");
     } else {
       state.reconnecting = true;
+      if (!state.reconnectSince) state.reconnectSince = Date.now();
       ui.messageInput.placeholder = "Reconnecting…";
       showReconnectBanner("Disconnected — reconnecting…");
+      scheduleReconnectHint();
     }
   }
   updateDashboard();
@@ -1064,8 +1094,12 @@ function showReconnectBanner(text) {
     banner.className = "oc-reconnect-banner";
     const container = ui.messagesContainer?.parentElement;
     if (container) container.insertBefore(banner, container.firstChild);
+    banner.addEventListener("click", () => {
+      if (!state.gateway?.connected) openDashboard();
+    });
   }
   banner.textContent = text;
+  banner.title = "Click to open control panel";
   banner.style.display = "";
 }
 
@@ -3383,9 +3417,10 @@ function renderMessages(opts = {}) {
   }
 
   if (forceBottom || wasNearBottom) {
-    scrollToBottom();
+    scrollToBottom(true);
   } else {
     ui.messagesContainer.scrollTop = prevTop;
+    state.autoScrollPinned = false;
   }
 }
 
@@ -3630,9 +3665,12 @@ function safeImage(alt, url) {
   return img.outerHTML;
 }
 
-function scrollToBottom() {
+function scrollToBottom(force = false) {
+  if (!ui.messagesContainer) return;
+  if (!force && !state.autoScrollPinned) return;
   requestAnimationFrame(() => {
     ui.messagesContainer.scrollTop = ui.messagesContainer.scrollHeight;
+    state.autoScrollPinned = true;
   });
 }
 
@@ -3729,6 +3767,7 @@ function appendToolCall(label, url, active = false, opts = {}) {
   const detail = str(opts.detail);
   const isError = !!opts.isError;
   const noScroll = !!opts.noScroll;
+  const shouldStick = state.autoScrollPinned;
 
   let el = toolCallId ? findToolItemEl(toolCallId) : null;
   if (!el) {
@@ -3758,7 +3797,7 @@ function appendToolCall(label, url, active = false, opts = {}) {
   }
 
   setToolDots(el, active);
-  if (!noScroll) scrollToBottom();
+  if (!noScroll && shouldStick) scrollToBottom(true);
 }
 
 function deactivateLastToolItem() {
@@ -4110,10 +4149,11 @@ function restoreStreamUI() {
     renderTypingLabel(STATUS_WORKING, state.sessionKey);
     ui.typingIndicator.classList.remove("oc-hidden");
   }
-  scrollToBottom();
+  if (state.autoScrollPinned) scrollToBottom(true);
 }
 
 function updateStreamBubble() {
+  const shouldStick = state.autoScrollPinned;
   const ss = state.streams.get(state.sessionKey);
   const visibleText = ss?.text;
   if (!visibleText) {
@@ -4127,13 +4167,13 @@ function updateStreamBubble() {
     state.streamEl = document.createElement("div");
     state.streamEl.className = "openclaw-msg openclaw-msg-assistant openclaw-streaming";
     ui.messagesContainer.appendChild(state.streamEl);
-    scrollToBottom();
   }
   state.streamEl.innerHTML = "";
   const textDiv = document.createElement("div");
   textDiv.className = "openclaw-msg-text";
   textDiv.innerHTML = formatMarkdown(visibleText);
   state.streamEl.appendChild(textDiv);
+  if (shouldStick) scrollToBottom(true);
 }
 
 // ─── Gateway Event Handlers ─────────────────────────────────────────
@@ -4333,7 +4373,7 @@ function handleStreamEvent(payload) {
       }
       renderTypingLabel(STATUS_WORKING, sessionKey);
       ui.typingIndicator.classList.remove("oc-hidden");
-      scrollToBottom();
+      if (state.autoScrollPinned) scrollToBottom(true);
     }
   } else if (stream === "compaction" || eventState === "compacting") {
     if (phase === "end") {
@@ -4573,7 +4613,7 @@ async function sendMessage(text) {
   setSendButtonStopMode(true);
   ui.typingIndicator.classList.remove("oc-hidden");
   renderTypingLabel(STATUS_WORKING, sendSessionKey);
-  scrollToBottom();
+  scrollToBottom(true);
 
   ss.compactTimer = setTimeout(() => {
     const current = state.streams.get(sendSessionKey);
@@ -4612,7 +4652,11 @@ async function sendMessage(text) {
 async function abortMessage() {
   const sk = state.sessionKey;
   const ss = state.streams.get(sk);
-  if (!ss) return;
+  if (!ss) {
+    // Stale stop button state (stream already finished) — recover UI.
+    setSendButtonStopMode(false);
+    return;
+  }
 
   // Immediately save any partial text before cleanup
   if (ss.text) {
@@ -4949,6 +4993,10 @@ function handleSendOrQueue() {
 
   // If streaming and input is empty, abort (stop button behavior)
   if (ui.sendBtn.classList.contains("stop-mode") && !text) {
+    if (!isStreaming) {
+      setSendButtonStopMode(false);
+      return;
+    }
     abortMessage();
     return;
   }
@@ -5031,13 +5079,13 @@ if (isMobile && window.visualViewport) {
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
       // Keep messages scrolled to bottom
-      scrollToBottom();
+      scrollToBottom(true);
     } else {
       // Keyboard closed: restore
       inputArea.style.paddingBottom = '';
       chatContainer.style.height = '';
       window.scrollTo(0, 0);
-      if (wasKeyboardOpen) scrollToBottom();
+      if (wasKeyboardOpen) scrollToBottom(true);
     }
     wasKeyboardOpen = keyboardOpen;
   };
@@ -5053,7 +5101,7 @@ if (isMobile && window.visualViewport) {
     }, 100);
     setTimeout(() => {
       window.scrollTo(0, 0);
-      scrollToBottom();
+      scrollToBottom(true);
     }, 300);
   });
 }
@@ -7703,7 +7751,9 @@ initApp().catch((err) => {
   console.error("initApp failed:", err);
   // Show connect UI so the page isn't a blank white screen
   updateConnectionStatus(false);
+  showReconnectBanner("Couldn’t connect. Open control panel (☰) to verify gateway URL/token.");
   updateDashboard();
+  openDashboard();
 });
 
 // Clean up any old service worker (was causing stale cache issues)

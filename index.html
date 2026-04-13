@@ -24,18 +24,18 @@
     }
 
     :root {
-      --background-primary: #1e1e1e;
-      --background-secondary: #202020;
-      --background-modifier-border: #333;
-      --background-modifier-hover: rgba(255, 255, 255, 0.075);
-      --text-normal: #dcddde;
-      --text-muted: #999;
-      --text-faint: #666;
-      --text-on-accent: #E8E8E8;
-      --interactive-accent: #2A2A2E;
-      --interactive-accent-hover: #343438;
-      --link-color: #7aafef;
-      --link-color-hover: #9dc4f4;
+      --background-primary: #15171b;
+      --background-secondary: #1d2128;
+      --background-modifier-border: #323844;
+      --background-modifier-hover: rgba(255, 255, 255, 0.11);
+      --text-normal: #eff3f8;
+      --text-muted: #c0c8d4;
+      --text-faint: #8f9aaa;
+      --text-on-accent: #f7f9fc;
+      --interactive-accent: #2f3542;
+      --interactive-accent-hover: #3a4252;
+      --link-color: #91beff;
+      --link-color-hover: #b4d3ff;
       --accent-rgb: 242, 242, 242;
       --header-height: 36px;
     }
@@ -808,7 +808,8 @@
     }
 
     .openclaw-streaming {
-      animation: openclaw-pulse 1.8s ease-in-out infinite;
+      animation: none;
+      opacity: 1;
     }
     @keyframes openclaw-pulse {
       0%, 100% { opacity: 1; }
@@ -1391,7 +1392,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=140">
+  <link rel="stylesheet" href="/theme.css?v=141">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -1934,7 +1935,7 @@
 
   </div>
 
-  <script src="/app.js?v=140"></script>
+  <script src="/app.js?v=141"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
