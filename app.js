@@ -7342,7 +7342,7 @@ function updateDefaultsPanel() {
     ? 'Changes are staged. Click Save to apply. Applies to new tabs. Current tab keeps its existing settings.'
     : 'Defaults are saved. Applies to new tabs. Current tab keeps its existing settings.';
 
-  html += '<div style="margin-top:6px;font-size:11px;line-height:1.35;color:var(--text-muted);opacity:0.85">' + statusLine + '</div>';
+  html += '<div style="margin-top:6px;font-size:11px;line-height:1.35;color:var(--text-muted);opacity:0.85">' + statusLine + ' Model idle timeout applies immediately after save/restart.</div>';
 
   if (hasPending) {
     html += '<button class="hud-defaults-apply" id="hud-defaults-apply" onclick="applyPendingDefaults()">Save</button>';
