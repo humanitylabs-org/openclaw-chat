@@ -8000,7 +8000,13 @@ async function loadSubagents(prefetchedSessions) {
 
     const prefix = agentPrefix();
     const subs = sessions
-      .filter(s => s.key.startsWith(prefix) && s.key.includes(":subagent:"))
+      .filter((s) => {
+        const key = String(s?.key || "");
+        if (!key.startsWith(prefix)) return false;
+        if (!key.includes(":subagent:")) return false;
+        if (key.endsWith(":heartbeat")) return false; // hide per-subagent heartbeat helper sessions
+        return true;
+      })
       .sort((a, b) => {
         const aOn = !!(a.active || a.running || a.status === "running");
         const bOn = !!(b.active || b.running || b.status === "running");
