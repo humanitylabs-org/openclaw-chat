@@ -3769,10 +3769,19 @@ function isReasoningAssistantMessage(msg) {
   return false;
 }
 
+function hasActiveRunInSession(sessionKey = state.sessionKey) {
+  if (!sessionKey) return false;
+  if (state.streams.has(sessionKey)) return true;
+  if (state.historyInFlight?.[sessionKey]) return true;
+  if (state.historyPollSession === sessionKey && !!state.historyPollTimer) return true;
+  return false;
+}
+
 function renderMessages(opts = {}) {
   const forceBottom = !!opts.forceBottom;
   const prevTop = ui.messagesContainer.scrollTop;
   const wasNearBottom = isNearBottom(ui.messagesContainer);
+  const hideWorkSummaries = hasActiveRunInSession(state.sessionKey);
 
   // Sync cache with current messages
   if (state.sessionKey && state.messages.length > 0) {
@@ -3781,6 +3790,10 @@ function renderMessages(opts = {}) {
   ui.messagesContainer.innerHTML = "";
   state.streamEl = null;
   for (const msg of state.messages) {
+    if (msg.isWorkSummary && hideWorkSummaries) {
+      continue;
+    }
+
     if (msg.role === "assistant" && isReasoningAssistantMessage(msg) && effectiveReasoningLevel() === "off") {
       continue;
     }
