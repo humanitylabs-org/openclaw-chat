@@ -5747,6 +5747,14 @@ function friendlyFile(name) {
 
 // ─── Collapsible Sections ─────────────────────────────────────────
 
+function refreshDefaultsIfSafe() {
+  if (!state.gateway?.connected) return;
+  if (hasPendingDefaults()) return;
+  loadDefaults().catch((err) => {
+    console.warn("Failed to refresh defaults:", err);
+  });
+}
+
 function toggleSection(sectionId) {
   const el = document.querySelector(`.hud-collapsible[data-section="${sectionId}"]`);
   if (!el) return;
@@ -5764,6 +5772,11 @@ function toggleSection(sectionId) {
   localStorage.setItem('openSectionsSet', JSON.stringify([...set]));
   // Keep legacy key for compat
   localStorage.setItem('openSection', isOpen ? sectionId : '');
+
+  // Keep defaults/schedule panels in sync with gateway config if changed elsewhere.
+  if (isOpen && (sectionId === 'ai-model' || sectionId === 'schedule')) {
+    refreshDefaultsIfSafe();
+  }
 }
 
 function restoreCollapsibleState() {
@@ -7169,6 +7182,7 @@ function updateDashboardToggleButtons() {
 function openDashboard() {
   document.getElementById('dashboard')?.classList.add('open');
   document.getElementById('dashboard-overlay')?.classList.add('open');
+  refreshDefaultsIfSafe();
   updateDashboardToggleButtons();
 }
 
