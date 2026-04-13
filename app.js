@@ -112,6 +112,63 @@ function ensureTabRenameMeta(sessionKey) {
   return state.tabRenameState[sessionKey];
 }
 
+function isUntitledLikeLabel(label, sessionKey = "") {
+  const value = str(label).trim();
+  if (!value) return true;
+  if (value.toLowerCase() === "untitled") return true;
+
+  const key = str(sessionKey).trim();
+  if (!key) return false;
+
+  if (value === key) return true;
+
+  const prefixedKey = `${agentPrefix()}${key}`;
+  if (value === prefixedKey) return true;
+  if (value.endsWith(`:${key}`)) return true;
+
+  return false;
+}
+
+function isLabelInUseError(err) {
+  const msg = [
+    str(err?.message),
+    str(err?.errorMessage),
+    typeof err === "string" ? err : "",
+    (() => {
+      try { return JSON.stringify(err || {}); } catch { return ""; }
+    })(),
+  ].join(" ").toLowerCase();
+  return msg.includes("label already in use");
+}
+
+function withTabLabelSuffix(baseTitle, n) {
+  const suffix = ` ${n}`;
+  const maxBaseLen = Math.max(3, TAB_NAMER_MAX_CHARS - suffix.length);
+  const clipped = baseTitle.slice(0, maxBaseLen).trim();
+  return `${clipped}${suffix}`;
+}
+
+async function patchSessionLabelWithRetry(sessionKey, baseTitle, maxAttempts = 4) {
+  if (!state.gateway?.connected || !sessionKey) return "";
+  const cleanBase = sanitizeSmartTabTitle(baseTitle);
+  if (!cleanBase) return "";
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const candidate = i === 0 ? cleanBase : withTabLabelSuffix(cleanBase, i + 1);
+    try {
+      await state.gateway.request("sessions.patch", {
+        key: `${agentPrefix()}${sessionKey}`,
+        label: candidate,
+      });
+      return candidate;
+    } catch (err) {
+      if (!isLabelInUseError(err) || i === maxAttempts - 1) throw err;
+    }
+  }
+
+  return "";
+}
+
 async function waitMs(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -174,7 +231,9 @@ function markTabTitleManual(sessionKey) {
   if (!sessionKey) return;
   const meta = ensureTabRenameMeta(sessionKey);
   meta.manual = true;
+  meta.autoEligible = false;
   meta.pending = false;
+  meta.attempted = true;
   meta.inFlight = false;
   delete meta.userText;
   void cleanupSmartTabNamerSession(sessionKey);
@@ -186,15 +245,18 @@ function resetTabRenameState(sessionKey, cleanupNamer = false) {
   if (cleanupNamer) void cleanupSmartTabNamerSession(sessionKey);
 }
 
-/** Stage smart auto-rename for an Untitled tab (AI title after first assistant reply). */
+/** Stage smart auto-rename for an Untitled/default tab (AI title after first assistant reply). */
 async function autoRenameTab(sessionKey, messageText) {
   if (sessionKey === "main") return;
   const tab = state.tabSessions.find(t => t.key === sessionKey);
-  if (!tab || tab.label !== "Untitled") return;
+  if (!tab) return;
 
   const meta = ensureTabRenameMeta(sessionKey);
+  const eligible = Boolean(meta.autoEligible) || isUntitledLikeLabel(tab.label, sessionKey);
+  if (!eligible) return;
   if (meta.manual || meta.attempted || meta.pending || meta.inFlight) return;
 
+  meta.autoEligible = true;
   meta.userText = truncateForTabNamer(messageText, 420);
   meta.pending = true;
 }
@@ -204,7 +266,7 @@ async function upgradeTabTitle(sessionKey, assistantText) {
   if (!sessionKey || sessionKey === "main") return;
 
   const tab = state.tabSessions.find(t => t.key === sessionKey);
-  if (!tab || tab.label !== "Untitled") return;
+  if (!tab) return;
 
   const meta = ensureTabRenameMeta(sessionKey);
   if (meta.manual || meta.attempted || meta.inFlight || !meta.pending) return;
@@ -227,17 +289,19 @@ async function upgradeTabTitle(sessionKey, assistantText) {
     }
 
     const latestTab = state.tabSessions.find(t => t.key === sessionKey);
-    if (!latestTab || latestTab.label !== "Untitled") {
+    if (!latestTab) {
       void cleanupSmartTabNamerSession(sessionKey);
       return;
     }
 
-    await state.gateway.request("sessions.patch", {
-      key: `${agentPrefix()}${sessionKey}`,
-      label: title,
-    });
+    const appliedTitle = await patchSessionLabelWithRetry(sessionKey, title);
+    if (!appliedTitle) {
+      void cleanupSmartTabNamerSession(sessionKey);
+      return;
+    }
 
-    latestTab.label = title;
+    latestTab.label = appliedTitle;
+    meta.autoEligible = false;
     renderTabs();
     renderMobileTabSwitcher();
     void cleanupSmartTabNamerSession(sessionKey);
@@ -600,7 +664,7 @@ const state = {
   tabCache: {},  // { [sessionKey]: { messages: [...], timestamp: number } }
   tabDrafts: JSON.parse(localStorage.getItem('tabDrafts') || '{}'),
   messageQueue: JSON.parse(localStorage.getItem('messageQueue') || '{}'),  // { [sessionKey]: [{ text, images, timestamp }] }
-  tabRenameState: {}, // { [sessionKey]: { userText, pending, attempted, inFlight, manual } }
+  tabRenameState: {}, // { [sessionKey]: { userText, pending, attempted, inFlight, manual, autoEligible } }
   workSummaries: loadStoredWorkSummaries(), // { [sessionKey]: [{ id, ms, at, outcome }] }
 
   // Unread tracking
@@ -1910,8 +1974,16 @@ async function _renderTabsInner() {
     const used = s.totalTokens || 0;
     const max = s.contextTokens || 200000;
     const pct = Math.min(100, Math.round((used / max) * 100));
-    const label = s.label || s.displayName || "Untitled";
-    state.tabSessions.push({ key: sk, label, pct, used, max, model: s.model || "" });
+
+    let label = s.label || s.displayName || "";
+    const renameMeta = state.tabRenameState?.[sk];
+    if (renameMeta?.autoEligible && !renameMeta.manual && !renameMeta.attempted) {
+      label = "Untitled";
+    } else if (isUntitledLikeLabel(label, sk)) {
+      label = "Untitled";
+    }
+
+    state.tabSessions.push({ key: sk, label: label || "Untitled", pct, used, max, model: s.model || "" });
   }
 
   // Ensure the active session always has a tab (sessions.list race condition)
@@ -2394,6 +2466,13 @@ async function createNewTab() {
   const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1;
   const sessionKey = `tab-${nextNum}`;
   resetTabRenameState(sessionKey, true);
+  const renameMeta = ensureTabRenameMeta(sessionKey);
+  renameMeta.autoEligible = true;
+  renameMeta.manual = false;
+  renameMeta.pending = false;
+  renameMeta.attempted = false;
+  renameMeta.inFlight = false;
+
   try {
     await state.gateway.request("chat.send", {
       sessionKey: `${agentPrefix()}${sessionKey}`,
@@ -2402,12 +2481,6 @@ async function createNewTab() {
       idempotencyKey: "newtab-" + Date.now(),
     });
     await new Promise(r => setTimeout(r, 500));
-    try {
-      await state.gateway.request("sessions.patch", {
-        key: `${agentPrefix()}${sessionKey}`,
-        label: "Untitled",
-      });
-    } catch { /* label optional */ }
 
     state.streamEl = null;
     ui.typingIndicator.classList.add("oc-hidden");
