@@ -4969,3 +4969,20 @@ html body .oc-float-export:hover {
   border-color: color-mix(in srgb, var(--text-faint) 35%, transparent);
   background: var(--background-primary);
 }
+
+/* Mobile: keep export clear of top controls and hide while panel is open */
+@media (max-width: 768px) {
+  html body .oc-float-export {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+    right: 10px;
+    opacity: 0.35;
+  }
+
+  #dashboard.open ~ #chat-container .oc-float-export,
+  #dashboard-overlay.open ~ #chat-container .oc-float-export,
+  #embed-backdrop.visible ~ #chat-container .oc-float-export {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
