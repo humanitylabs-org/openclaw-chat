@@ -1947,17 +1947,20 @@ async function _renderTabsInner() {
 
     tabEl.appendChild(row);
 
-    const meter = document.createElement("div");
-    meter.className = "openclaw-tab-meter" + (isHome ? " openclaw-tab-meter-home" : "");
-    const fill = document.createElement("div");
-    fill.className = "openclaw-tab-meter-fill";
-    fill.style.width = tab.pct + "%";
     const meterTitle = contextMeterTitle(tab.model, tab.used, tab.max, tab.pct || 0);
-    fill.title = meterTitle;
-    meter.title = meterTitle;
     tabEl.title = meterTitle;
-    meter.appendChild(fill);
-    tabEl.appendChild(meter);
+
+    if (!isHome) {
+      const meter = document.createElement("div");
+      meter.className = "openclaw-tab-meter";
+      const fill = document.createElement("div");
+      fill.className = "openclaw-tab-meter-fill";
+      fill.style.width = tab.pct + "%";
+      fill.title = meterTitle;
+      meter.title = meterTitle;
+      meter.appendChild(fill);
+      tabEl.appendChild(meter);
+    }
 
     if (!isHome) {
       tabEl.draggable = true;
