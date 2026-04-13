@@ -4755,3 +4755,105 @@ html body .dashboard .hud-embed-panel.hud-section.hud-collapsible.hud-open {
     font-size: 16px; /* avoid iOS zoom */
   }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Micro-pass: control panel typography hierarchy — 2026-04-13
+   ══════════════════════════════════════════════════════════════ */
+
+/* Section headers (highest priority text in panel) */
+html body .dashboard .hud-section-label,
+html body .dashboard .hud-section-label-row {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  line-height: 1.3 !important;
+  color: var(--text-normal) !important;
+}
+
+/* Small grouping labels */
+html body .dashboard .hud-group-label,
+html body .dashboard .hud-subsection-label {
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  line-height: 1.3 !important;
+  color: var(--text-faint) !important;
+}
+
+/* Row rhythm */
+html body .dashboard .hud-defaults-row,
+html body .dashboard .hud-settings-row {
+  min-height: 34px !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+/* Row labels (secondary) */
+html body .dashboard .hud-settings-label,
+html body .dashboard .hud-defaults-label {
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1.35 !important;
+  color: var(--text-muted) !important;
+}
+
+/* Row values (primary content) */
+html body .dashboard .hud-settings-value,
+html body .dashboard .hud-defaults-value {
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.4 !important;
+  color: var(--text-normal) !important;
+}
+
+html body .dashboard .hud-defaults-unset {
+  color: var(--text-faint) !important;
+}
+
+/* Interactive controls follow value tier */
+html body .dashboard .hud-defaults-select,
+html body .dashboard .hud-settings-input {
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  color: var(--text-normal) !important;
+  line-height: 1.35 !important;
+}
+
+/* Chips sit between labels and values */
+html body .dashboard .hud-chip {
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+}
+
+html body .dashboard .hud-chip.active {
+  font-weight: 600 !important;
+}
+
+/* Identity block polish */
+html body .dashboard .hud-agent-name {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+}
+
+html body .dashboard .hud-status-line,
+html body .dashboard .hud-disconnect-link {
+  font-size: 11.5px !important;
+  line-height: 1.35 !important;
+}
+
+@media (max-width: 768px) {
+  html body .dashboard .hud-section-label,
+  html body .dashboard .hud-section-label-row { font-size: 11.5px !important; }
+  html body .dashboard .hud-settings-label,
+  html body .dashboard .hud-defaults-label { font-size: 11px !important; }
+  html body .dashboard .hud-settings-value,
+  html body .dashboard .hud-defaults-value,
+  html body .dashboard .hud-defaults-select,
+  html body .dashboard .hud-settings-input { font-size: 12px !important; }
+}
