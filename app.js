@@ -615,6 +615,8 @@ const state = {
   historyPollTimer: null,
   historyPollSession: "",
   historyPollSettled: 0,
+  historyPollStartedAt: 0,
+  historyPollRecoveryAttempted: false,
   workingSince: {}, // { [sessionKey]: epochMs }
   workingTicker: null,
   streamEl: null,
@@ -997,18 +999,34 @@ async function startChat() {
 
   setInterval(() => updateContextMeter(), 15000);
 
-  // Stale stream watchdog — clean up orphaned streams every 15s
+  // Stream watchdog — recover silent runs and prevent infinite spinner states
   setInterval(() => {
     for (const [sk, ss] of state.streams) {
-      const isStale = ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > 90000);
+      const now = Date.now();
+      const lastSignalAt = latestStreamSignalMs(ss);
+      const silentMs = lastSignalAt ? (now - lastSignalAt) : 0;
+
       // Background (startup) streams: clean up after 20s since they don't block anything
       const isBackgroundStale = ss.background && ss.runId?.startsWith("startup-")
-        && (Date.now() - parseInt(ss.runId.split("-")[1])) > 20000;
+        && (now - parseInt(ss.runId.split("-")[1])) > 20000;
       const isOrphanedStartup = !ss.lastDeltaTime && !ss.text && ss.runId?.startsWith("startup-")
-        && (Date.now() - parseInt(ss.runId.split("-")[1])) > 45000;
-      if (isStale || isBackgroundStale || isOrphanedStartup) {
-        console.warn(`[watchdog] Cleaning up ${ss.background ? 'background' : 'stale'} stream for ${sk}`);
+        && (now - parseInt(ss.runId.split("-")[1])) > 45000;
+      if (isBackgroundStale || isOrphanedStartup) {
+        console.warn(`[watchdog] Cleaning up background stream for ${sk}`);
         finishStream(sk);
+        continue;
+      }
+
+      if (ss.background) continue;
+
+      if (silentMs >= STREAM_SILENCE_HARD_MS) {
+        markStreamStalled(sk, ss, `silent for ${Math.round(silentMs / 1000)}s`);
+        continue;
+      }
+
+      if (silentMs >= STREAM_SILENCE_RECOVERY_MS && !ss.recoveryAttemptedAtMs) {
+        console.warn(`[watchdog] Stream quiet for ${Math.round(silentMs / 1000)}s — probing ${sk}`);
+        void runWatchdogRecovery(sk, ss);
       }
     }
   }, 15000);
@@ -1052,7 +1070,8 @@ async function startChat() {
         loadChatHistory({ background: true }).then(() => {
           // If history loaded and stream seems stale (no new deltas), clean up
           const ss = state.streams.get(state.sessionKey);
-          if (ss && ss.lastDeltaTime && (Date.now() - ss.lastDeltaTime > 30000)) {
+          const lastSignalAt = latestStreamSignalMs(ss);
+          if (ss && lastSignalAt && (Date.now() - lastSignalAt > 30000)) {
             // Stream has been silent for 30s+ — likely finished while backgrounded
             finishStream(state.sessionKey);
             loadChatHistory();
@@ -2570,6 +2589,10 @@ const STEPS_CYCLE = ["off", "on", "full"];
 const THINKING_CYCLE = ["off", "low", "medium", "high", "xhigh"];
 const STATUS_WORKING = "Working";
 const STATUS_STILL_WORKING = "Still working";
+const STREAM_SILENCE_RECOVERY_MS = 60_000;
+const STREAM_SILENCE_HARD_MS = 180_000;
+const HISTORY_IN_FLIGHT_MAX_MS = 180_000;
+const TRANSCRIPT_IN_FLIGHT_MAX_AGE_MS = 5 * 60 * 1000;
 
 function effectiveThinkingLevel() {
   const raw = (state.thinkingLevel || state.defaults.thinking || "off").toLowerCase();
@@ -3171,24 +3194,21 @@ function findWorkSummaryInsertIndex(parsed, summaryRunId, summaryAt) {
 
   if (runId) {
     let lastToolIdx = -1;
-    let assistantIdx = -1;
+    let lastAssistantIdx = -1;
     for (let i = 0; i < parsed.length; i++) {
       const m = parsed[i];
       if (m?.role === "toolResult" && str(m?.runId) === runId) lastToolIdx = i;
-      if (assistantIdx < 0 && m?.role === "assistant" && str(m?.runId) === runId && !m?.isReasoning) assistantIdx = i;
-      if (assistantIdx < 0 && m?.role === "assistant" && str(m?.runId) === runId) assistantIdx = i;
+      if (m?.role === "assistant" && str(m?.runId) === runId && !m?.isReasoning) lastAssistantIdx = i;
+      else if (m?.role === "assistant" && str(m?.runId) === runId && lastAssistantIdx < 0) lastAssistantIdx = i;
     }
+    // Prefer after the run's final assistant answer.
+    if (lastAssistantIdx >= 0) return lastAssistantIdx + 1;
     if (lastToolIdx >= 0) return lastToolIdx + 1;
-    if (assistantIdx >= 0) return assistantIdx;
   }
 
-  // Generic UI-first placement: after the nearest trailing tool calls, before final answer.
+  // Generic placement: after the latest assistant answer.
   const lastAssistantIdx = findLastAssistantIdx(parsed);
-  if (lastAssistantIdx >= 0) {
-    for (let i = lastAssistantIdx - 1; i >= 0; i--) {
-      if (parsed[i]?.role === "toolResult") return i + 1;
-    }
-  }
+  if (lastAssistantIdx >= 0) return lastAssistantIdx + 1;
 
   // Timestamp fallback (for unusual transcripts with sparse role metadata).
   const at = Number(summaryAt || 0);
@@ -3199,7 +3219,7 @@ function findWorkSummaryInsertIndex(parsed, summaryRunId, summaryAt) {
     if (idx >= 0) return idx;
   }
 
-  return lastAssistantIdx >= 0 ? lastAssistantIdx : parsed.length;
+  return parsed.length;
 }
 
 function recordWorkSummary(sessionKey, runId, durationMs, outcome = "completed") {
@@ -3292,6 +3312,14 @@ async function loadChatHistory(opts) {
       }
 
       if (!maybeInFlightStartedAt) maybeInFlightStartedAt = Date.now();
+
+      const inFlightAgeMs = Date.now() - maybeInFlightStartedAt;
+      if (inFlightAgeMs > TRANSCRIPT_IN_FLIGHT_MAX_AGE_MS) {
+        // Transcript tail may be stale (e.g., run timed out upstream without a final event).
+        // Treat it as settled to avoid endless "working" loops after reconnect/reopen.
+        maybeInFlight = false;
+        maybeInFlightStartedAt = 0;
+      }
     }
 
     // Transcript-first: remember toolCall metadata by call id so corresponding
@@ -3432,10 +3460,13 @@ function stopHistoryInFlightPoll(sessionKey) {
   }
   state.historyPollSession = "";
   state.historyPollSettled = 0;
+  state.historyPollStartedAt = 0;
+  state.historyPollRecoveryAttempted = false;
 
   if (endedSession && !state.streams.has(endedSession)) {
     clearWorkingSince(endedSession);
     if (endedSession === state.sessionKey) {
+      hideBanner();
       ui.typingIndicator.classList.add("oc-hidden");
       renderTypingLabel(STATUS_WORKING, endedSession);
     }
@@ -3454,6 +3485,8 @@ function startHistoryInFlightPoll(sessionKey, startedAtMs = 0) {
 
   state.historyPollSession = sessionKey;
   state.historyPollSettled = 0;
+  state.historyPollStartedAt = Date.now();
+  state.historyPollRecoveryAttempted = false;
   setWorkingSince(sessionKey, startedAtMs || state.historyInFlightStartedAt[sessionKey]);
   if (sessionKey === state.sessionKey && !state.streams.has(sessionKey)) {
     renderTypingLabel(STATUS_WORKING, sessionKey);
@@ -3468,6 +3501,28 @@ function startHistoryInFlightPoll(sessionKey, startedAtMs = 0) {
     if (state.streams.has(sessionKey)) {
       stopHistoryInFlightPoll(sessionKey);
       return;
+    }
+
+    const pollAgeMs = Date.now() - (state.historyPollStartedAt || Date.now());
+    if (pollAgeMs >= HISTORY_IN_FLIGHT_MAX_MS) {
+      console.warn(`[watchdog] In-flight poll timed out for ${sessionKey} after ${Math.round(pollAgeMs / 1000)}s`);
+      delete state.historyInFlight[sessionKey];
+      delete state.historyInFlightStartedAt[sessionKey];
+      stopHistoryInFlightPoll(sessionKey);
+      if (sessionKey === state.sessionKey) {
+        showBanner("Run stalled — no updates. Retry to continue.");
+        setTimeout(() => {
+          if (!state.streams.has(sessionKey)) hideBanner();
+        }, 5000);
+      }
+      return;
+    }
+
+    if (!state.historyPollRecoveryAttempted && pollAgeMs >= STREAM_SILENCE_RECOVERY_MS) {
+      state.historyPollRecoveryAttempted = true;
+      if (sessionKey === state.sessionKey) {
+        showBanner("No updates for a while — checking run status…");
+      }
     }
 
     await loadChatHistory({ background: true, sessionKey });
@@ -4502,6 +4557,54 @@ function resolveStreamSession(payload) {
   return null;
 }
 
+function latestStreamSignalMs(ss) {
+  if (!ss) return 0;
+  const started = normalizeEpochMs(ss.startedAtMs);
+  const lastDelta = normalizeEpochMs(ss.lastDeltaTime);
+  const lastEvent = normalizeEpochMs(ss.lastEventAtMs);
+  return Math.max(started, lastDelta, lastEvent);
+}
+
+async function runWatchdogRecovery(sessionKey, ss) {
+  if (!sessionKey || !ss || ss.recoveryInFlight || ss.recoveryAttemptedAtMs) return;
+  ss.recoveryAttemptedAtMs = Date.now();
+  ss.recoveryInFlight = true;
+
+  if (sessionKey === state.sessionKey) {
+    showBanner("No updates for a while — checking run status…");
+    renderTypingLabel(STATUS_STILL_WORKING, sessionKey);
+    ui.typingIndicator.classList.remove("oc-hidden");
+  }
+
+  try {
+    await loadChatHistory({ background: true, sessionKey });
+  } catch (err) {
+    console.warn("[watchdog] recovery probe failed:", err);
+  } finally {
+    ss.recoveryInFlight = false;
+  }
+}
+
+function markStreamStalled(sessionKey, ss, reason = "No updates received") {
+  if (!sessionKey || !ss) return;
+  if (ss.stalledAtMs) return;
+  ss.stalledAtMs = Date.now();
+
+  console.warn(`[watchdog] Marking stream stalled for ${sessionKey}: ${reason}`);
+
+  stopHistoryInFlightPoll(sessionKey);
+  delete state.historyInFlight[sessionKey];
+  delete state.historyInFlightStartedAt[sessionKey];
+  finishStream(sessionKey);
+
+  if (sessionKey === state.sessionKey) {
+    showBanner("Run stalled — no updates. Retry to continue.");
+    setTimeout(() => {
+      if (!state.streams.has(sessionKey)) hideBanner();
+    }, 5000);
+  }
+}
+
 function finishStream(sessionKey) {
   const sk = sessionKey ?? state.sessionKey;
   const ss = state.streams.get(sk);
@@ -4653,8 +4756,12 @@ function handleStreamEvent(payload) {
         items: [],
         splitPoints: [],
         lastDeltaTime: 0,
+        lastEventAtMs: Date.now(),
         compactTimer: null,
         workingTimer: null,
+        recoveryAttemptedAtMs: 0,
+        recoveryInFlight: false,
+        stalledAtMs: 0,
         background: true,  // not user-initiated — don't block sending
       };
       state.streams.set(matched, ss);
@@ -4673,7 +4780,12 @@ function handleStreamEvent(payload) {
   if (ss && !ss.startedAtMs) {
     ss.startedAtMs = normalizeEpochMs(payloadData?.timestamp) || normalizeEpochMs(payload?.timestamp) || Date.now();
   }
-  if (ss) setWorkingSince(sessionKey, ss.startedAtMs);
+  if (ss) {
+    ss.lastEventAtMs = Date.now();
+    ss.recoveryAttemptedAtMs = 0;
+    ss.stalledAtMs = 0;
+    setWorkingSince(sessionKey, ss.startedAtMs);
+  }
 
   const incomingRunId = str(payload.runId, str(payloadData?.runId));
   if (incomingRunId) {
@@ -4846,6 +4958,11 @@ function handleChatEvent(payload) {
   const isActiveTab = eventSessionKey === state.sessionKey;
   const chatState = str(payload.state);
   const runId = str(payload.runId, str(ss?.runId));
+  if (ss) {
+    ss.lastEventAtMs = Date.now();
+    if (chatState === "delta") ss.recoveryAttemptedAtMs = 0;
+    if (chatState === "delta" || chatState === "final") ss.stalledAtMs = 0;
+  }
   const estimateDurationMs = () => {
     const startedAt = normalizeEpochMs(ss?.startedAtMs || state.historyInFlightStartedAt?.[eventSessionKey]);
     if (!startedAt) return 0;
@@ -5027,8 +5144,12 @@ async function sendMessage(text) {
     items: [],
     splitPoints: [],
     lastDeltaTime: 0,
+    lastEventAtMs: startedAtMs,
     compactTimer: null,
     workingTimer: null,
+    recoveryAttemptedAtMs: 0,
+    recoveryInFlight: false,
+    stalledAtMs: 0,
     background: false,
   };
   state.streams.set(sendSessionKey, ss);
