@@ -8011,7 +8011,7 @@ async function loadSubagents(prefetchedSessions) {
       const when = whenMs ? cronTimeAgo(whenMs) : "unknown";
       const statusLabel = isActive ? "running" : (sub.status || "idle");
       const title = esc(sub.key);
-      const safeId = id.replace(/'/g, "\\'");
+      const safeSessionKey = String(sub.key || "").replace(/'/g, "\\'");
 
       const row = document.createElement("div");
       row.className = "hud-subagent-row";
@@ -8023,7 +8023,7 @@ async function loadSubagents(prefetchedSessions) {
           '<span style="font-size:10px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(statusLabel + ' · ' + when + (model ? (' · ' + model) : '')) + '</span>' +
         '</span>' +
         '<span class="hud-subagent-tokens" title="Total tokens">' + tokStr + ' tok</span>' +
-        '<button class="hud-subagent-kill" title="Kill sub-agent" onclick="killSubagent(\'' + safeId + '\')">✕</button>';
+        '<button class="hud-subagent-kill" title="Kill sub-agent" onclick="killSubagent(\'' + safeSessionKey + '\')">✕</button>';
       container.appendChild(row);
     }
   } catch (err) {
@@ -8031,10 +8031,15 @@ async function loadSubagents(prefetchedSessions) {
   }
 }
 
-function killSubagent(id) {
-  sendControlAction('/kill ' + id);
+async function killSubagent(sessionKey) {
+  if (!state.gateway?.connected || !sessionKey) return;
+  try {
+    await deleteSessionWithFallback(state.gateway, sessionKey, true);
+  } catch (err) {
+    console.warn("Failed to terminate sub-agent session:", err);
+  }
   // Refresh after a short delay
-  setTimeout(() => loadSubagents(), 2000);
+  setTimeout(() => loadSubagents(), 500);
 }
 
 // ─── Dock / Channel Switcher ─────────────────────────────────────
