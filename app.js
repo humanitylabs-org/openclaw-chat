@@ -18,6 +18,23 @@ const TAB_NAMER_MAX_CHARS = 30;
 const TAB_NAMER_MAX_WORDS = 5;
 const TAB_NAMER_FALLBACK_MS = 10000;
 
+const INLINE_MEDIA_CACHE_KEY = "inlineMediaCache.v1";
+const INLINE_MEDIA_PENDING_KEY = "inlineMediaPending.v1";
+const INLINE_MEDIA_MAX_ITEMS = 32;
+const INLINE_MEDIA_MAX_CHARS = 3_500_000;
+const INLINE_MEDIA_MATCH_WINDOW_MS = 10 * 60 * 1000;
+
+function loadInlineMediaStore(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function cleanTextForTitle(text) {
   return (text || "")
     .replace(/```[\s\S]*?```/g, "")
@@ -728,6 +745,11 @@ const state = {
   tabRenameState: {}, // { [sessionKey]: { userText, pending, attempted, inFlight, manual, autoEligible, fallbackTimer } }
   workSummaries: loadStoredWorkSummaries(), // { [sessionKey]: [{ id, ms, at, outcome }] }
 
+  // Inline media recovery cache (helps preserve user-uploaded images across reloads
+  // when chat.history returns omitted image payloads)
+  inlineMediaCache: loadInlineMediaStore(INLINE_MEDIA_CACHE_KEY),
+  inlineMediaPending: loadInlineMediaStore(INLINE_MEDIA_PENDING_KEY),
+
   // Unread tracking
   unreadCounts: {},  // { [sessionKey]: number }
 
@@ -757,6 +779,160 @@ const state = {
   autoScrollPinned: true,
 
 };
+
+function normalizeInlineMediaUrls(values) {
+  const out = [];
+  const seen = new Set();
+  for (const value of values || []) {
+    if (typeof value !== "string") continue;
+    const url = value.trim();
+    if (!url || seen.has(url)) continue;
+    if (!/^(data:|https?:|blob:|\/)/i.test(url)) continue;
+    seen.add(url);
+    out.push(url);
+  }
+  return out;
+}
+
+function inlineMediaTextKey(text) {
+  return cleanTextForTitle(stripSystemMessages(str(text))).toLowerCase().slice(0, 180);
+}
+
+function inlineMediaEntryChars(entry) {
+  if (!entry || typeof entry !== "object") return 0;
+  const imgChars = (entry.images || []).reduce((n, v) => n + str(v).length, 0);
+  const audioChars = (entry.audios || []).reduce((n, v) => n + str(v).length, 0);
+  return imgChars + audioChars + str(entry.sessionKey).length + str(entry.messageId).length + str(entry.textKey).length + 48;
+}
+
+function pruneInlineMediaEntries(entries, maxItems = INLINE_MEDIA_MAX_ITEMS, maxChars = INLINE_MEDIA_MAX_CHARS) {
+  const sorted = (Array.isArray(entries) ? entries : [])
+    .filter((e) => e && typeof e === "object")
+    .sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0));
+
+  const out = [];
+  let usedChars = 0;
+  for (const entry of sorted) {
+    const size = inlineMediaEntryChars(entry);
+    if (!size) continue;
+    if (out.length >= maxItems) continue;
+    if (usedChars + size > maxChars) continue;
+    out.push(entry);
+    usedChars += size;
+  }
+  return out;
+}
+
+function persistInlineMediaStores() {
+  try {
+    state.inlineMediaCache = pruneInlineMediaEntries(state.inlineMediaCache, INLINE_MEDIA_MAX_ITEMS, INLINE_MEDIA_MAX_CHARS);
+    state.inlineMediaPending = pruneInlineMediaEntries(state.inlineMediaPending, INLINE_MEDIA_MAX_ITEMS, INLINE_MEDIA_MAX_CHARS);
+    localStorage.setItem(INLINE_MEDIA_CACHE_KEY, JSON.stringify(state.inlineMediaCache || []));
+    localStorage.setItem(INLINE_MEDIA_PENDING_KEY, JSON.stringify(state.inlineMediaPending || []));
+  } catch {
+    // Ignore storage quota or serialization errors.
+  }
+}
+
+function cacheInlineMediaByMessageId(sessionKey, messageId, text, timestamp, images, audios) {
+  if (!sessionKey || !messageId) return;
+  const normImages = normalizeInlineMediaUrls(images);
+  const normAudios = normalizeInlineMediaUrls(audios);
+  if (!normImages.length && !normAudios.length) return;
+
+  const key = `${sessionKey}|${messageId}`;
+  const next = {
+    key,
+    sessionKey,
+    messageId,
+    textKey: inlineMediaTextKey(text),
+    timestamp: Number(timestamp) || Date.now(),
+    savedAt: Date.now(),
+    images: normImages,
+    audios: normAudios,
+  };
+
+  state.inlineMediaCache = (state.inlineMediaCache || []).filter((e) => e?.key !== key);
+  state.inlineMediaCache.unshift(next);
+  persistInlineMediaStores();
+}
+
+function rememberPendingInlineMedia(sessionKey, text, timestamp, images, audios) {
+  const normImages = normalizeInlineMediaUrls(images);
+  const normAudios = normalizeInlineMediaUrls(audios);
+  if (!sessionKey || (!normImages.length && !normAudios.length)) return;
+
+  const pending = {
+    sessionKey,
+    textKey: inlineMediaTextKey(text),
+    timestamp: Number(timestamp) || Date.now(),
+    savedAt: Date.now(),
+    images: normImages,
+    audios: normAudios,
+  };
+  state.inlineMediaPending = Array.isArray(state.inlineMediaPending) ? state.inlineMediaPending : [];
+  state.inlineMediaPending.unshift(pending);
+  persistInlineMediaStores();
+}
+
+function recoverInlineMediaForHistory(sessionKey, messageId, text, timestamp, wantImages = 0, wantAudios = 0) {
+  const desiredImages = Math.max(0, Number(wantImages) || 0);
+  const desiredAudios = Math.max(0, Number(wantAudios) || 0);
+  if (!desiredImages && !desiredAudios) return { images: [], audios: [] };
+
+  const key = messageId ? `${sessionKey}|${messageId}` : "";
+  if (key) {
+    const existing = (state.inlineMediaCache || []).find((e) => e?.key === key);
+    if (existing) {
+      return {
+        images: normalizeInlineMediaUrls(existing.images).slice(0, desiredImages || undefined),
+        audios: normalizeInlineMediaUrls(existing.audios).slice(0, desiredAudios || undefined),
+      };
+    }
+  }
+
+  const targetTs = Number(timestamp) || 0;
+  const targetTextKey = inlineMediaTextKey(text);
+  let bestIndex = -1;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  const pending = Array.isArray(state.inlineMediaPending) ? state.inlineMediaPending : [];
+  for (let i = 0; i < pending.length; i++) {
+    const candidate = pending[i];
+    if (!candidate || candidate.sessionKey !== sessionKey) continue;
+    const candidateImages = normalizeInlineMediaUrls(candidate.images);
+    const candidateAudios = normalizeInlineMediaUrls(candidate.audios);
+    if (desiredImages && candidateImages.length < desiredImages) continue;
+    if (desiredAudios && candidateAudios.length < desiredAudios) continue;
+
+    const sameText = !targetTextKey || !candidate.textKey || candidate.textKey === targetTextKey;
+    if (!sameText) continue;
+
+    const delta = Math.abs((Number(candidate.timestamp) || 0) - targetTs);
+    if (targetTs && delta > INLINE_MEDIA_MATCH_WINDOW_MS) continue;
+    if (delta < bestScore) {
+      bestScore = delta;
+      bestIndex = i;
+    }
+  }
+
+  if (bestIndex < 0) return { images: [], audios: [] };
+
+  const hit = pending[bestIndex];
+  const recovered = {
+    images: normalizeInlineMediaUrls(hit.images).slice(0, desiredImages || undefined),
+    audios: normalizeInlineMediaUrls(hit.audios).slice(0, desiredAudios || undefined),
+  };
+
+  // Promote to id-based cache once we know the message id and drop pending candidate.
+  if (messageId && (recovered.images.length || recovered.audios.length)) {
+    cacheInlineMediaByMessageId(sessionKey, messageId, text, timestamp, recovered.images, recovered.audios);
+    state.inlineMediaPending.splice(bestIndex, 1);
+    persistInlineMediaStores();
+  }
+
+  return recovered;
+}
 
 // ─── Agent prefix helper ─────────────────────────────────────────────
 
@@ -3194,6 +3370,8 @@ function messagesEquivalent(a, b) {
       text: str(m.text),
       images: Array.isArray(m.images) ? m.images : [],
       audios: Array.isArray(m.audios) ? m.audios : [],
+      omittedImages: Number(m.omittedImages) || 0,
+      omittedAudios: Number(m.omittedAudios) || 0,
       hasToolBlocks: !!m.hasToolBlocks,
       isReasoning: !!m.isReasoning,
       contentBlocks: Array.isArray(m.contentBlocks) ? m.contentBlocks : [],
@@ -3557,25 +3735,53 @@ async function loadChatHistory(opts) {
           }
         }
 
-        const { text, images, audios } = extractContent(m.content);
+        const extracted = extractContent(m.content);
+        let images = extracted.images;
+        let audios = extracted.audios;
+        const messageId = str(m?.__openclaw?.id);
+
+        if (messageId && (images.length > 0 || audios.length > 0)) {
+          cacheInlineMediaByMessageId(targetKey, messageId, extracted.text, m.timestamp ?? 0, images, audios);
+        }
+
+        if ((extracted.omittedImages > 0 || extracted.omittedAudios > 0)) {
+          const recovered = recoverInlineMediaForHistory(
+            targetKey,
+            messageId,
+            extracted.text,
+            m.timestamp ?? 0,
+            extracted.omittedImages,
+            extracted.omittedAudios,
+          );
+          if (recovered.images.length > 0 || recovered.audios.length > 0) {
+            images = dedupeStrings([...images, ...recovered.images]);
+            audios = dedupeStrings([...audios, ...recovered.audios]);
+          }
+        }
+
+        const hiddenImages = Math.max(0, extracted.omittedImages - images.length);
+        const hiddenAudios = Math.max(0, extracted.omittedAudios - audios.length);
+
         const runId = messageRunId(m);
         const hasToolBlocks = Array.isArray(m.content)
           && m.content.some((b) => b?.type === "tool_use" || b?.type === "toolCall");
         return {
           role: m.role,
-          text,
+          text: extracted.text,
           images,
           audios,
+          omittedImages: hiddenImages,
+          omittedAudios: hiddenAudios,
           timestamp: m.timestamp ?? 0,
           contentBlocks: Array.isArray(m.content) ? m.content : undefined,
           runId,
           hasToolBlocks,
-          isReasoning: m.role === "assistant" && /^reasoning\s*:/i.test((text || "").trim()),
+          isReasoning: m.role === "assistant" && /^reasoning\s*:/i.test((extracted.text || "").trim()),
         };
       })
       .filter(m => {
         if (m.role === "toolResult") return true;
-        return (m.text.trim() || m.images.length > 0 || m.audios.length > 0 || m.hasToolBlocks) && !m.text.startsWith("HEARTBEAT");
+        return (m.text.trim() || m.images.length > 0 || m.audios.length > 0 || m.omittedImages > 0 || m.omittedAudios > 0 || m.hasToolBlocks) && !m.text.startsWith("HEARTBEAT");
       });
 
     // Strip injected system messages from user messages
@@ -3587,7 +3793,7 @@ async function loadChatHistory(opts) {
       return m;
     }).filter(m => {
       if (m.role === "toolResult") return true;
-      return m.text.trim() || m.images.length > 0 || m.audios.length > 0 || m.hasToolBlocks;
+      return m.text.trim() || m.images.length > 0 || m.audios.length > 0 || m.omittedImages > 0 || m.omittedAudios > 0 || m.hasToolBlocks;
     });
 
     // Hide system-generated startup messages (not real user input)
@@ -3866,6 +4072,27 @@ function extractContent(content) {
   let text = "";
   const images = [];
   const audios = [];
+  let omittedImages = 0;
+  let omittedAudios = 0;
+
+  const noteOmittedMedia = (block, resolvedImage, resolvedAudio) => {
+    if (!block || typeof block !== "object") return;
+    const t = str(block.type).toLowerCase();
+    const omitted = block.omitted === true;
+    if (!omitted) return;
+
+    const isImageType = t === "image" || t === "input_image" || t === "image_url";
+    const isAudioType = t === "audio" || t === "input_audio";
+
+    if (isImageType && !resolvedImage) omittedImages += 1;
+    if (isAudioType && !resolvedAudio) omittedAudios += 1;
+
+    if (t === "tool_file") {
+      const fileType = str(block.file_type || block.fileType).toLowerCase();
+      if (!resolvedImage && fileType.startsWith("image/")) omittedImages += 1;
+      if (!resolvedAudio && fileType.startsWith("audio/")) omittedAudios += 1;
+    }
+  };
 
   if (typeof content === "string") {
     text = content;
@@ -3884,6 +4111,7 @@ function extractContent(content) {
             if (tImg) images.push(tImg);
             const tAudio = audioFromBlock(tc);
             if (tAudio) audios.push(tAudio);
+            noteOmittedMedia(tc, tImg, tAudio);
           }
         }
       }
@@ -3893,6 +4121,8 @@ function extractContent(content) {
 
       const audio = audioFromBlock(c);
       if (audio) audios.push(audio);
+
+      noteOmittedMedia(c, img, audio);
     }
   }
 
@@ -3916,6 +4146,8 @@ function extractContent(content) {
     text,
     images: dedupeStrings(images),
     audios: dedupeStrings(audios),
+    omittedImages,
+    omittedAudios,
   };
 }
 
@@ -4143,6 +4375,21 @@ function appendMessage(msg) {
   }
 
   for (const ap of allAudio) renderAudioPlayer(bubble, ap);
+
+  const omittedImages = Math.max(0, Number(msg.omittedImages) || 0);
+  const omittedAudios = Math.max(0, Number(msg.omittedAudios) || 0);
+  if (omittedImages > 0 || omittedAudios > 0) {
+    const note = document.createElement("div");
+    note.className = "openclaw-msg-text";
+    note.style.opacity = "0.72";
+    note.style.fontSize = "12px";
+
+    const parts = [];
+    if (omittedImages > 0) parts.push(`${omittedImages} image${omittedImages === 1 ? "" : "s"}`);
+    if (omittedAudios > 0) parts.push(`${omittedAudios} audio file${omittedAudios === 1 ? "" : "s"}`);
+    note.textContent = `⚠ ${parts.join(" and ")} omitted by history payload limits`;
+    bubble.appendChild(note);
+  }
 
   ui.messagesContainer.appendChild(bubble);
 }
@@ -5411,13 +5658,19 @@ async function sendMessage(text) {
     ui.attachPreview.innerHTML = "";
   }
 
+  const userTimestamp = Date.now();
+  const userTextForCache = displayText || fullMessage;
+
   state.messages.push({
     role: "user",
-    text: displayText || fullMessage,
+    text: userTextForCache,
     images: userImages,
     audios: userAudios,
-    timestamp: Date.now(),
+    timestamp: userTimestamp,
   });
+  if (userImages.length > 0 || userAudios.length > 0) {
+    rememberPendingInlineMedia(state.sessionKey, userTextForCache, userTimestamp, userImages, userAudios);
+  }
   renderMessages();
 
   // Auto-rename "Untitled" tabs based on first message
