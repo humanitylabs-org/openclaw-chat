@@ -4189,6 +4189,28 @@ function renderAudioPlayer(container, voiceRef) {
   });
 }
 
+function encodeBase64Utf8(text) {
+  try {
+    const bytes = new TextEncoder().encode(str(text));
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  } catch {
+    return "";
+  }
+}
+
+function decodeBase64Utf8(value) {
+  try {
+    const binary = atob(str(value));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return "";
+  }
+}
+
 function formatMarkdown(text) {
   text = text.replace(/VOICE:([^\s]+)/g, "");
 
@@ -4197,7 +4219,8 @@ function formatMarkdown(text) {
     const idx = codeBlocks.length;
     const langLabel = lang ? `<div style="font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:10px;color:var(--text-faint,#666);padding:4px 10px 0;letter-spacing:0.06em;text-transform:uppercase">${lang}</div>` : "";
     const copyBtn = `<button class="oc-code-copy" style="position:absolute;top:4px;right:4px;padding:2px 8px;font-size:11px;background:var(--background-modifier-hover,rgba(255,255,255,0.1));border:1px solid var(--background-modifier-border,rgba(255,255,255,0.1));border-radius:3px;color:var(--text-muted,#999);cursor:pointer;opacity:0;transition:opacity 0.15s">Copy</button>`;
-    codeBlocks.push(`<pre class="oc-code-block" style="position:relative;margin:6px 0;background:var(--background-secondary,#141416);border:1px solid var(--background-modifier-border,rgba(255,255,255,0.06));border-radius:4px;overflow-x:auto">${langLabel}${copyBtn}<code style="display:block;padding:8px 12px;font-size:12px;line-height:1.6;background:none">${escapeHtmlChat(code)}</code></pre>`);
+    const rawCodeB64 = encodeBase64Utf8(code);
+    codeBlocks.push(`<pre class="oc-code-block" data-raw-code="${rawCodeB64}" style="position:relative;margin:6px 0;background:var(--background-secondary,#141416);border:1px solid var(--background-modifier-border,rgba(255,255,255,0.06));border-radius:4px;overflow-x:auto">${langLabel}${copyBtn}<code style="display:block;padding:8px 12px;font-size:12px;line-height:1.6;background:none">${escapeHtmlChat(code)}</code></pre>`);
     return `\x00CB${idx}\x00`;
   });
 
@@ -5916,8 +5939,11 @@ ui.messagesContainer.addEventListener("click", (e) => {
   const pre = copyBtn.closest("pre");
   if (!pre) return;
   const code = pre.querySelector("code");
-  if (!code) return;
-  navigator.clipboard.writeText(code.innerText).then(() => {
+  const rawB64 = pre.getAttribute("data-raw-code");
+  const rawCode = rawB64 ? decodeBase64Utf8(rawB64) : "";
+  const textToCopy = rawCode || str(code?.textContent);
+  if (!textToCopy) return;
+  navigator.clipboard.writeText(textToCopy).then(() => {
     copyBtn.textContent = "Copied!";
     setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
   }).catch(() => {});
