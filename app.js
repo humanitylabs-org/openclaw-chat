@@ -3793,13 +3793,15 @@ function imageFromBlock(block) {
   if (block.type === "tool_file") {
     const fileType = String(block.file_type || block.fileType || "").toLowerCase();
     if (!fileType.startsWith("image/")) return "";
-    return mediaUrlFromSource(block.url || block.file_url || block.fileUrl || block.source);
+    return mediaUrlFromSource(block.url || block.file_url || block.fileUrl || block.source || block);
   }
   if (block.type === "image" || block.type === "input_image") {
-    return mediaUrlFromSource(block.source || block.image || block.image_url);
+    // Some providers send inline image payloads as {type:"image", data:"...", mimeType:"..."}
+    // without source/image/image_url wrappers.
+    return mediaUrlFromSource(block.source || block.image || block.image_url || block);
   }
   if (block.type === "image_url") {
-    return mediaUrlFromSource(block.image_url || block.source || block.image);
+    return mediaUrlFromSource(block.image_url || block.source || block.image || block);
   }
   return "";
 }
@@ -3809,10 +3811,10 @@ function audioFromBlock(block) {
   if (block.type === "tool_file") {
     const fileType = String(block.file_type || block.fileType || "").toLowerCase();
     if (!fileType.startsWith("audio/")) return "";
-    return mediaUrlFromSource(block.url || block.file_url || block.fileUrl || block.source);
+    return mediaUrlFromSource(block.url || block.file_url || block.fileUrl || block.source || block);
   }
   if (block.type === "audio" || block.type === "input_audio") {
-    return mediaUrlFromSource(block.source || block.audio || block.audio_url || block.input_audio);
+    return mediaUrlFromSource(block.source || block.audio || block.audio_url || block.input_audio || block);
   }
   return "";
 }
