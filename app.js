@@ -1415,7 +1415,7 @@ function scheduleReconnectHint() {
   clearReconnectHintTimer();
   state.reconnectHintTimer = setTimeout(() => {
     if (state.gateway?.connected) return;
-    showReconnectBanner("Still reconnecting. Open control panel (☰) to verify gateway URL/token.");
+    showReconnectBanner("Still reconnecting. Verify gateway URL/token, then use Retry, Re-pair browser, or Start over.");
     if (ui.messageInput) ui.messageInput.placeholder = "Connection issue — open control panel";
   }, 18000);
 }
@@ -1463,20 +1463,141 @@ function updateComposerPlaceholder() {
   ui.messageInput.placeholder = composerPlaceholderForSession(state.sessionKey);
 }
 
+function clearLocalConnectionAndReturnToLanding({ showConnectModal = false } = {}) {
+  stopHistoryInFlightPoll();
+  clearReconnectHintTimer();
+
+  try { state.gateway?.stop(); } catch {}
+  state.gateway = null;
+
+  localStorage.removeItem("connection");
+  localStorage.removeItem("deviceIdentity");
+  localStorage.removeItem("deviceApproved");
+
+  state.gatewayUrl = "";
+  state.token = "";
+  state.reconnecting = false;
+  state.gatewayRestarting = false;
+  state.reconnectSince = 0;
+  state.onboardingHintShown = false;
+
+  const landing = document.getElementById("landing");
+  const app = document.querySelector(".app");
+  if (landing) landing.style.display = "";
+  if (app) app.style.display = "none";
+
+  hideReconnectBanner();
+
+  if (showConnectModal) {
+    const modal = document.getElementById("connect-modal-overlay");
+    if (modal) modal.classList.add("open");
+    setTimeout(() => document.getElementById("connect-modal-url")?.focus(), 120);
+  }
+}
+
+async function retryConnectionNow() {
+  if (!state.gatewayUrl || !state.token) {
+    openDashboard();
+    return;
+  }
+
+  stopHistoryInFlightPoll();
+  try { state.gateway?.stop(); } catch {}
+  state.gateway = null;
+
+  showReconnectBanner("Retrying connection…");
+  try {
+    await startChat();
+  } catch (err) {
+    console.error("Retry connect failed:", err);
+  }
+}
+
+async function rePairThisBrowser() {
+  const ok = await confirmClose(
+    "Re-pair this browser?",
+    "This keeps your gateway URL/token but clears local device pairing keys, then reconnects with a fresh device identity.",
+  );
+  if (!ok) return;
+
+  stopHistoryInFlightPoll();
+  try { state.gateway?.stop(); } catch {}
+  state.gateway = null;
+
+  localStorage.removeItem("deviceIdentity");
+  localStorage.removeItem("deviceApproved");
+
+  try {
+    state.deviceIdentity = await getOrCreateDeviceIdentity();
+  } catch (err) {
+    console.error("Failed to create new device identity:", err);
+  }
+
+  if (!state.gatewayUrl || !state.token) {
+    openDashboard();
+    return;
+  }
+
+  showReconnectBanner("Re-pairing browser…");
+  try {
+    await startChat();
+  } catch (err) {
+    console.error("Re-pair connect failed:", err);
+  }
+}
+
+async function resetConnectionFromScratch() {
+  const ok = await confirmClose(
+    "Reset local connection?",
+    "This clears saved gateway URL/token and local pairing keys on this browser. You’ll reconnect from scratch.",
+  );
+  if (!ok) return;
+  clearLocalConnectionAndReturnToLanding({ showConnectModal: true });
+}
+
 function showReconnectBanner(text) {
   let banner = document.getElementById("reconnect-banner");
   if (!banner) {
     banner = document.createElement("div");
     banner.id = "reconnect-banner";
     banner.className = "oc-reconnect-banner";
+    banner.innerHTML = `
+      <div class="oc-reconnect-inner">
+        <span class="oc-reconnect-text"></span>
+        <div class="oc-reconnect-actions">
+          <button class="oc-reconnect-action" data-reconnect-action="retry" title="Retry connection now">Retry</button>
+          <button class="oc-reconnect-action" data-reconnect-action="repair" title="Keep URL/token and re-pair this browser">Re-pair browser</button>
+          <button class="oc-reconnect-action" data-reconnect-action="reset" title="Clear local storage connection data and reconnect from scratch">Start over</button>
+        </div>
+      </div>
+    `;
+
     const container = ui.messagesContainer?.parentElement;
     if (container) container.insertBefore(banner, container.firstChild);
-    banner.addEventListener("click", () => {
+
+    banner.addEventListener("click", (event) => {
+      if (event.target.closest(".oc-reconnect-action")) return;
       if (!state.gateway?.connected) openDashboard();
     });
+
+    banner.querySelector('[data-reconnect-action="retry"]')?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void retryConnectionNow();
+    });
+    banner.querySelector('[data-reconnect-action="repair"]')?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void rePairThisBrowser();
+    });
+    banner.querySelector('[data-reconnect-action="reset"]')?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void resetConnectionFromScratch();
+    });
   }
-  banner.textContent = text;
-  banner.title = "Click to open control panel";
+
+  const textEl = banner.querySelector(".oc-reconnect-text");
+  if (textEl) textEl.textContent = text;
+
+  banner.title = "Click banner to open control panel";
   banner.style.display = "";
 }
 
@@ -6931,6 +7052,11 @@ function updateServerPanel() {
       '<button class="hud-server-action" onclick="openTerminalPanel()" title="Open terminal">⌨ terminal</button>' +
       '<button class="hud-server-action" onclick="openTerminalWithCmd(\'journalctl -u openclaw --no-pager -n 50\')" title="View recent logs">📋 logs</button>' +
     '</div>' +
+    '<div class="hud-settings-actions">' +
+      '<button class="hud-server-action" onclick="retryConnectionNow()" title="Restart local websocket connection immediately">↻ retry</button>' +
+      '<button class="hud-server-action" onclick="rePairThisBrowser()" title="Keep URL/token but regenerate local device identity">🔑 re-pair</button>' +
+      '<button class="hud-server-action" onclick="resetConnectionFromScratch()" title="Clear local storage connection data and reconnect from scratch">🧹 start over</button>' +
+    '</div>' +
     '<div class="hud-settings-divider"></div>' +
     '<button class="hud-disconnect-btn" onclick="confirmDisconnect()">Disconnect</button>';
 
@@ -8549,15 +8675,7 @@ function closeDashboard() {
   document.getElementById('dash-disconnect-btn')?.addEventListener('click', async () => {
     const ok = await confirmClose('Disconnect?', 'This will unpair your device. You\'ll need to re-enter your gateway URL and token to reconnect.');
     if (!ok) return;
-    if (state.gateway) state.gateway.stop();
-    localStorage.removeItem('connection');
-    localStorage.removeItem('deviceIdentity');
-    localStorage.removeItem('deviceApproved');
-    state.gatewayUrl = '';
-    state.token = '';
-    state.onboardingHintShown = false;
-    document.getElementById('landing').style.display = '';
-    document.querySelector('.app').style.display = 'none';
+    clearLocalConnectionAndReturnToLanding({ showConnectModal: false });
   });
 
   // Settings change listeners

@@ -1180,6 +1180,49 @@
     }
     .openclaw-reconnect-btn:hover { background: var(--background-modifier-hover); }
 
+    /* Reconnect troubleshooting banner */
+    .oc-reconnect-banner {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: color-mix(in srgb, var(--background-primary) 78%, #ffcc66 22%);
+      border-bottom: 1px solid var(--background-modifier-border);
+      padding: 8px 10px;
+      cursor: pointer;
+      backdrop-filter: saturate(1.2) blur(2px);
+    }
+    .oc-reconnect-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .oc-reconnect-text {
+      font-size: 12px;
+      color: var(--text-normal);
+      opacity: 0.92;
+    }
+    .oc-reconnect-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .oc-reconnect-action {
+      border: 1px solid var(--background-modifier-border);
+      background: var(--background-secondary);
+      color: var(--text-normal);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+    .oc-reconnect-action:hover {
+      background: var(--background-modifier-hover);
+    }
+
     /* ─── Attachment Preview ──────────────────────────────────────── */
     .openclaw-attach-preview {
       display: flex;
@@ -1989,7 +2032,7 @@
 
   </div>
 
-  <script src="/app.js?v=178"></script>
+  <script src="/app.js?v=179"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
