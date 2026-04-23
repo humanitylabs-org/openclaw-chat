@@ -1874,7 +1874,10 @@
             <input type="password" id="dash-token" placeholder="Paste your token">
           </div>
           <button class="hud-connect-btn" id="dash-connect-btn">CONNECT</button>
-          <p class="hud-connect-hint">Stored locally on this device only.</p>
+          <p class="hud-connect-hint">
+            Stored locally on this device only.<br>
+            On your gateway: allow origins <code style="font-size:10px">https://usemyclaw.com</code> + <code style="font-size:10px">https://www.usemyclaw.com</code>, keep <code style="font-size:10px">gateway.tailscale.mode=serve</code>, and verify <code style="font-size:10px">tailscale serve status</code> is active.
+          </p>
         </div>
 
       </div>
@@ -1986,7 +1989,7 @@
 
   </div>
 
-  <script src="/app.js?v=177"></script>
+  <script src="/app.js?v=178"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
@@ -2025,7 +2028,11 @@
           <input type="password" id="connect-modal-token" placeholder="Paste your token" autocomplete="off">
         </div>
         <button class="connect-modal-btn" id="connect-modal-btn">Connect</button>
-        <p class="connect-modal-hint">Stored locally on this device only.<br>For Browser + Terminal, use your <code style="font-size:10px">*.ts.net</code> gateway URL and expose ports <code style="font-size:10px">:6080</code> + <code style="font-size:10px">:7681</code> via Tailscale Serve.</p>
+        <p class="connect-modal-hint">
+          Stored locally on this device only.<br>
+          Gateway checklist: add <code style="font-size:10px">https://usemyclaw.com</code> + <code style="font-size:10px">https://www.usemyclaw.com</code> to <code style="font-size:10px">gateway.controlUi.allowedOrigins</code>, set <code style="font-size:10px">gateway.tailscale.mode=serve</code>, and confirm <code style="font-size:10px">tailscale serve status</code>.<br>
+          For Browser + Terminal panels, use your <code style="font-size:10px">*.ts.net</code> gateway URL and expose ports <code style="font-size:10px">:6080</code> + <code style="font-size:10px">:7681</code> via Tailscale Serve.
+        </p>
       </div>
     </div>
   </div>

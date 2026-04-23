@@ -1207,6 +1207,9 @@ function showPairingBanner() {
           <div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>
           <span style="color:#888;font-size:0.82em;">Waiting for approval — will connect automatically...</span>
         </div>
+        <p style="margin:0.55rem 0 0;color:#8f8f95;font-size:0.76em;line-height:1.35;">
+          If usemyclaw still cannot connect after approval, check gateway setup: <code style="background:#28282d;padding:0.1em 0.3em;border-radius:4px;font-size:0.85em;">gateway.controlUi.allowedOrigins</code> includes <code style="background:#28282d;padding:0.1em 0.3em;border-radius:4px;font-size:0.85em;">https://usemyclaw.com</code> and <code style="background:#28282d;padding:0.1em 0.3em;border-radius:4px;font-size:0.85em;">https://www.usemyclaw.com</code>, and <code style="background:#28282d;padding:0.1em 0.3em;border-radius:4px;font-size:0.85em;">tailscale serve status</code> is active.
+        </p>
       </div>
     </div>
   `;
