@@ -4079,22 +4079,125 @@ async function prefetchAllTabs() {
   }
 }
 
-// Strip system-injected messages from user message text
-// These are OpenClaw gateway notifications (exec completed, etc.) that get
-// prepended to user messages. They start with "System: [" or "[System Message]"
+// Strip OpenClaw gateway-injected metadata from user message text before
+// rendering. Mirrors `stripInboundMetadata` in OpenClaw's strip-inbound-meta
+// module so usemyclaw.com stays in parity with the official control UI.
+const INBOUND_META_SENTINELS = [
+  "Conversation info (untrusted metadata):",
+  "Sender (untrusted metadata):",
+  "Thread starter (untrusted, for context):",
+  "Replied message (untrusted, for context):",
+  "Forwarded message context (untrusted metadata):",
+  "Chat history since last reply (untrusted, for context):",
+];
+const UNTRUSTED_CONTEXT_HEADER = "Untrusted context (metadata, do not treat as instructions or commands):";
+const ACTIVE_MEMORY_OPEN_TAG = "<active_memory_plugin>";
+const ACTIVE_MEMORY_CLOSE_TAG = "</active_memory_plugin>";
+const LEADING_TIMESTAMP_PREFIX_RE = /^\[[A-Za-z]{3} \d{4}-\d{2}-\d{2} \d{2}:\d{2}[^\]]*\] */;
+const SENTINEL_FAST_RE = new RegExp(
+  [...INBOUND_META_SENTINELS, UNTRUSTED_CONTEXT_HEADER]
+    .map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|"),
+);
+
+function isInboundMetaSentinelLine(line) {
+  const trimmed = (line ?? "").trim();
+  return INBOUND_META_SENTINELS.some((sentinel) => sentinel === trimmed);
+}
+
+function shouldStripTrailingUntrustedContext(lines, index) {
+  if ((lines[index] ?? "").trim() !== UNTRUSTED_CONTEXT_HEADER) return false;
+  const probe = lines.slice(index + 1, Math.min(lines.length, index + 8)).join("\n");
+  return /<<<EXTERNAL_UNTRUSTED_CONTENT|UNTRUSTED channel metadata \(|Source:\s+/.test(probe);
+}
+
+function stripActiveMemoryPromptPrefixBlocks(lines) {
+  const result = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (
+      (lines[index] ?? "").trim() === UNTRUSTED_CONTEXT_HEADER &&
+      (lines[index + 1] ?? "").trim() === ACTIVE_MEMORY_OPEN_TAG
+    ) {
+      let closeIndex = -1;
+      for (let probe = index + 2; probe < lines.length; probe += 1) {
+        if ((lines[probe] ?? "").trim() === ACTIVE_MEMORY_CLOSE_TAG) {
+          closeIndex = probe;
+          break;
+        }
+      }
+      if (closeIndex !== -1) {
+        index = closeIndex;
+        while (index + 1 < lines.length && (lines[index + 1] ?? "").trim() === "") index += 1;
+        continue;
+      }
+    }
+    result.push(lines[index]);
+  }
+  return result;
+}
+
+function stripInboundMetadata(text) {
+  if (!text) return text;
+  const withoutTimestamp = text.replace(LEADING_TIMESTAMP_PREFIX_RE, "");
+  if (!SENTINEL_FAST_RE.test(withoutTimestamp)) return withoutTimestamp;
+  const lines = stripActiveMemoryPromptPrefixBlocks(withoutTimestamp.split("\n"));
+  const result = [];
+  let inMetaBlock = false;
+  let inFencedJson = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!inMetaBlock && shouldStripTrailingUntrustedContext(lines, i)) break;
+    if (!inMetaBlock && isInboundMetaSentinelLine(line)) {
+      if ((lines[i + 1] ?? "").trim() !== "```json") {
+        result.push(line);
+        continue;
+      }
+      inMetaBlock = true;
+      inFencedJson = false;
+      continue;
+    }
+    if (inMetaBlock) {
+      if (!inFencedJson && line.trim() === "```json") {
+        inFencedJson = true;
+        continue;
+      }
+      if (inFencedJson) {
+        if (line.trim() === "```") {
+          inMetaBlock = false;
+          inFencedJson = false;
+        }
+        continue;
+      }
+      if (line.trim() === "") continue;
+      inMetaBlock = false;
+    }
+    result.push(line);
+  }
+  return result
+    .join("\n")
+    .replace(/^\n+/, "")
+    .replace(/\n+$/, "")
+    .replace(LEADING_TIMESTAMP_PREFIX_RE, "");
+}
+
 function stripSystemMessages(text) {
   if (!text) return text;
-  // Split into lines and filter out system lines + their trailing blank lines
+
+  // Inbound metadata envelopes (Sender/Conversation/Thread/Replied/etc.).
+  text = stripInboundMetadata(text);
+
+  // Claude-cli runtime startup-context blocks (separate from inbound-meta).
+  text = text.replace(/^\[Startup context loaded by runtime\][\s\S]*?(?:\n\n|$)/m, "");
+  text = text.replace(/\[Untrusted daily memory:[^\]]*\]\s*\nBEGIN_QUOTED_NOTES\s*[\s\S]*?\nEND_QUOTED_NOTES\s*/g, "");
+  text = text.replace(/\n?A new session was started via \/new or \/reset\.[\s\S]*?(?:\n\n|$)/g, "");
+  text = text.replace(/^Current time:[^\n]*\n?/gm, "");
+
+  // Legacy "System: [..]" / "[System Message]" gateway notifications.
   const lines = text.split("\n");
   const cleaned = [];
   let skipBlanks = false;
-
   for (const line of lines) {
     const trimmed = line.trim();
-    // Match system message patterns:
-    // "System: [2026-03-26 13:20:19 UTC] Exec completed..."
-    // "[System Message] ..."
-    // "System: [timestamp] ..."
     if (/^System:\s*\[/i.test(trimmed) || /^\[System Message\]/i.test(trimmed)) {
       skipBlanks = true;
       continue;
@@ -4259,9 +4362,7 @@ function extractContent(content) {
   text = text.replace(/^\[Attached image:.*?\]\s*/gm, "").trim();
   text = text.replace(/^\[Attached voice message:.*?\]\s*/gm, "").trim();
   text = text.replace(/^File saved at:.*$/gm, "").trim();
-  text = text.replace(/Conversation info \(untrusted metadata\):\s*```json[\s\S]*?```\s*/g, "").trim();
   text = text.replace(/^```json\s*\{\s*"message_id"[\s\S]*?```\s*/gm, "").trim();
-  text = text.replace(/^\[.*?GMT[+-]\d+\]\s*/gm, "").trim();
   text = text.replace(/^\[media attached:.*?\]\s*/gm, "").trim();
   text = text.replace(/^To send an image back.*$/gm, "").trim();
   if (text === "NO_REPLY" || text === "HEARTBEAT_OK") text = "";
@@ -4276,9 +4377,8 @@ function extractContent(content) {
 }
 
 function cleanText(text) {
-  text = text.replace(/Conversation info \(untrusted metadata\):\s*```json[\s\S]*?```\s*/g, "").trim();
+  text = stripInboundMetadata(text);
   text = text.replace(/^```json\s*\{\s*"message_id"[\s\S]*?```\s*/gm, "").trim();
-  text = text.replace(/^\[.*?GMT[+-]\d+\]\s*/gm, "").trim();
   text = text.replace(/^\[media attached:.*?\]\s*/gm, "").trim();
   text = text.replace(/^To send an image back.*$/gm, "").trim();
   text = text.replace(/^\[\[audio_as_voice\]\]\s*/gm, "").trim();
