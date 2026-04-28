@@ -3520,6 +3520,119 @@ function messageRunId(m) {
   return str(m?.runId, str(m?.meta?.runId, str(m?.metadata?.runId)));
 }
 
+// claude-cli's history normalizer collapses tool_use+tool_result into one
+// assistant message (and renames tool_use→toolcall). The rest of app.js was
+// built for the legacy shape: assistant messages with `tool_use` blocks
+// followed by separate `role: "toolResult"` messages. This helper flattens
+// claude-cli's shape back to the legacy shape so every downstream branch
+// (renderMessages, work summaries, in-flight detection, dedupe) keeps working.
+function normalizeProviderMessages(messages) {
+  if (!Array.isArray(messages)) return messages;
+  const out = [];
+
+  for (const m of messages) {
+    if (!m || typeof m !== "object" || !Array.isArray(m.content)) {
+      out.push(m);
+      continue;
+    }
+
+    const blocks = m.content;
+    const hasToolCallBlock = blocks.some(b => b && (b.type === "toolcall" || b.type === "tool_use"));
+    const hasToolResultBlock = blocks.some(b => b && b.type === "tool_result");
+
+    if (!hasToolResultBlock && !hasToolCallBlock) {
+      out.push(m);
+      continue;
+    }
+
+    // Build a tool-name registry from the toolcall blocks so we can label
+    // tool_result rows even when the result block lacks a name.
+    const toolNameById = new Map();
+    for (const b of blocks) {
+      if (!b || typeof b !== "object") continue;
+      if (b.type !== "toolcall" && b.type !== "tool_use") continue;
+      const id = str(b.id, str(b.toolCallId, str(b.tool_use_id)));
+      const name = str(b.name);
+      if (id && name) toolNameById.set(id, name);
+    }
+
+    if (m.role === "assistant") {
+      // Split into: assistant message with [text + tool_use blocks] (no tool_results)
+      // followed by one synthetic toolResult message per tool_result block.
+      const keptBlocks = [];
+      const trailingResults = [];
+      for (const b of blocks) {
+        if (!b || typeof b !== "object") {
+          keptBlocks.push(b);
+          continue;
+        }
+        if (b.type === "tool_result") {
+          const toolUseId = str(b.tool_use_id, str(b.toolUseId, str(b.id)));
+          trailingResults.push({
+            role: "toolResult",
+            toolCallId: toolUseId,
+            toolName: str(b.name, toolNameById.get(toolUseId) || ""),
+            details: b,
+            isError: !!(b.is_error || b.isError),
+            timestamp: m.timestamp ?? 0,
+            runId: messageRunId(m),
+          });
+          continue;
+        }
+        if (b.type === "toolcall") {
+          // Rename toolcall → tool_use and copy arguments → input so existing
+          // renderMessages branches (which key on tool_use/toolCall) match.
+          const next = { ...b, type: "tool_use" };
+          if (b.arguments !== undefined && b.input === undefined) next.input = b.arguments;
+          keptBlocks.push(next);
+          continue;
+        }
+        keptBlocks.push(b);
+      }
+      out.push({ ...m, content: keptBlocks });
+      for (const tr of trailingResults) out.push(tr);
+      continue;
+    }
+
+    if (m.role === "user" && hasToolResultBlock) {
+      // A user message carrying tool_result blocks is just an Anthropic API
+      // wrapper around tool output, not a real user input. Extract the
+      // tool_result blocks as toolResult messages and keep any text blocks
+      // as a real user message (rare, but preserve it if present).
+      const userKeptBlocks = [];
+      const trailingResults = [];
+      for (const b of blocks) {
+        if (!b || typeof b !== "object") {
+          userKeptBlocks.push(b);
+          continue;
+        }
+        if (b.type === "tool_result") {
+          const toolUseId = str(b.tool_use_id, str(b.toolUseId, str(b.id)));
+          trailingResults.push({
+            role: "toolResult",
+            toolCallId: toolUseId,
+            toolName: str(b.name, toolNameById.get(toolUseId) || ""),
+            details: b,
+            isError: !!(b.is_error || b.isError),
+            timestamp: m.timestamp ?? 0,
+            runId: messageRunId(m),
+          });
+          continue;
+        }
+        userKeptBlocks.push(b);
+      }
+      const hasUserText = userKeptBlocks.some(b => b?.type === "text" && str(b.text).trim());
+      if (hasUserText) out.push({ ...m, content: userKeptBlocks });
+      for (const tr of trailingResults) out.push(tr);
+      continue;
+    }
+
+    out.push(m);
+  }
+
+  return out;
+}
+
 function formatElapsedClock(ms) {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const mins = Math.floor(totalSec / 60);
@@ -3760,7 +3873,7 @@ async function loadChatHistory(opts) {
       limit: 200,
     });
 
-    const messages = result?.messages || [];
+    const messages = normalizeProviderMessages(result?.messages || []);
     const assistantHasText = (content) => {
       if (typeof content === "string") return !!content.trim();
       if (!Array.isArray(content)) return false;
@@ -4328,12 +4441,12 @@ function extractContent(content) {
       if (c?.type === "text") {
         text += (text ? "\n" : "") + (c.text || "");
       } else if (c?.type === "tool_result") {
+        // tool_result blocks belong on a tool-result row, not in the
+        // assistant bubble. Pull out any inline images/audio so attachments
+        // still surface, but never append the raw text to the bubble.
         const trContent = c.content;
-        if (typeof trContent === "string") {
-          text += (text ? "\n" : "") + trContent;
-        } else if (Array.isArray(trContent)) {
+        if (Array.isArray(trContent)) {
           for (const tc of trContent) {
-            if (tc?.type === "text" && tc.text) text += (text ? "\n" : "") + tc.text;
             const tImg = imageFromBlock(tc);
             if (tImg) images.push(tImg);
             const tAudio = audioFromBlock(tc);
@@ -4341,6 +4454,9 @@ function extractContent(content) {
             noteOmittedMedia(tc, tImg, tAudio);
           }
         }
+      } else if (c?.type === "toolcall" || c?.type === "tool_use" || c?.type === "toolCall") {
+        // Tool-call blocks get rendered as tool rows by renderMessages.
+        // Skip them when extracting bubble text.
       }
 
       const img = imageFromBlock(c);
