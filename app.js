@@ -1954,7 +1954,7 @@ function renderMobileTabSwitcher() {
     };
   }
 
-  const meterTitle = contextMeterTitle(current.model, current.used, current.max, current.pct || 0);
+  const meterTitle = contextMeterTitle(current.model, current.used, current.max, current.pctRaw ?? current.pct ?? 0);
   if (meterFill) {
     meterFill.style.width = (current.pct || 0) + "%";
     meterFill.title = meterTitle;
@@ -2126,7 +2126,7 @@ function renderHamburgerDropdown() {
     const fill = document.createElement("div");
     fill.className = "oc-dd-meter-fill";
     fill.style.width = tab.pct + "%";
-    const meterTitle = contextMeterTitle(tab.model, tab.used, tab.max, tab.pct || 0);
+    const meterTitle = contextMeterTitle(tab.model, tab.used, tab.max, tab.pctRaw ?? tab.pct ?? 0);
     fill.title = meterTitle;
     meter.title = meterTitle;
     item.title = meterTitle;
@@ -2287,10 +2287,11 @@ async function _renderTabsInner() {
   if (homeSession) {
     const used = homeSession.totalTokens || 0;
     const max = homeSession.contextTokens || 200000;
-    const pct = Math.min(100, Math.round((used / max) * 100));
-    state.tabSessions.push({ key: "main", label: "Home", pct, used, max, model: homeSession.model || "" });
+    const pctRaw = contextUsagePercentRaw(used, max);
+    const pct = contextUsagePercentFill(pctRaw);
+    state.tabSessions.push({ key: "main", label: "Home", pct, pctRaw, used, max, model: homeSession.model || "" });
   } else {
-    state.tabSessions.push({ key: "main", label: "Home", pct: 0, used: 0, max: 200000, model: state.currentModel || "" });
+    state.tabSessions.push({ key: "main", label: "Home", pct: 0, pctRaw: 0, used: 0, max: 200000, model: state.currentModel || "" });
   }
 
   const others = convSessions
@@ -2346,7 +2347,8 @@ async function _renderTabsInner() {
     const sk = s.key.slice(prefix.length);
     const used = s.totalTokens || 0;
     const max = s.contextTokens || 200000;
-    const pct = Math.min(100, Math.round((used / max) * 100));
+    const pctRaw = contextUsagePercentRaw(used, max);
+    const pct = contextUsagePercentFill(pctRaw);
 
     let label = s.label || s.displayName || "";
     const renameMeta = state.tabRenameState?.[sk];
@@ -2356,12 +2358,12 @@ async function _renderTabsInner() {
       label = "Untitled";
     }
 
-    state.tabSessions.push({ key: sk, label: label || "Untitled", pct, used, max, model: s.model || "" });
+    state.tabSessions.push({ key: sk, label: label || "Untitled", pct, pctRaw, used, max, model: s.model || "" });
   }
 
   // Ensure the active session always has a tab (sessions.list race condition)
   if (currentKey !== "main" && !state.tabSessions.find(t => t.key === currentKey)) {
-    state.tabSessions.push({ key: currentKey, label: "Untitled", pct: 0, used: 0, max: 200000, model: "" });
+    state.tabSessions.push({ key: currentKey, label: "Untitled", pct: 0, pctRaw: 0, used: 0, max: 200000, model: "" });
   }
 
   const liveTabKeys = new Set(state.tabSessions.map(t => t.key));
@@ -2425,7 +2427,7 @@ async function _renderTabsInner() {
 
     tabEl.appendChild(row);
 
-    const meterTitle = contextMeterTitle(tab.model, tab.used, tab.max, tab.pct || 0);
+    const meterTitle = contextMeterTitle(tab.model, tab.used, tab.max, tab.pctRaw ?? tab.pct ?? 0);
     tabEl.title = meterTitle;
 
     if (!isHome) {
@@ -2931,9 +2933,10 @@ async function updateContextMeter() {
     if (activeFill) {
       const used = session.totalTokens || 0;
       const max = session.contextTokens || 200000;
-      const pct = Math.min(100, Math.round((used / max) * 100));
+      const pctRaw = contextUsagePercentRaw(used, max);
+      const pct = contextUsagePercentFill(pctRaw);
       activeFill.style.width = pct + "%";
-      const meterTitle = contextMeterTitle(session.model || state.currentModel || "", used, max, pct);
+      const meterTitle = contextMeterTitle(session.model || state.currentModel || "", used, max, pctRaw);
       activeFill.title = meterTitle;
       const activeMeter = activeFill.parentElement;
       if (activeMeter) activeMeter.title = meterTitle;
@@ -2945,6 +2948,7 @@ async function updateContextMeter() {
         activeTab.used = used;
         activeTab.max = max;
         activeTab.pct = pct;
+        activeTab.pctRaw = pctRaw;
         activeTab.model = session.model || activeTab.model || "";
       }
 
@@ -3012,6 +3016,19 @@ function sameStringArray(a, b) {
   if (!Array.isArray(a) || !Array.isArray(b)) return false;
   if (a.length !== b.length) return false;
   return a.every((v, i) => v === b[i]);
+}
+
+function contextUsagePercentRaw(used, max) {
+  const usedSafe = Number.isFinite(Number(used)) ? Number(used) : 0;
+  const maxSafe = Number.isFinite(Number(max)) ? Number(max) : 0;
+  if (maxSafe <= 0) return 0;
+  // Keep parity with /status-style display: percent can exceed 100 when cache-heavy.
+  return Math.min(999, Math.round((usedSafe / maxSafe) * 100));
+}
+
+function contextUsagePercentFill(rawPct) {
+  const raw = Number.isFinite(Number(rawPct)) ? Number(rawPct) : 0;
+  return Math.max(0, Math.min(100, raw));
 }
 
 function contextMeterTitle(model, used, max, pct) {
