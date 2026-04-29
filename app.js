@@ -757,6 +757,12 @@ const state = {
   streams: new Map(),
   runToSession: new Map(),
   finalizedRuns: new Map(),
+  // Streamed final-text snapshots kept alive across the claude-cli disk-flush
+  // race: when chatState==="final" arrives but the JSONL transcript hasn't yet
+  // included the final assistant turn, loadChatHistory splices this in so the
+  // streamed message stays visible until the canonical history catches up.
+  // { [sessionKey]: { runId, text, timestamp } }
+  pendingFinals: {},
   historyInFlight: {}, // { [sessionKey]: boolean }
   historyInFlightStartedAt: {}, // { [sessionKey]: epochMs }
   historyPollTimer: null,
@@ -4057,6 +4063,49 @@ async function loadChatHistory(opts) {
       }
     }
 
+    // claude-cli disk-flush race: when a stream just finalized, the JSONL
+    // transcript may not yet contain the final assistant turn, so `parsed`
+    // would be missing it and the bubble would visibly disappear after
+    // finishStream wipes the streaming DOM. Splice the streamed final back
+    // in until the canonical history catches up.
+    const pf = state.pendingFinals[targetKey];
+    if (pf?.text) {
+      const PENDING_FINAL_TTL_MS = 60_000;
+      const ageMs = Date.now() - (pf.timestamp || 0);
+      if (ageMs >= PENDING_FINAL_TTL_MS) {
+        delete state.pendingFinals[targetKey];
+      } else {
+        const target = pf.text.trim();
+        const probe = target.slice(0, Math.min(80, target.length));
+        let matched = false;
+        for (let i = parsed.length - 1; i >= 0; i--) {
+          const m = parsed[i];
+          if (!m || m.role !== "assistant") continue;
+          const mt = str(m.text).trim();
+          if (mt && (mt === target || mt.includes(probe) || target.startsWith(mt.slice(0, 80)))) {
+            matched = true;
+          }
+          break; // only inspect the latest assistant message
+        }
+        if (matched) {
+          delete state.pendingFinals[targetKey];
+        } else {
+          parsed.push({
+            role: "assistant",
+            text: pf.text,
+            images: [],
+            audios: [],
+            omittedImages: 0,
+            omittedAudios: 0,
+            timestamp: pf.timestamp,
+            runId: pf.runId,
+            hasToolBlocks: false,
+            isReasoning: false,
+          });
+        }
+      }
+    }
+
     // Recover lost rename state after refresh/reconnect.
     maybeRecoverUntitledRename(targetKey, parsed);
 
@@ -5905,6 +5954,17 @@ function handleChatEvent(payload) {
     }
     if (finalText && finalText !== "(no output)") ss && (ss.text = finalText);
     if (runId) noteFinalizedRun(runId);
+
+    // Stash the streamed final text so loadChatHistory can keep it visible
+    // during the claude-cli disk-flush race — see state.pendingFinals comment.
+    const pendingText = (finalText && finalText !== "(no output)") ? finalText : str(ss?.text);
+    if (pendingText) {
+      state.pendingFinals[eventSessionKey] = {
+        runId,
+        text: pendingText,
+        timestamp: Date.now(),
+      };
+    }
 
     // Upgrade tab title from assistant's response (better than user's choppy words)
     if (ss?.text) {
