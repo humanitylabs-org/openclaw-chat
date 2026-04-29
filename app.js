@@ -2912,7 +2912,9 @@ async function updateContextMeter() {
     }
 
     const fullModel = session.model || "";
-    const modelCooldown = Date.now() - state.currentModelSetAt < 5000;
+    // Let the backend settle after an explicit model change before syncing
+    // from sessions.list, otherwise stale reads can "snap back" the picker.
+    const modelCooldown = Date.now() - state.currentModelSetAt < 30000;
     if (fullModel && fullModel !== state.currentModel && !modelCooldown) {
       state.currentModel = fullModel;
       localStorage.setItem("currentModel", fullModel);
@@ -3441,16 +3443,16 @@ function renderModelList(box, models, provider, currentModel, modal, providerMap
       row.className = "openclaw-picker-row openclaw-picker-selecting";
       row.textContent = "Switching...";
       try {
-        await state.gateway.request("chat.send", {
-          sessionKey: prefixedSessionKeyForTab(state.sessionKey),
-          message: `/model ${fullId}`,
-          deliver: false,
-          idempotencyKey: "model-" + Date.now(),
+        await state.gateway.request("sessions.patch", {
+          key: prefixedSessionKeyForTab(state.sessionKey),
+          model: fullId,
         });
         state.currentModel = fullId;
         state.currentModelSetAt = Date.now();
         localStorage.setItem("currentModel", fullId);
         updateModelLabel();
+        await updateContextMeter();
+        await renderTabs();
         modal.remove();
       } catch (err) {
         console.error("Model switch failed:", err);
@@ -4567,10 +4569,36 @@ function extractVoiceRefs(text) {
 
 function buildVoiceUrl(voicePath) {
   if (!voicePath) return "";
-  if (/^(https?:|data:|blob:)/i.test(voicePath)) return voicePath;
+  const raw = String(voicePath).trim();
+  if (!raw) return "";
+  if (/^(https?:|data:|blob:)/i.test(raw)) return raw;
+
   const gwUrl = state.gatewayUrl || "";
-  const httpUrl = gwUrl.replace(/^ws(s?):\/\//, "http$1://");
-  return `${httpUrl}/${voicePath}`;
+  const httpUrl = gwUrl.replace(/^ws(s?):\/\//, "http$1://").replace(/\/+$/, "");
+  if (!httpUrl) return raw;
+
+  let source = raw;
+  if (/^file:\/\//i.test(source)) {
+    try {
+      const url = new URL(source);
+      source = decodeURIComponent(url.pathname || "");
+      if (/^\/[a-zA-Z]:\//.test(source)) source = source.slice(1);
+    } catch {
+      source = source.replace(/^file:\/\//i, "");
+    }
+  }
+
+  if (/^\/(?:__openclaw__|media)\//i.test(source)) {
+    return `${httpUrl}${source}`;
+  }
+
+  if (source.startsWith("~") || source.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(source)) {
+    const params = new URLSearchParams({ source });
+    if (state.token) params.set("token", state.token);
+    return `${httpUrl}/__openclaw__/assistant-media?${params.toString()}`;
+  }
+
+  return `${httpUrl}/${source.replace(/^\/+/, "")}`;
 }
 
 function isReasoningAssistantMessage(msg) {
@@ -4657,19 +4685,20 @@ function renderMessages(opts = {}) {
           } else if (block.type === "image" || block.type === "image_url" || block.type === "input_image") {
             const src = imageFromBlock(block);
             if (src) {
+              const resolvedSrc = buildVoiceUrl(src);
               const bubble = document.createElement("div");
               bubble.className = "openclaw-msg openclaw-msg-assistant";
               const imgContainer = document.createElement("div");
               imgContainer.className = "openclaw-msg-images";
               const img = document.createElement("img");
               img.className = "openclaw-msg-img";
-              img.src = src;
+              img.src = resolvedSrc;
               img.loading = "lazy";
               img.addEventListener("click", () => {
                 const overlay = document.createElement("div");
                 overlay.className = "openclaw-img-overlay";
                 const fullImg = document.createElement("img");
-                fullImg.src = src;
+                fullImg.src = resolvedSrc;
                 overlay.appendChild(fullImg);
                 overlay.addEventListener("click", () => overlay.remove());
                 document.body.appendChild(overlay);
@@ -4718,15 +4747,16 @@ function appendMessage(msg) {
     const imgContainer = document.createElement("div");
     imgContainer.className = "openclaw-msg-images";
     for (const src of msg.images) {
+      const resolvedSrc = buildVoiceUrl(src);
       const img = document.createElement("img");
       img.className = "openclaw-msg-img";
-      img.src = src;
+      img.src = resolvedSrc;
       img.loading = "lazy";
       img.addEventListener("click", () => {
         const overlay = document.createElement("div");
         overlay.className = "openclaw-img-overlay";
         const fullImg = document.createElement("img");
-        fullImg.src = src;
+        fullImg.src = resolvedSrc;
         overlay.appendChild(fullImg);
         overlay.addEventListener("click", () => overlay.remove());
         document.body.appendChild(overlay);
