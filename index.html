@@ -1860,6 +1860,19 @@
                     <input type="password" class="hud-settings-input" id="dash-tts-key" placeholder="sk-...">
                   </div>
                 </div>
+                <div class="hud-settings-row">
+                  <span class="hud-settings-label">TTS menu</span>
+                  <div class="hud-chip-group" id="dash-tts-shortcuts">
+                    <button class="hud-chip" data-cmd="/tts status">status</button>
+                    <button class="hud-chip" data-cmd="/tts provider">provider</button>
+                    <button class="hud-chip" data-cmd="/tts persona">persona</button>
+                    <button class="hud-chip" data-cmd="/tts limit 1500">limit</button>
+                    <button class="hud-chip" data-cmd="/tts summary on">summary</button>
+                    <button class="hud-chip" data-cmd="/tts latest">latest</button>
+                    <button class="hud-chip" data-cmd="/tts chat default">chat mode</button>
+                    <button class="hud-chip" data-cmd="/tts audio ">audio</button>
+                  </div>
+                </div>
                 <button class="hud-defaults-apply" id="dash-tts-apply" style="display:none" onclick="applyTTSConfig()">save voice settings</button>
               </div>
             </div>
@@ -2005,15 +2018,15 @@
           <div class="openclaw-attach-preview oc-hidden" id="attach-preview"></div>
           <!-- Model label bar -->
           <div class="openclaw-model-bar">
+            <button class="bar-chip bar-chip-btn" id="bar-menu" title="Command menu">menu</button>
+            <span class="bar-sep">·</span>
             <span class="openclaw-model-label" id="model-label" title="Click to change model"></span>
             <span class="bar-sep">·</span>
             <span class="bar-chip" id="bar-thinking" title="Thinking effort for upcoming responses">thinking effort: off</span>
             <span class="bar-sep">·</span>
             <span class="bar-chip" id="bar-verbose" title="Show steps: off = none, on = tool use, full = tool use + output">show steps: off</span>
             <span class="bar-sep">·</span>
-            <button class="bar-chip bar-chip-btn" id="bar-download" title="Download current chat">download chat</button>
-            <span class="bar-sep">·</span>
-            <button class="bar-chip bar-chip-btn" id="bar-commands" title="Slash commands">commands</button>
+            <button class="bar-chip bar-chip-btn" id="bar-download" title="Download current chat" aria-label="Download current chat">⤓</button>
             <span class="bar-sep" id="bar-home-pair-sep" style="display:none">·</span>
             <button class="bar-chip bar-chip-btn" id="bar-home-pair" title="Home session pairing" style="display:none">home: main</button>
             <span class="bar-sep" id="bar-dock-sep" style="display:none">·</span>
@@ -2033,7 +2046,7 @@
 
   </div>
 
-  <script src="/app.js?v=185"></script>
+  <script src="/app.js?v=186"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}

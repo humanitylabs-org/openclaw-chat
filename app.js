@@ -1222,8 +1222,8 @@ async function initApp() {
     document.getElementById('terminal-dot')?.classList.remove('connected');
     const browserStatus = document.getElementById('browser-status');
     const terminalStatus = document.getElementById('terminal-status');
-    if (browserStatus) browserStatus.textContent = 'setup needed';
-    if (terminalStatus) terminalStatus.textContent = 'setup needed';
+    if (browserStatus) browserStatus.textContent = 'setup';
+    if (terminalStatus) terminalStatus.textContent = 'setup';
   }
 }
 
@@ -3197,13 +3197,13 @@ function removeInlineMenu(id) {
   document.getElementById(id)?.remove();
 }
 
-function openInlineMenu({ id, anchorEl, title = "", options = [] }) {
+function openInlineMenu({ id, anchorEl, title = "", options = [], scrollable = false }) {
   removeInlineMenu(id);
   if (!anchorEl || options.length === 0) return;
 
   const menu = document.createElement("div");
   menu.id = id;
-  menu.className = "oc-inline-menu";
+  menu.className = `oc-inline-menu${scrollable ? " is-scrollable" : ""}`;
   if (title) {
     const hdr = document.createElement("div");
     hdr.className = "oc-inline-menu-title";
@@ -3262,27 +3262,46 @@ function openHomePairMenu(anchorEl) {
   });
 }
 
-function openSlashCommandsMenu(anchorEl) {
+function insertCommandInComposer(commandText) {
   const input = document.getElementById("message-input");
   if (!input) return;
+  input.value = commandText;
+  input.focus();
+  input.dispatchEvent(new Event("input"));
+}
+
+function openCommandMenu(anchorEl) {
   const commands = [
-    { cmd: "/new", desc: "Start a fresh tab" },
-    { cmd: "/reset", desc: "Reset current tab" },
-    { cmd: "/status", desc: "Show runtime status" },
-    { cmd: "/help", desc: "Show command help" },
-    { cmd: "/agents", desc: "List available agents" },
+    { label: "New session", desc: "Start a fresh tab", cmd: "/new" },
+    { label: "Reset session", desc: "Reset current tab", cmd: "/reset" },
+    { label: "Status", desc: "Runtime and usage snapshot", cmd: "/status" },
+    { label: "Help", desc: "Show full command help", cmd: "/help" },
+    { label: "Tasks", desc: "Show active/background tasks", cmd: "/tasks" },
+    { label: "Model picker", desc: "List/select model", cmd: "/model" },
+    { label: "Model status", desc: "Current model details", cmd: "/model status" },
+    { label: "Thinking", desc: "Set thinking level", cmd: "/think adaptive" },
+    { label: "Show steps", desc: "Set tool/reasoning visibility", cmd: "/verbose on" },
+    { label: "Reasoning", desc: "Reasoning stream on/off", cmd: "/reasoning on" },
+    { label: "Queue", desc: "Queue mode controls", cmd: "/queue" },
+    { label: "TTS status", desc: "Read current TTS settings", cmd: "/tts status" },
+    { label: "TTS provider", desc: "List/select TTS provider", cmd: "/tts provider" },
+    { label: "TTS persona", desc: "List/select TTS persona", cmd: "/tts persona" },
+    { label: "TTS limit", desc: "Set max chars before summarize", cmd: "/tts limit 1500" },
+    { label: "TTS summary", desc: "Enable or disable auto-summary", cmd: "/tts summary on" },
+    { label: "TTS latest", desc: "Speak last assistant reply", cmd: "/tts latest" },
+    { label: "TTS audio", desc: "Generate audio from text", cmd: "/tts audio " },
+    { label: "TTS chat mode", desc: "Set this chat override", cmd: "/tts chat default" },
+    { label: "Agents", desc: "List available agents", cmd: "/agents" },
+    { label: "Subagents", desc: "List subagent runs", cmd: "/subagents list" },
   ];
   openInlineMenu({
-    id: "slash-commands-menu",
+    id: "command-menu",
     anchorEl,
-    title: "Slash commands",
+    title: "Menu",
+    scrollable: true,
     options: commands.map((item) => ({
-      label: `${item.cmd}  ·  ${item.desc}`,
-      onSelect: () => {
-        input.value = item.cmd;
-        input.focus();
-        input.dispatchEvent(new Event("input"));
-      }
+      label: `${item.label}  ·  ${item.desc}`,
+      onSelect: () => insertCommandInComposer(item.cmd)
     }))
   });
 }
@@ -3347,8 +3366,8 @@ document.getElementById("bar-verbose")?.addEventListener("click", () =>
 document.getElementById("bar-download")?.addEventListener("click", () =>
   exportCurrentSession());
 
-document.getElementById("bar-commands")?.addEventListener("click", (event) =>
-  openSlashCommandsMenu(event.currentTarget));
+document.getElementById("bar-menu")?.addEventListener("click", (event) =>
+  openCommandMenu(event.currentTarget));
 
 document.getElementById("bar-home-pair")?.addEventListener("click", (event) =>
   openHomePairMenu(event.currentTarget));
@@ -9208,6 +9227,15 @@ function closeDashboard() {
   document.querySelectorAll('#dash-tts-providers .hud-chip').forEach(chip => {
     chip.addEventListener('click', () => selectTTSProvider(chip.dataset.provider));
   });
+  // TTS command shortcuts (/tts parity menu)
+  document.querySelectorAll('#dash-tts-shortcuts .hud-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const cmd = chip.dataset.cmd || '';
+      if (!cmd) return;
+      closeDashboard();
+      insertCommandInComposer(cmd);
+    });
+  });
   document.getElementById('dash-tts-key')?.addEventListener('input', onTTSKeyChange);
 
   // Apply saved settings on load
@@ -9363,7 +9391,7 @@ function closeDashboard() {
     const dot = document.getElementById(cfg.dotId);
     dot?.classList.toggle('connected', connected);
     const statusEl = document.getElementById(cfg === panels.browser ? 'browser-status' : 'terminal-status');
-    if (statusEl) statusEl.textContent = statusText || (connected ? 'connected' : 'setup needed');
+    if (statusEl) statusEl.textContent = statusText || (connected ? '' : 'setup');
   }
 
   function embedKind(cfg) {
@@ -9418,12 +9446,12 @@ function closeDashboard() {
 
     const url = cfg.getUrl();
     if (!url) {
-      updateDots(cfg, false, 'setup needed');
+      updateDots(cfg, false, 'setup');
       renderEmbedHint(cfg, body, 'Missing gateway URL. Connect to your gateway first.');
       return;
     }
 
-    updateDots(cfg, false, 'connecting…');
+    updateDots(cfg, false, '');
 
     // Show loading spinner
     if (!body.querySelector('.hud-embed-loading')) {
@@ -9452,7 +9480,7 @@ function closeDashboard() {
     });
     setTimeout(() => {
       if (!loaded) {
-        updateDots(cfg, false, 'setup needed');
+        updateDots(cfg, false, 'setup');
         const txt = body.querySelector('.hud-embed-loading-text');
         if (txt) txt.textContent = 'Still connecting…';
         renderEmbedHint(cfg, body, 'This usually means prerequisites are missing on the server.');

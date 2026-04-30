@@ -4128,11 +4128,20 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   margin-left: 6px;
 }
 
+.hud-embed-status:empty {
+  display: none;
+}
+
 .openclaw-model-bar .bar-chip-btn {
   border: none;
   background: transparent;
   cursor: pointer;
   padding: 0;
+}
+
+.openclaw-model-bar #bar-download {
+  font-size: 14px;
+  line-height: 1;
 }
 
 .oc-inline-menu {
@@ -4145,6 +4154,11 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   box-shadow: 0 10px 28px rgba(0,0,0,0.45);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+}
+
+.oc-inline-menu.is-scrollable {
+  max-height: min(62vh, 420px);
+  overflow-y: auto;
 }
 
 .oc-inline-menu-title {
@@ -4181,6 +4195,10 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 [data-theme="light"] .oc-inline-menu-item:hover,
 [data-theme="light"] .oc-inline-menu-item.is-active {
   background: rgba(0,0,0,0.06);
+}
+
+#dash-tts-shortcuts {
+  justify-content: flex-end;
 }
 
 /* ── Toggles ──────────────────────────────────────────── */
