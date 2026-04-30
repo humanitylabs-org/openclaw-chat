@@ -3345,6 +3345,91 @@ async function runMenuCommand(commandText) {
   await sendMessage(cmd, { skipAutoRename: true });
 }
 
+const COMMAND_BEHAVIORS = {
+  "/verbose": {
+    type: "choices",
+    title: "verbose",
+    choices: [
+      { label: "on", command: "/verbose on", description: "Show tool use" },
+      { label: "full", command: "/verbose full", description: "Show tool use + output" },
+      { label: "off", command: "/verbose off", description: "Hide tool details" },
+    ]
+  },
+  "/reasoning": {
+    type: "choices",
+    title: "reasoning",
+    choices: [
+      { label: "on", command: "/reasoning on" },
+      { label: "stream", command: "/reasoning stream" },
+      { label: "off", command: "/reasoning off" },
+    ]
+  },
+  "/think": {
+    type: "choices",
+    title: "thinking",
+    choices: [
+      { label: "adaptive", command: "/think adaptive" },
+      { label: "off", command: "/think off" },
+      { label: "low", command: "/think low" },
+      { label: "medium", command: "/think medium" },
+      { label: "high", command: "/think high" },
+      { label: "xhigh", command: "/think xhigh" },
+    ]
+  },
+  "/tts": {
+    type: "choices",
+    title: "tts",
+    choices: [
+      { label: "on", command: "/tts on" },
+      { label: "off", command: "/tts off" },
+      { label: "status", command: "/tts status" },
+      { label: "provider", command: "/tts provider" },
+      { label: "persona", command: "/tts persona" },
+      { label: "limit", command: "/tts limit" },
+      { label: "summary", command: "/tts summary" },
+      { label: "latest", command: "/tts latest" },
+      { label: "audio…", promptPrefix: "/tts audio ", promptLabel: "Text to convert to speech" },
+      { label: "help", command: "/tts" },
+    ]
+  },
+};
+
+function openCommandChoicesMenu(anchorEl, title, choices = []) {
+  openInlineMenu({
+    id: "command-choices-menu",
+    anchorEl,
+    title,
+    scrollable: choices.length > 8,
+    options: choices.map((choice) => ({
+      label: choice.label,
+      description: choice.description || (choice.command || choice.promptPrefix || "").trim(),
+      onSelect: async () => {
+        if (choice.promptPrefix) {
+          const value = window.prompt(choice.promptLabel || "Enter value", "");
+          if (value === null) return;
+          const text = String(value).trim();
+          if (!text) return;
+          await runMenuCommand(`${choice.promptPrefix}${text}`);
+          return;
+        }
+        if (choice.command) await runMenuCommand(choice.command);
+      },
+    }))
+  });
+}
+
+function executeCommandMenuItem(anchorEl, item) {
+  const base = String(item?.insert || "").trim();
+  if (!base) return;
+  const key = base.split(/\s+/)[0].toLowerCase();
+  const behavior = COMMAND_BEHAVIORS[key];
+  if (behavior?.type === "choices") {
+    openCommandChoicesMenu(anchorEl, behavior.title || key.replace(/^\//, ""), behavior.choices || []);
+    return;
+  }
+  runMenuCommand(base);
+}
+
 async function openCommandMenu(anchorEl) {
   const commands = await loadDynamicCommandMenuItems();
   if (!commands.length) {
@@ -3369,7 +3454,7 @@ async function openCommandMenu(anchorEl) {
       label: item.label,
       description: item.description || "No description",
       title: item.insert,
-      onSelect: () => runMenuCommand(item.insert)
+      onSelect: () => executeCommandMenuItem(anchorEl, item)
     }))
   });
 }
