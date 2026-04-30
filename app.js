@@ -737,6 +737,8 @@ const state = {
   // Tabs
   tabSessions: [],
   homeMirrorSessionKey: "",
+  homeMirrorPreference: localStorage.getItem("homeMirrorPreference") || "auto",
+  homePairOptions: [],
   renderingTabs: false,
   tabDeleteInProgress: false,
   tabCache: {},  // { [sessionKey]: { messages: [...], timestamp: number } }
@@ -952,10 +954,10 @@ function normalizeSessionKey(sessionKey) {
   return sessionKey.startsWith(prefix) ? sessionKey.slice(prefix.length) : sessionKey;
 }
 
-function pickHomeMirrorSessionKey(sessions = []) {
+function listTelegramDirectHomeCandidates(sessions = []) {
   const prefix = agentPrefix();
   const directPrefix = `${prefix}telegram:direct:`;
-  const candidates = sessions
+  return sessions
     .filter((s) => {
       const key = typeof s?.key === "string" ? s.key : "";
       if (!key.startsWith(directPrefix)) return false;
@@ -963,13 +965,56 @@ function pickHomeMirrorSessionKey(sessions = []) {
       return true;
     })
     .sort((a, b) => (b?.updatedAt || b?.createdAt || 0) - (a?.updatedAt || a?.createdAt || 0));
-  if (!candidates.length) return "";
-  return normalizeSessionKey(candidates[0].key);
+}
+
+function homePairLabel(session) {
+  const display = String(session?.displayName || "").trim();
+  if (!display) return "Telegram";
+  const clean = display
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/\s+id:\d+$/i, "")
+    .trim();
+  return clean ? `Telegram · ${clean}` : "Telegram";
+}
+
+function buildHomePairOptions(sessions = []) {
+  const options = [{ value: "main", label: "Main" }];
+  const seen = new Set(["main"]);
+  const telegram = listTelegramDirectHomeCandidates(sessions);
+  for (const session of telegram) {
+    const key = normalizeSessionKey(session.key);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    options.push({ value: key, label: homePairLabel(session) });
+  }
+  return options;
+}
+
+function pickHomeMirrorSessionKey(sessions = []) {
+  const options = buildHomePairOptions(sessions);
+  state.homePairOptions = options;
+
+  const preferred = state.homeMirrorPreference || "auto";
+  if (preferred === "main") return "";
+
+  const hasPreferred = options.some((opt) => opt.value === preferred);
+  if (hasPreferred) return preferred;
+
+  const firstTelegram = options.find((opt) => opt.value !== "main");
+  return firstTelegram ? firstTelegram.value : "";
 }
 
 function resolveGatewaySessionKey(tabKey) {
   if (tabKey === "main" && state.homeMirrorSessionKey) return state.homeMirrorSessionKey;
   return tabKey;
+}
+
+function setHomeMirrorPreference(nextPreference) {
+  const next = String(nextPreference || "main");
+  state.homeMirrorPreference = next;
+  localStorage.setItem("homeMirrorPreference", next);
+  state.homeMirrorSessionKey = next === "main" ? "" : next;
+  updateBarControls();
 }
 
 function prefixedSessionKeyForTab(tabKey) {
@@ -1171,6 +1216,15 @@ async function initApp() {
     updateConnectionStatus(false);
   }
   updateDashboard();
+
+  if (!connected) {
+    document.getElementById('browser-dot')?.classList.remove('connected');
+    document.getElementById('terminal-dot')?.classList.remove('connected');
+    const browserStatus = document.getElementById('browser-status');
+    const terminalStatus = document.getElementById('terminal-status');
+    if (browserStatus) browserStatus.textContent = 'setup needed';
+    if (terminalStatus) terminalStatus.textContent = 'setup needed';
+  }
 }
 
 function showStatus(message, type) {
@@ -1457,9 +1511,12 @@ function updateConnectionStatus(connected) {
 
 function composerPlaceholderForSession(sessionKey = state.sessionKey) {
   if ((sessionKey || "main") === "main") {
-    return state.homeMirrorSessionKey
-      ? "Quick reply in Home (Telegram). For focused work, open a new tab."
-      : "Quick reply in Home. For focused work, open a new tab.";
+    if (state.homeMirrorSessionKey) {
+      const pair = state.homePairOptions.find((opt) => opt.value === state.homeMirrorSessionKey);
+      const label = pair?.label || "Telegram";
+      return `Quick reply in Home (${label}). For focused work, open a new tab.`;
+    }
+    return "Quick reply in Home (Main). For focused work, open a new tab.";
   }
   return "Message this tab...";
 }
@@ -1814,8 +1871,10 @@ async function switchAgent(agent) {
   state.activeAgent = agent;
   state.sessionKey = "main";
   state.homeMirrorSessionKey = "";
+  state.homeMirrorPreference = "auto";
   localStorage.setItem("activeAgent", JSON.stringify(agent));
   localStorage.setItem("sessionKey", "main");
+  localStorage.setItem("homeMirrorPreference", "auto");
   updateAgentButton();
   // Update HUD identity
   const emojiEl = document.getElementById('hud-beacon-emoji');
@@ -2495,6 +2554,7 @@ async function _renderTabsInner() {
 
   updateComposerPlaceholder();
   updateTabMode();
+  updateBarControls();
 }
 
 // ─── Drafts & Message Queue ──────────────────────────────────────────
@@ -2703,6 +2763,7 @@ async function switchTab(tab) {
   renderTabs();
   updateMobileTabLabelInstant(tab);
   restoreDraft();
+  updateBarControls();
   updateComposerPlaceholder();
 
   // Serve from cache instantly if available
@@ -2767,8 +2828,11 @@ async function resetTab(tab) {
   delete state.tabCache[tab.key];
   clearWorkSummaries(tab.key);
   const isHome = tab.key === "main";
+  const homePairName = state.homeMirrorSessionKey
+    ? (state.homePairOptions.find((opt) => opt.value === state.homeMirrorSessionKey)?.label || "paired channel")
+    : "Main";
   const title = isHome
-    ? (state.homeMirrorSessionKey ? "Reset Home (Telegram)?" : "Reset Home?")
+    ? (state.homeMirrorSessionKey ? `Reset Home (${homePairName})?` : "Reset Home?")
     : `Reset "${tab.label}"?`;
   const msg = "You will be briefly disconnected while resetting. Just wait a few moments.";
   const ok = await confirmClose(title, msg);
@@ -2897,15 +2961,17 @@ async function updateContextMeter() {
     const result = await state.gateway.request("sessions.list", {});
     const sessions = result?.sessions || [];
     const prevHomeMirror = state.homeMirrorSessionKey;
+    const prevOptionsSig = JSON.stringify(state.homePairOptions || []);
     state.homeMirrorSessionKey = pickHomeMirrorSessionKey(sessions);
     const homeMirrorChanged = prevHomeMirror !== state.homeMirrorSessionKey;
+    const optionsChanged = prevOptionsSig !== JSON.stringify(state.homePairOptions || []);
     const sk = state.sessionKey || "main";
     const effectiveSk = resolveGatewaySessionKey(sk);
     const prefix = agentPrefix();
     const session = sessions.find((s) => normalizeSessionKey(s.key) === effectiveSk);
     if (!session) return;
 
-    if (homeMirrorChanged) {
+    if (homeMirrorChanged || optionsChanged) {
       renderTabs();
       delete state.tabCache.main;
       if (sk === "main") {
@@ -3093,6 +3159,8 @@ function formatThinkingLevel(level) {
 function updateBarControls() {
   const thinkingEl = document.getElementById("bar-thinking");
   const stepsEl = document.getElementById("bar-verbose");
+  const homePairEl = document.getElementById("bar-home-pair");
+  const homePairSep = document.getElementById("bar-home-pair-sep");
   const thinkingMode = effectiveThinkingLevel();
   const mode = effectiveVerboseLevel();
 
@@ -3105,6 +3173,118 @@ function updateBarControls() {
     stepsEl.textContent = "show steps: " + mode;
     stepsEl.classList.toggle("active", mode !== "off");
   }
+
+  if (homePairEl && homePairSep) {
+    const onHomeTab = (state.sessionKey || "main") === "main";
+    homePairEl.style.display = onHomeTab ? "" : "none";
+    homePairSep.style.display = onHomeTab ? "" : "none";
+    const paired = state.homeMirrorSessionKey;
+    if (!paired) {
+      homePairEl.textContent = "home: main";
+      homePairEl.classList.remove("active");
+      homePairEl.title = "Home is paired to Main session";
+    } else {
+      const opt = state.homePairOptions.find((o) => o.value === paired);
+      const label = (opt?.label || "Telegram").split("·")[0].trim();
+      homePairEl.textContent = `home: ${label.toLowerCase()}`;
+      homePairEl.classList.add("active");
+      homePairEl.title = `Home is paired to ${opt?.label || "Telegram"}`;
+    }
+  }
+}
+
+function removeInlineMenu(id) {
+  document.getElementById(id)?.remove();
+}
+
+function openInlineMenu({ id, anchorEl, title = "", options = [] }) {
+  removeInlineMenu(id);
+  if (!anchorEl || options.length === 0) return;
+
+  const menu = document.createElement("div");
+  menu.id = id;
+  menu.className = "oc-inline-menu";
+  if (title) {
+    const hdr = document.createElement("div");
+    hdr.className = "oc-inline-menu-title";
+    hdr.textContent = title;
+    menu.appendChild(hdr);
+  }
+
+  for (const opt of options) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `oc-inline-menu-item${opt.active ? " is-active" : ""}`;
+    btn.textContent = opt.label;
+    btn.addEventListener("click", () => {
+      removeInlineMenu(id);
+      opt.onSelect?.();
+    });
+    menu.appendChild(btn);
+  }
+
+  document.body.appendChild(menu);
+  const rect = anchorEl.getBoundingClientRect();
+  const width = Math.min(300, Math.max(220, rect.width + 70));
+  menu.style.width = `${width}px`;
+  const left = Math.max(10, Math.min(window.innerWidth - width - 10, rect.left));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${Math.min(window.innerHeight - menu.offsetHeight - 10, rect.bottom + 8)}px`;
+
+  const close = (e) => {
+    if (!menu.contains(e.target) && e.target !== anchorEl) {
+      removeInlineMenu(id);
+      document.removeEventListener("mousedown", close);
+    }
+  };
+  setTimeout(() => document.addEventListener("mousedown", close), 0);
+}
+
+function openHomePairMenu(anchorEl) {
+  const options = (state.homePairOptions || []).filter((o) => o.value === "main" || o.value.startsWith("telegram:direct:"));
+  openInlineMenu({
+    id: "home-pair-menu",
+    anchorEl,
+    title: "Home pairing",
+    options: options.map((opt) => ({
+      label: opt.label,
+      active: (opt.value === "main" && !state.homeMirrorSessionKey) || opt.value === state.homeMirrorSessionKey,
+      onSelect: async () => {
+        setHomeMirrorPreference(opt.value);
+        await renderTabs();
+        if ((state.sessionKey || "main") === "main") {
+          delete state.tabCache.main;
+          await loadChatHistory();
+          updateComposerPlaceholder();
+        }
+      }
+    }))
+  });
+}
+
+function openSlashCommandsMenu(anchorEl) {
+  const input = document.getElementById("message-input");
+  if (!input) return;
+  const commands = [
+    { cmd: "/new", desc: "Start a fresh tab" },
+    { cmd: "/reset", desc: "Reset current tab" },
+    { cmd: "/status", desc: "Show runtime status" },
+    { cmd: "/help", desc: "Show command help" },
+    { cmd: "/agents", desc: "List available agents" },
+  ];
+  openInlineMenu({
+    id: "slash-commands-menu",
+    anchorEl,
+    title: "Slash commands",
+    options: commands.map((item) => ({
+      label: `${item.cmd}  ·  ${item.desc}`,
+      onSelect: () => {
+        input.value = item.cmd;
+        input.focus();
+        input.dispatchEvent(new Event("input"));
+      }
+    }))
+  });
 }
 
 async function setSessionControl(field, nextValue) {
@@ -3163,6 +3343,15 @@ document.getElementById("bar-thinking")?.addEventListener("click", () =>
 
 document.getElementById("bar-verbose")?.addEventListener("click", () =>
   cycleShowSteps());
+
+document.getElementById("bar-download")?.addEventListener("click", () =>
+  exportCurrentSession());
+
+document.getElementById("bar-commands")?.addEventListener("click", (event) =>
+  openSlashCommandsMenu(event.currentTarget));
+
+document.getElementById("bar-home-pair")?.addEventListener("click", (event) =>
+  openHomePairMenu(event.currentTarget));
 
 async function openModelPicker(opts = {}) {
   // opts.current: current model id, opts.onSelect: callback(fullId, modal)
@@ -7363,22 +7552,22 @@ function updateServerPanel() {
 
   html += '<div class="hud-settings-divider"></div>';
 
-  // Action buttons
-  html +=
+  html += '<div class="hud-server-group-title">Maintenance</div>' +
     '<div class="hud-settings-actions">' +
-      '<button class="hud-server-action" onclick="sendControlAction(\'Run openclaw doctor. Summarize results.\')" title="Health check">🩺 check-up</button>' +
-      '<button class="hud-server-action" onclick="sendControlAction(\'Security audit: firewall, SSH, ports, updates. Brief summary.\')">🛡️ security</button>' +
+      '<button class="hud-server-action" onclick="sendControlAction(\'Run openclaw doctor. Summarize results.\')" title="Health check">check-up</button>' +
+      '<button class="hud-server-action" onclick="sendControlAction(\'Security audit: firewall, SSH, ports, updates. Brief summary.\')">security</button>' +
       '<button class="hud-server-action" onclick="sendControlAction(\'Restart the gateway. Confirm when back.\')">restart</button>' +
     '</div>' +
     '<div class="hud-settings-actions">' +
-      '<button class="hud-server-action" onclick="sendControlAction(\'Optimize my agent startup speed. Audit AGENTS.md startup sequence — remove instructions to re-read files already injected in the system prompt (SOUL.md, USER.md, TOOLS.md, IDENTITY.md, HEARTBEAT.md). Then check MEMORY.md size — if over 16k chars, restructure it: move deep project details to memory/projects/ files, keep concise summaries in MEMORY.md. Goal: MEMORY.md under 16k so it fits in the system prompt without truncation, eliminating the need to re-read it. Report what you changed and the before/after size.\')" title="Speed up session boot time">⚡ optimize</button>' +
-      '<button class="hud-server-action" onclick="openTerminalPanel()" title="Open terminal">⌨ terminal</button>' +
-      '<button class="hud-server-action" onclick="openTerminalWithCmd(\'journalctl -u openclaw --no-pager -n 50\')" title="View recent logs">📋 logs</button>' +
+      '<button class="hud-server-action" onclick="sendControlAction(\'Optimize my agent startup speed. Audit AGENTS.md startup sequence — remove instructions to re-read files already injected in the system prompt (SOUL.md, USER.md, TOOLS.md, IDENTITY.md, HEARTBEAT.md). Then check MEMORY.md size — if over 16k chars, restructure it: move deep project details to memory/projects/ files, keep concise summaries in MEMORY.md. Goal: MEMORY.md under 16k so it fits in the system prompt without truncation, eliminating the need to re-read it. Report what you changed and the before/after size.\')" title="Speed up session boot time">optimize startup</button>' +
+      '<button class="hud-server-action" onclick="openTerminalPanel()" title="Open terminal">terminal</button>' +
+      '<button class="hud-server-action" onclick="openTerminalWithCmd(\'journalctl -u openclaw --no-pager -n 50\')" title="View recent logs">logs</button>' +
     '</div>' +
+    '<div class="hud-server-group-title">Connection</div>' +
     '<div class="hud-settings-actions">' +
-      '<button class="hud-server-action" onclick="retryConnectionNow()" title="Restart local websocket connection immediately">↻ retry</button>' +
-      '<button class="hud-server-action" onclick="rePairThisBrowser()" title="Keep URL/token but regenerate local device identity">🔑 re-pair</button>' +
-      '<button class="hud-server-action" onclick="resetConnectionFromScratch()" title="Clear local storage connection data and reconnect from scratch">🧹 start over</button>' +
+      '<button class="hud-server-action" onclick="retryConnectionNow()" title="Restart local websocket connection immediately">retry</button>' +
+      '<button class="hud-server-action" onclick="rePairThisBrowser()" title="Keep URL/token but regenerate local device identity">re-pair</button>' +
+      '<button class="hud-server-action" onclick="resetConnectionFromScratch()" title="Clear local storage connection data and reconnect from scratch">start over</button>' +
     '</div>' +
     '<div class="hud-settings-divider"></div>' +
     '<button class="hud-disconnect-btn" onclick="confirmDisconnect()">Disconnect</button>';
@@ -9170,8 +9359,11 @@ function closeDashboard() {
     backdrop?.classList.toggle('visible', anyExpanded);
   }
 
-  function updateDots(cfg, connected) {
-    document.getElementById(cfg.dotId)?.classList.toggle('connected', connected);
+  function updateDots(cfg, connected, statusText = '') {
+    const dot = document.getElementById(cfg.dotId);
+    dot?.classList.toggle('connected', connected);
+    const statusEl = document.getElementById(cfg === panels.browser ? 'browser-status' : 'terminal-status');
+    if (statusEl) statusEl.textContent = statusText || (connected ? 'connected' : 'setup needed');
   }
 
   function embedKind(cfg) {
@@ -9201,7 +9393,7 @@ function closeDashboard() {
       '<div class="hud-embed-prereq-line">• Service must be running: <code>' + serviceName + '</code>.</div>' +
       (!tailnetOk ? '<div class="hud-embed-prereq-warn">Current host looks non-tailnet. Browser/Terminal may fail outside tailnet.</div>' : '') +
       '<div class="hud-embed-prereq-actions">' +
-        '<button class="hud-embed-prereq-btn" data-embed-kind="' + kind + '">Run setup check in chat</button>' +
+        '<button class="hud-embed-prereq-btn" data-embed-kind="' + kind + '">Fix setup in chat</button>' +
       '</div>';
 
     const btn = hint.querySelector('.hud-embed-prereq-btn');
@@ -9226,9 +9418,12 @@ function closeDashboard() {
 
     const url = cfg.getUrl();
     if (!url) {
+      updateDots(cfg, false, 'setup needed');
       renderEmbedHint(cfg, body, 'Missing gateway URL. Connect to your gateway first.');
       return;
     }
+
+    updateDots(cfg, false, 'connecting…');
 
     // Show loading spinner
     if (!body.querySelector('.hud-embed-loading')) {
@@ -9248,7 +9443,7 @@ function closeDashboard() {
     iframe.addEventListener('load', () => {
       loaded = true;
       cfg.ready = true;
-      updateDots(cfg, true);
+      updateDots(cfg, true, 'connected');
       const loader = body.querySelector('.hud-embed-loading');
       if (loader) { loader.style.opacity = '0'; loader.style.transition = 'opacity 0.3s'; setTimeout(() => loader.remove(), 300); }
       const hint = body.querySelector('.hud-embed-prereq');
@@ -9257,7 +9452,7 @@ function closeDashboard() {
     });
     setTimeout(() => {
       if (!loaded) {
-        updateDots(cfg, false);
+        updateDots(cfg, false, 'setup needed');
         const txt = body.querySelector('.hud-embed-loading-text');
         if (txt) txt.textContent = 'Still connecting…';
         renderEmbedHint(cfg, body, 'This usually means prerequisites are missing on the server.');
