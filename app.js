@@ -1222,7 +1222,7 @@ async function initApp() {
   }
   updateDashboard();
 
-  if (!connected) {
+  if (!state.gateway?.connected) {
     document.getElementById('browser-dot')?.classList.remove('connected');
     document.getElementById('terminal-dot')?.classList.remove('connected');
     const browserStatus = document.getElementById('browser-status');
@@ -5147,10 +5147,45 @@ function appendAssistantTextContent(bubble, displayText, msg) {
   if (isTtsStatusText(displayText)) {
     textDiv.classList.add("oc-tts-status-card");
     textDiv.innerHTML = renderTtsStatusHtml(displayText);
+  } else if (looksLikeStatusCard(displayText)) {
+    textDiv.classList.add("oc-status-card");
+    textDiv.innerHTML = renderGenericStatusHtml(displayText);
   } else {
     textDiv.innerHTML = formatMarkdown(displayText);
   }
   bubble.appendChild(textDiv);
+}
+
+function looksLikeStatusCard(text) {
+  const lines = str(text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 3) return false;
+  const body = lines.slice(1);
+  const kvCount = body.filter((l) => /^[A-Za-z0-9_\-\/ ()]{2,32}:\s+.+/.test(l)).length;
+  return kvCount >= 2 && kvCount >= Math.ceil(body.length * 0.5);
+}
+
+function renderGenericStatusHtml(text) {
+  const lines = str(text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return "";
+  const title = lines[0];
+  const rows = [];
+  const extras = [];
+  for (const line of lines.slice(1)) {
+    const m = line.match(/^([A-Za-z0-9_\-\/ ()]{2,32}):\s+(.+)$/);
+    if (m) rows.push({ k: m[1], v: m[2] });
+    else extras.push(line);
+  }
+  const esc = escapeHtmlChat;
+  let html = `<div class="oc-status-title">${esc(title)}</div>`;
+  if (rows.length) {
+    html += '<div class="oc-status-rows">' + rows.map((r) => (
+      `<div class="oc-status-row"><span class="oc-status-key">${esc(r.k)}</span><span class="oc-status-val">${esc(r.v)}</span></div>`
+    )).join("") + '</div>';
+  }
+  if (extras.length) {
+    html += '<div class="oc-status-extra">' + extras.map((line) => esc(line)).join('<br>') + '</div>';
+  }
+  return html;
 }
 
 function renderTtsStatusHtml(text) {
@@ -10052,11 +10087,13 @@ function closeDashboard() {
 
 initApp().catch((err) => {
   console.error("initApp failed:", err);
-  // Show connect UI so the page isn't a blank white screen
-  updateConnectionStatus(false);
-  showReconnectBanner("Couldn’t connect. Open control panel (☰) to verify gateway URL/token.");
-  updateDashboard();
-  openDashboard();
+  // Only force reconnect UI if connection is actually down.
+  if (!state.gateway?.connected) {
+    updateConnectionStatus(false);
+    showReconnectBanner("Couldn’t connect. Open control panel (☰) to verify gateway URL/token.");
+    updateDashboard();
+    openDashboard();
+  }
 });
 
 // Clean up any old service worker (was causing stale cache issues)

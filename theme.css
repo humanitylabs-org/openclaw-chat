@@ -4231,6 +4231,50 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   word-break: break-word;
 }
 
+.oc-status-card {
+  border: 1px solid rgba(127,127,127,0.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(127,127,127,0.05);
+}
+
+.oc-status-title {
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+
+.oc-status-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.oc-status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.oc-status-key {
+  font-size: 12px;
+  opacity: 0.68;
+  text-transform: lowercase;
+}
+
+.oc-status-val {
+  font-size: 14px;
+  text-align: right;
+  word-break: break-word;
+}
+
+.oc-status-extra {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.82;
+  line-height: 1.35;
+}
+
 .oc-inline-menu-item:hover,
 .oc-inline-menu-item.is-active {
   background: rgba(255,255,255,0.08);
