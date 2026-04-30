@@ -3307,6 +3307,7 @@ async function loadDynamicCommandMenuItems() {
         label,
         description,
         insert,
+        acceptsArgs: !!cmd?.acceptsArgs,
       };
     }).filter((item) => item.insert && item.insert !== "/");
 
@@ -3327,6 +3328,45 @@ async function loadDynamicCommandMenuItems() {
     console.warn("Failed to load commands.list for menu:", err);
     return state.commandMenuItems;
   }
+}
+
+const COMMAND_QUICK_ARGS = {
+  "/verbose": ["on", "full", "off"],
+  "/reasoning": ["on", "off", "stream"],
+  "/think": ["adaptive", "off", "minimal", "low", "medium", "high", "xhigh"],
+};
+
+async function runMenuCommand(commandText) {
+  const cmd = String(commandText || "").trim();
+  if (!cmd) return;
+  await sendMessage(cmd, { hideUserBubble: true, skipAutoRename: true });
+}
+
+function openCommandArgsMenu(anchorEl, baseCommand, args = []) {
+  openInlineMenu({
+    id: "command-args-menu",
+    anchorEl,
+    title: baseCommand.replace(/^\//, "") + " options",
+    options: args.map((arg) => ({
+      label: arg,
+      description: `${baseCommand} ${arg}`,
+      onSelect: () => runMenuCommand(`${baseCommand} ${arg}`),
+    })),
+  });
+}
+
+function executeCommandMenuItem(anchorEl, item) {
+  const base = String(item?.insert || "").trim();
+  if (!base) return;
+  const key = base.split(/\s+/)[0].toLowerCase();
+  const quickArgs = COMMAND_QUICK_ARGS[key];
+  if (Array.isArray(quickArgs) && quickArgs.length > 0) {
+    openCommandArgsMenu(anchorEl, key, quickArgs);
+    return;
+  }
+  // If a command takes args and we don't have curated options,
+  // run the base command so the assistant can return guided choices.
+  runMenuCommand(base);
 }
 
 async function openCommandMenu(anchorEl) {
@@ -3353,7 +3393,7 @@ async function openCommandMenu(anchorEl) {
       label: item.label,
       description: item.description || "No description",
       title: item.insert,
-      onSelect: () => insertCommandInComposer(item.insert)
+      onSelect: () => executeCommandMenuItem(anchorEl, item)
     }))
   });
 }
@@ -4916,6 +4956,10 @@ function renderMessages(opts = {}) {
   ui.messagesContainer.innerHTML = "";
   state.streamEl = null;
   for (const msg of state.messages) {
+    if (msg.role === "user" && shouldHideUserSlashCommand(msg)) {
+      continue;
+    }
+
     if (msg.isWorkSummary && hideWorkSummaries) {
       continue;
     }
@@ -5012,6 +5056,18 @@ function renderMessages(opts = {}) {
     ui.messagesContainer.scrollTop = prevTop;
     state.autoScrollPinned = false;
   }
+}
+
+function shouldHideUserSlashCommand(msg) {
+  const text = str(msg?.text).trim();
+  if (!text.startsWith("/")) return false;
+  const token = text.split(/\s+/)[0].toLowerCase();
+  const dynamic = new Set((state.commandMenuItems || []).map((it) => (it.insert || "").trim().split(/\s+/)[0].toLowerCase()));
+  const builtins = new Set([
+    "/new", "/reset", "/status", "/help", "/model", "/think", "/verbose", "/reasoning",
+    "/queue", "/tasks", "/agents", "/subagents", "/tts", "/dock-telegram", "/dock-discord", "/dock-whatsapp", "/dock-signal",
+  ]);
+  return dynamic.has(token) || builtins.has(token);
 }
 
 function appendMessage(msg) {
@@ -6323,7 +6379,9 @@ function handleChatEvent(payload) {
 
 // ─── Send Message ────────────────────────────────────────────────────
 
-async function sendMessage(text) {
+async function sendMessage(text, opts = {}) {
+  const hideUserBubble = !!opts.hideUserBubble;
+  const skipAutoRename = !!opts.skipAutoRename;
   const hasAttachments = state.pendingAttachments.length > 0;
   if (!text.trim() && !hasAttachments) return;
   if (state.sending) return;
@@ -6368,20 +6426,24 @@ async function sendMessage(text) {
   const userTimestamp = Date.now();
   const userTextForCache = displayText || fullMessage;
 
-  state.messages.push({
-    role: "user",
-    text: userTextForCache,
-    images: userImages,
-    audios: userAudios,
-    timestamp: userTimestamp,
-  });
-  if (userImages.length > 0 || userAudios.length > 0) {
-    rememberPendingInlineMedia(state.sessionKey, userTextForCache, userTimestamp, userImages, userAudios);
+  if (!hideUserBubble) {
+    state.messages.push({
+      role: "user",
+      text: userTextForCache,
+      images: userImages,
+      audios: userAudios,
+      timestamp: userTimestamp,
+    });
+    if (userImages.length > 0 || userAudios.length > 0) {
+      rememberPendingInlineMedia(state.sessionKey, userTextForCache, userTimestamp, userImages, userAudios);
+    }
+    renderMessages();
   }
-  renderMessages();
 
   // Auto-rename "Untitled" tabs based on first message
-  void autoRenameTab(state.sessionKey, displayText || fullMessage);
+  if (!skipAutoRename) {
+    void autoRenameTab(state.sessionKey, displayText || fullMessage);
+  }
 
   const runId = generateId();
   const sendSessionKey = state.sessionKey;
