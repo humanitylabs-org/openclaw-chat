@@ -3339,43 +3339,10 @@ async function loadDynamicCommandMenuItems() {
   }
 }
 
-const COMMAND_QUICK_ARGS = {
-  "/verbose": ["on", "full", "off"],
-  "/reasoning": ["on", "off", "stream"],
-  "/think": ["adaptive", "off", "minimal", "low", "medium", "high", "xhigh"],
-};
-
 async function runMenuCommand(commandText) {
   const cmd = String(commandText || "").trim();
   if (!cmd) return;
-  await sendMessage(cmd, { hideUserBubble: true, skipAutoRename: true });
-}
-
-function openCommandArgsMenu(anchorEl, baseCommand, args = []) {
-  openInlineMenu({
-    id: "command-args-menu",
-    anchorEl,
-    title: baseCommand.replace(/^\//, "") + " options",
-    options: args.map((arg) => ({
-      label: arg,
-      description: `${baseCommand} ${arg}`,
-      onSelect: () => runMenuCommand(`${baseCommand} ${arg}`),
-    })),
-  });
-}
-
-function executeCommandMenuItem(anchorEl, item) {
-  const base = String(item?.insert || "").trim();
-  if (!base) return;
-  const key = base.split(/\s+/)[0].toLowerCase();
-  const quickArgs = COMMAND_QUICK_ARGS[key];
-  if (Array.isArray(quickArgs) && quickArgs.length > 0) {
-    openCommandArgsMenu(anchorEl, key, quickArgs);
-    return;
-  }
-  // If a command takes args and we don't have curated options,
-  // run the base command so the assistant can return guided choices.
-  runMenuCommand(base);
+  await sendMessage(cmd, { skipAutoRename: true });
 }
 
 async function openCommandMenu(anchorEl) {
@@ -3402,7 +3369,7 @@ async function openCommandMenu(anchorEl) {
       label: item.label,
       description: item.description || "No description",
       title: item.insert,
-      onSelect: () => executeCommandMenuItem(anchorEl, item)
+      onSelect: () => runMenuCommand(item.insert)
     }))
   });
 }
@@ -4965,10 +4932,6 @@ function renderMessages(opts = {}) {
   ui.messagesContainer.innerHTML = "";
   state.streamEl = null;
   for (const msg of state.messages) {
-    if (msg.role === "user" && shouldHideUserSlashCommand(msg)) {
-      continue;
-    }
-
     if (msg.isWorkSummary && hideWorkSummaries) {
       continue;
     }
@@ -5065,18 +5028,6 @@ function renderMessages(opts = {}) {
     ui.messagesContainer.scrollTop = prevTop;
     state.autoScrollPinned = false;
   }
-}
-
-function shouldHideUserSlashCommand(msg) {
-  const text = str(msg?.text).trim();
-  if (!text.startsWith("/")) return false;
-  const token = text.split(/\s+/)[0].toLowerCase();
-  const dynamic = new Set((state.commandMenuItems || []).map((it) => (it.insert || "").trim().split(/\s+/)[0].toLowerCase()));
-  const builtins = new Set([
-    "/new", "/reset", "/status", "/help", "/model", "/think", "/verbose", "/reasoning",
-    "/queue", "/tasks", "/agents", "/subagents", "/tts", "/dock-telegram", "/dock-discord", "/dock-whatsapp", "/dock-signal",
-  ]);
-  return dynamic.has(token) || builtins.has(token);
 }
 
 function appendMessage(msg) {
