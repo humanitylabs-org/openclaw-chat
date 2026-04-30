@@ -5016,7 +5016,13 @@ function renderMessages(opts = {}) {
   }
   ui.messagesContainer.innerHTML = "";
   state.streamEl = null;
+  let pendingUserSlashCommand = "";
   for (const msg of state.messages) {
+    if (msg.role === "user") {
+      const t = str(msg?.text).trim();
+      pendingUserSlashCommand = t.startsWith("/") ? t.toLowerCase() : "";
+    }
+
     if (msg.isWorkSummary && hideWorkSummaries) {
       continue;
     }
@@ -5039,6 +5045,7 @@ function renderMessages(opts = {}) {
     }
 
     if (msg.role === "assistant") {
+      const suppressAudio = shouldSuppressAudioPlayerForAssistant(pendingUserSlashCommand, msg);
       const hasContentTools = msg.contentBlocks?.some(b => b.type === "tool_use" || b.type === "toolCall") || false;
       if (hasContentTools && msg.contentBlocks) {
         for (const block of msg.contentBlocks) {
@@ -5048,16 +5055,17 @@ function renderMessages(opts = {}) {
             if (cleaned) {
               const bubble = document.createElement("div");
               bubble.className = "openclaw-msg openclaw-msg-assistant";
-              const textDiv = document.createElement("div");
-              textDiv.className = "openclaw-msg-text";
-              textDiv.innerHTML = formatMarkdown(cleaned);
-              bubble.appendChild(textDiv);
-              for (const ap of blockAudio) renderAudioPlayer(bubble, ap);
+              appendAssistantTextContent(bubble, cleaned, msg);
+              if (!suppressAudio) {
+                for (const ap of blockAudio) renderAudioPlayer(bubble, ap);
+              }
               ui.messagesContainer.appendChild(bubble);
             } else if (blockAudio.length > 0) {
               const bubble = document.createElement("div");
               bubble.className = "openclaw-msg openclaw-msg-assistant";
-              for (const ap of blockAudio) renderAudioPlayer(bubble, ap);
+              if (!suppressAudio) {
+                for (const ap of blockAudio) renderAudioPlayer(bubble, ap);
+              }
               ui.messagesContainer.appendChild(bubble);
             }
           } else if (block.type === "image" || block.type === "image_url" || block.type === "input_image") {
@@ -5100,8 +5108,13 @@ function renderMessages(opts = {}) {
             }
           }
         }
+        pendingUserSlashCommand = "";
         continue;
       }
+
+      appendMessage(msg, { suppressAudio });
+      pendingUserSlashCommand = "";
+      continue;
     }
 
     appendMessage(msg);
@@ -5115,7 +5128,54 @@ function renderMessages(opts = {}) {
   }
 }
 
-function appendMessage(msg) {
+function shouldSuppressAudioPlayerForAssistant(userSlashCommand, msg) {
+  const cmd = str(userSlashCommand).trim().toLowerCase();
+  if (!cmd.startsWith("/")) return false;
+  if (/^\/tts\s+(audio|latest)\b/.test(cmd)) return false;
+  if (/^\/tts\b/.test(cmd)) return true;
+  return true;
+}
+
+function isTtsStatusText(text) {
+  const t = str(text).trim();
+  return /^📊\s*tts status/i.test(t);
+}
+
+function appendAssistantTextContent(bubble, displayText, msg) {
+  const textDiv = document.createElement("div");
+  textDiv.className = "openclaw-msg-text";
+  if (isTtsStatusText(displayText)) {
+    textDiv.classList.add("oc-tts-status-card");
+    textDiv.innerHTML = renderTtsStatusHtml(displayText);
+  } else {
+    textDiv.innerHTML = formatMarkdown(displayText);
+  }
+  bubble.appendChild(textDiv);
+}
+
+function renderTtsStatusHtml(text) {
+  const lines = str(text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const title = lines[0] || "📊 TTS status";
+  const diagnostics = [];
+  const keep = [];
+  for (const line of lines.slice(1)) {
+    if (/^attempts?:/i.test(line) || /^attempt details:/i.test(line) || /^fallback:/i.test(line) || /^latency:/i.test(line)) {
+      diagnostics.push(line);
+      continue;
+    }
+    keep.push(line);
+  }
+  const esc = escapeHtmlChat;
+  let html = `<div class="oc-tts-title">${esc(title)}</div>`;
+  html += '<div class="oc-tts-rows">' + keep.map((line) => `<div class="oc-tts-row">${esc(line)}</div>`).join("") + '</div>';
+  if (diagnostics.length) {
+    html += `<details class="oc-tts-details"><summary>Diagnostics</summary><div class="oc-tts-diagnostics">${diagnostics.map((line) => esc(line)).join('<br>')}</div></details>`;
+  }
+  return html;
+}
+
+function appendMessage(msg, opts = {}) {
+  const suppressAudio = !!opts.suppressAudio;
   const cls = msg.role === "user" ? "openclaw-msg-user" : "openclaw-msg-assistant";
   const bubble = document.createElement("div");
   bubble.className = `openclaw-msg ${cls}`;
@@ -5161,17 +5221,19 @@ function appendMessage(msg) {
   displayText = cleanText(displayText);
 
   if (displayText) {
-    const textDiv = document.createElement("div");
-    textDiv.className = "openclaw-msg-text";
     if (msg.role === "assistant") {
-      textDiv.innerHTML = formatMarkdown(displayText);
+      appendAssistantTextContent(bubble, displayText, msg);
     } else {
+      const textDiv = document.createElement("div");
+      textDiv.className = "openclaw-msg-text";
       textDiv.textContent = displayText;
+      bubble.appendChild(textDiv);
     }
-    bubble.appendChild(textDiv);
   }
 
-  for (const ap of allAudio) renderAudioPlayer(bubble, ap);
+  if (!suppressAudio) {
+    for (const ap of allAudio) renderAudioPlayer(bubble, ap);
+  }
 
   const omittedImages = Math.max(0, Number(msg.omittedImages) || 0);
   const omittedAudios = Math.max(0, Number(msg.omittedAudios) || 0);

@@ -4196,6 +4196,41 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   opacity: 0.62;
 }
 
+.oc-tts-status-card {
+  border: 1px solid rgba(127,127,127,0.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(127,127,127,0.05);
+}
+
+.oc-tts-title {
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+
+.oc-tts-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.oc-tts-row {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.oc-tts-details {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.88;
+}
+
+.oc-tts-diagnostics {
+  margin-top: 6px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
 .oc-inline-menu-item:hover,
 .oc-inline-menu-item.is-active {
   background: rgba(255,255,255,0.08);
