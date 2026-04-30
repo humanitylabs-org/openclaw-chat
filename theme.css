@@ -4177,9 +4177,23 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   text-align: left;
   font-size: 12px;
   line-height: 1.3;
-  padding: 8px;
+  padding: 7px 8px;
   border-radius: 8px;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.oc-inline-menu-item-label {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.oc-inline-menu-item-desc {
+  font-size: 10px;
+  line-height: 1.2;
+  opacity: 0.62;
 }
 
 .oc-inline-menu-item:hover,
@@ -4195,6 +4209,16 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
 [data-theme="light"] .oc-inline-menu-item:hover,
 [data-theme="light"] .oc-inline-menu-item.is-active {
   background: rgba(0,0,0,0.06);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .oc-inline-menu-item-desc {
+    opacity: 0.42;
+  }
+  .oc-inline-menu-item:hover .oc-inline-menu-item-desc,
+  .oc-inline-menu-item:focus-visible .oc-inline-menu-item-desc {
+    opacity: 0.88;
+  }
 }
 
 #dash-tts-shortcuts {

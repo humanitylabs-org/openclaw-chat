@@ -739,6 +739,8 @@ const state = {
   homeMirrorSessionKey: "",
   homeMirrorPreference: localStorage.getItem("homeMirrorPreference") || "auto",
   homePairOptions: [],
+  commandMenuItems: [],
+  commandMenuLoadedAt: 0,
   renderingTabs: false,
   tabDeleteInProgress: false,
   tabCache: {},  // { [sessionKey]: { messages: [...], timestamp: number } }
@@ -3215,7 +3217,19 @@ function openInlineMenu({ id, anchorEl, title = "", options = [], scrollable = f
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = `oc-inline-menu-item${opt.active ? " is-active" : ""}`;
-    btn.textContent = opt.label;
+    if (opt.description) {
+      const label = document.createElement("span");
+      label.className = "oc-inline-menu-item-label";
+      label.textContent = opt.label;
+      const desc = document.createElement("span");
+      desc.className = "oc-inline-menu-item-desc";
+      desc.textContent = opt.description;
+      btn.appendChild(label);
+      btn.appendChild(desc);
+    } else {
+      btn.textContent = opt.label;
+    }
+    if (opt.title) btn.title = opt.title;
     btn.addEventListener("click", () => {
       removeInlineMenu(id);
       opt.onSelect?.();
@@ -3270,38 +3284,76 @@ function insertCommandInComposer(commandText) {
   input.dispatchEvent(new Event("input"));
 }
 
-function openCommandMenu(anchorEl) {
-  const commands = [
-    { label: "New session", desc: "Start a fresh tab", cmd: "/new" },
-    { label: "Reset session", desc: "Reset current tab", cmd: "/reset" },
-    { label: "Status", desc: "Runtime and usage snapshot", cmd: "/status" },
-    { label: "Help", desc: "Show full command help", cmd: "/help" },
-    { label: "Tasks", desc: "Show active/background tasks", cmd: "/tasks" },
-    { label: "Model picker", desc: "List/select model", cmd: "/model" },
-    { label: "Model status", desc: "Current model details", cmd: "/model status" },
-    { label: "Thinking", desc: "Set thinking level", cmd: "/think adaptive" },
-    { label: "Show steps", desc: "Set tool/reasoning visibility", cmd: "/verbose on" },
-    { label: "Reasoning", desc: "Reasoning stream on/off", cmd: "/reasoning on" },
-    { label: "Queue", desc: "Queue mode controls", cmd: "/queue" },
-    { label: "TTS status", desc: "Read current TTS settings", cmd: "/tts status" },
-    { label: "TTS provider", desc: "List/select TTS provider", cmd: "/tts provider" },
-    { label: "TTS persona", desc: "List/select TTS persona", cmd: "/tts persona" },
-    { label: "TTS limit", desc: "Set max chars before summarize", cmd: "/tts limit 1500" },
-    { label: "TTS summary", desc: "Enable or disable auto-summary", cmd: "/tts summary on" },
-    { label: "TTS latest", desc: "Speak last assistant reply", cmd: "/tts latest" },
-    { label: "TTS audio", desc: "Generate audio from text", cmd: "/tts audio " },
-    { label: "TTS chat mode", desc: "Set this chat override", cmd: "/tts chat default" },
-    { label: "Agents", desc: "List available agents", cmd: "/agents" },
-    { label: "Subagents", desc: "List subagent runs", cmd: "/subagents list" },
-  ];
+async function loadDynamicCommandMenuItems() {
+  const now = Date.now();
+  if (state.commandMenuItems.length && now - (state.commandMenuLoadedAt || 0) < 60_000) {
+    return state.commandMenuItems;
+  }
+  if (!state.gateway?.connected) return state.commandMenuItems;
+  try {
+    const result = await state.gateway.request("commands.list", {
+      agentId: state.activeAgent?.id || "main",
+      scope: "both",
+      includeArgs: true,
+    });
+    const commands = Array.isArray(result?.commands) ? result.commands : [];
+    const mapped = commands.map((cmd) => {
+      const aliases = Array.isArray(cmd?.textAliases) ? cmd.textAliases : [];
+      const raw = (aliases[0] || (cmd?.name ? `/${cmd.name}` : "")).trim();
+      const insert = raw.startsWith("/") ? raw : `/${raw}`;
+      const label = insert.replace(/^\//, "");
+      const description = String(cmd?.description || "").trim();
+      return {
+        label,
+        description,
+        insert,
+      };
+    }).filter((item) => item.insert && item.insert !== "/");
+
+    const dedup = [];
+    const seen = new Set();
+    for (const item of mapped) {
+      const key = item.insert.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push(item);
+    }
+
+    dedup.sort((a, b) => a.label.localeCompare(b.label));
+    state.commandMenuItems = dedup;
+    state.commandMenuLoadedAt = now;
+    return dedup;
+  } catch (err) {
+    console.warn("Failed to load commands.list for menu:", err);
+    return state.commandMenuItems;
+  }
+}
+
+async function openCommandMenu(anchorEl) {
+  const commands = await loadDynamicCommandMenuItems();
+  if (!commands.length) {
+    openInlineMenu({
+      id: "command-menu",
+      anchorEl,
+      title: "Menu",
+      options: [{
+        label: "help",
+        description: "Command list unavailable. Use help to load commands.",
+        onSelect: () => insertCommandInComposer("/help"),
+      }],
+    });
+    return;
+  }
   openInlineMenu({
     id: "command-menu",
     anchorEl,
     title: "Menu",
     scrollable: true,
     options: commands.map((item) => ({
-      label: `${item.label}  ·  ${item.desc}`,
-      onSelect: () => insertCommandInComposer(item.cmd)
+      label: item.label,
+      description: item.description || "No description",
+      title: item.insert,
+      onSelect: () => insertCommandInComposer(item.insert)
     }))
   });
 }
@@ -9471,7 +9523,7 @@ function closeDashboard() {
     iframe.addEventListener('load', () => {
       loaded = true;
       cfg.ready = true;
-      updateDots(cfg, true, 'connected');
+      updateDots(cfg, true, '');
       const loader = body.querySelector('.hud-embed-loading');
       if (loader) { loader.style.opacity = '0'; loader.style.transition = 'opacity 0.3s'; setTimeout(() => loader.remove(), 300); }
       const hint = body.querySelector('.hud-embed-prereq');

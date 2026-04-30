@@ -1754,12 +1754,12 @@
         <!-- ══════════════════════════════════════════════ -->
 
         <!-- ═══ Tools group header ═══ -->
-        <div class="hud-group-label">Tools</div>
+        <div class="hud-group-label" style="display:none">Tools</div>
 
         <!-- ═══ Browser (collapsible + expandable) ═══ -->
-        <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-browser" id="browser-panel">
+        <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-browser" id="browser-panel" style="display:none">
           <button class="hud-section-toggle" id="browser-panel-header">
-            <span class="hud-section-label-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Browser <span class="hud-embed-status" id="browser-status">checking…</span> <span class="hud-embed-dot" id="browser-dot"></span></span>
+            <span class="hud-section-label-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Browser <span class="hud-embed-status" id="browser-status"></span> <span class="hud-embed-dot" id="browser-dot"></span></span>
             <span class="hud-section-actions">
               <span class="hud-embed-action hud-when-open" id="browser-refresh-btn" title="Refresh">↻</span>
               <span class="hud-embed-action hud-when-open" id="browser-expand-btn" title="Expand">⤢</span>
@@ -1771,9 +1771,9 @@
         </div>
 
         <!-- ═══ Terminal (collapsible + expandable) ═══ -->
-        <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-terminal" id="terminal-panel">
+        <div class="hud-section hud-collapsible hud-embed-panel" data-section="agent-terminal" id="terminal-panel" style="display:none">
           <button class="hud-section-toggle" id="terminal-panel-header">
-            <span class="hud-section-label-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> Terminal <span class="hud-embed-status" id="terminal-status">checking…</span> <span class="hud-embed-dot" id="terminal-dot"></span></span>
+            <span class="hud-section-label-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> Terminal <span class="hud-embed-status" id="terminal-status"></span> <span class="hud-embed-dot" id="terminal-dot"></span></span>
             <span class="hud-section-actions">
               <span class="hud-embed-action hud-when-open" id="terminal-refresh-btn" title="Refresh">↻</span>
               <span class="hud-embed-action hud-when-open" id="terminal-expand-btn" title="Expand">⤢</span>
@@ -2046,7 +2046,7 @@
 
   </div>
 
-  <script src="/app.js?v=186"></script>
+  <script src="/app.js?v=187"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
