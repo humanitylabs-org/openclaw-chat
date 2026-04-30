@@ -4225,6 +4225,17 @@ body.text-large .openclaw-tool-item { font-size: 12px; }
   justify-content: flex-end;
 }
 
+#hud-cron-routing-controls {
+  margin-bottom: 10px;
+}
+
+.hud-defaults-note {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-faint);
+  margin-top: 6px;
+}
+
 /* ── Toggles ──────────────────────────────────────────── */
 .hud-toggle input:checked + .hud-toggle-track {
   background: rgba(34,197,94,0.15) !important;

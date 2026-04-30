@@ -714,6 +714,9 @@ const state = {
     resetAtHour: 4,
     resetIdleMinutes: 240,
     heartbeatEvery: "1h",
+    heartbeatSession: "main",
+    heartbeatTarget: "",
+    heartbeatTo: "",
     llmIdleTimeoutSeconds: 60,
   },
   
@@ -1752,6 +1755,9 @@ async function loadDefaults() {
 
     const heartbeatCfg = ad?.heartbeat || {};
     const heartbeatEvery = heartbeatCfg?.every || "0m";
+    const heartbeatSession = String(heartbeatCfg?.session || "main");
+    const heartbeatTarget = String(heartbeatCfg?.target || "");
+    const heartbeatTo = String(heartbeatCfg?.to || "");
 
     state.defaults = {
       model: typeof model === "string" ? model : "",
@@ -1763,6 +1769,9 @@ async function loadDefaults() {
       resetAtHour,
       resetIdleMinutes,
       heartbeatEvery,
+      heartbeatSession,
+      heartbeatTarget,
+      heartbeatTo,
       llmIdleTimeoutSeconds,
     };
     
@@ -8158,6 +8167,113 @@ function humanizeCron(expr) {
   return expr;
 }
 
+function preferredTelegramDirectSessionKey() {
+  const to = String(state.defaults?.heartbeatTo || '').trim();
+  if (to) return `telegram:direct:${to}`;
+  const fromPairs = (state.homePairOptions || []).find((o) => String(o.value || '').startsWith('telegram:direct:'));
+  return fromPairs?.value || 'telegram:direct:5407523304';
+}
+
+function detectCronExecutionMode(jobs = []) {
+  const runnable = jobs.filter((j) => j?.payload?.kind === 'agentTurn');
+  if (!runnable.length) return 'quiet';
+  const telegramSession = preferredTelegramDirectSessionKey();
+  const telegramPinned = runnable.filter((j) => {
+    const target = String(j.sessionTarget || '');
+    const key = String(j.sessionKey || '');
+    return target === `session:${telegramSession}` || key === telegramSession;
+  }).length;
+  return telegramPinned >= Math.ceil(runnable.length / 2) ? 'telegram-tab' : 'quiet';
+}
+
+function renderCronRoutingControls(jobs = []) {
+  const host = document.getElementById('hud-cron-routing-controls');
+  if (!host) return;
+  const heartbeatSession = String(state.defaults?.heartbeatSession || 'main');
+  const telegramSession = preferredTelegramDirectSessionKey();
+  const hbValue = heartbeatSession.startsWith('telegram:direct:') ? 'telegram-tab' : 'main';
+  const cronMode = detectCronExecutionMode(jobs);
+
+  host.innerHTML = `
+    <div class="hud-settings-row">
+      <span class="hud-settings-label">Heartbeat runs in</span>
+      <select class="hud-defaults-select" id="dash-heartbeat-session">
+        <option value="main" ${hbValue === 'main' ? 'selected' : ''}>Main tab (quiet)</option>
+        <option value="telegram-tab" ${hbValue === 'telegram-tab' ? 'selected' : ''}>Telegram tab (chatty)</option>
+      </select>
+    </div>
+    <div class="hud-settings-row">
+      <span class="hud-settings-label">Cron execution</span>
+      <select class="hud-defaults-select" id="dash-cron-execution-mode">
+        <option value="quiet" ${cronMode === 'quiet' ? 'selected' : ''}>Quiet automation (recommended)</option>
+        <option value="telegram-tab" ${cronMode === 'telegram-tab' ? 'selected' : ''}>Telegram tab (chatty)</option>
+      </select>
+    </div>
+    <button class="hud-defaults-apply" id="dash-routing-apply" onclick="applyRoutingSettings()">apply routing</button>
+    <div class="hud-defaults-note">Heartbeat + cron routing without editing config manually.</div>
+  `;
+
+  host.dataset.telegramSession = telegramSession;
+}
+
+async function patchHeartbeatSessionMode(mode, telegramSession) {
+  const cfg = await state.gateway.request('config.get', {});
+  const hash = cfg?.hash;
+  if (!hash) throw new Error('missing config hash');
+  const nextSession = mode === 'telegram-tab' ? telegramSession : 'main';
+  const raw = JSON.stringify({
+    agents: {
+      defaults: {
+        heartbeat: {
+          session: nextSession,
+          isolatedSession: false,
+        }
+      }
+    }
+  });
+  await state.gateway.request('config.patch', { raw, baseHash: hash });
+}
+
+async function patchCronExecutionMode(mode, telegramSession) {
+  const result = await state.gateway.request('cron.list', { includeDisabled: true });
+  const jobs = Array.isArray(result?.jobs) ? result.jobs : [];
+  for (const job of jobs) {
+    if (job?.payload?.kind !== 'agentTurn') continue;
+    const patch = mode === 'telegram-tab'
+      ? { sessionTarget: `session:${telegramSession}`, sessionKey: telegramSession }
+      : { sessionTarget: 'isolated', sessionKey: '' };
+    await state.gateway.request('cron.update', { jobId: job.id, patch });
+  }
+}
+
+async function applyRoutingSettings() {
+  if (!state.gateway?.connected) return;
+  const hbMode = document.getElementById('dash-heartbeat-session')?.value || 'main';
+  const cronMode = document.getElementById('dash-cron-execution-mode')?.value || 'quiet';
+  const btn = document.getElementById('dash-routing-apply');
+  const telegramSession = document.getElementById('hud-cron-routing-controls')?.dataset?.telegramSession || preferredTelegramDirectSessionKey();
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'applying…';
+  }
+  try {
+    await patchHeartbeatSessionMode(hbMode, telegramSession);
+    await patchCronExecutionMode(cronMode, telegramSession);
+    await loadDefaults();
+    await loadCronJobs();
+  } catch (err) {
+    console.warn('Failed to apply routing settings:', err);
+    alert('Could not apply routing settings. Check logs and try again.');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'apply routing';
+    }
+  }
+}
+
+window.applyRoutingSettings = applyRoutingSettings;
+
 async function loadCronJobs() {
   const container = document.getElementById('hud-cron-list');
   if (!container || !state.gateway?.connected) return;
@@ -8165,6 +8281,7 @@ async function loadCronJobs() {
   try {
     const result = await state.gateway.request('cron.list', {});
     const jobs = result?.jobs || result || [];
+    renderCronRoutingControls(Array.isArray(jobs) ? jobs : []);
 
     if (!Array.isArray(jobs) || jobs.length === 0) {
       container.innerHTML = '';
