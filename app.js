@@ -3525,8 +3525,8 @@ document.getElementById("bar-thinking")?.addEventListener("click", () =>
 document.getElementById("bar-verbose")?.addEventListener("click", () =>
   cycleShowSteps());
 
-document.getElementById("bar-download")?.addEventListener("click", (event) =>
-  openExportMenu(event.currentTarget));
+document.getElementById("bar-download")?.addEventListener("click", () =>
+  exportCurrentSession());
 
 document.getElementById("bar-menu")?.addEventListener("click", (event) =>
   openCommandMenu(event.currentTarget));
@@ -9300,26 +9300,6 @@ function applyDashSettings(settings) {
 
 // ─── Export Session ───────────────────────────────────────────────
 
-function openExportMenu(anchorEl) {
-  openInlineMenu({
-    id: "export-menu",
-    anchorEl,
-    title: "download",
-    options: [
-      {
-        label: "PDF",
-        description: "Print dialog · save as PDF",
-        onSelect: () => exportCurrentSession({ format: "pdf" }),
-      },
-      {
-        label: "HTML",
-        description: "Single file · same visual layout",
-        onSelect: () => exportCurrentSession({ format: "html" }),
-      },
-    ],
-  });
-}
-
 function exportShouldIncludeNode(el) {
   if (!el || !(el instanceof HTMLElement)) return false;
   if (el.id === "reconnect-banner") return false;
@@ -9368,8 +9348,7 @@ function resolveThemeHref() {
   return abs;
 }
 
-async function exportCurrentSession(opts = {}) {
-  const format = String(opts?.format || "pdf").toLowerCase();
+async function exportCurrentSession() {
   const sk = state.sessionKey || "main";
   const messages = state.messages || [];
   if (messages.length === 0) {
@@ -9386,10 +9365,8 @@ async function exportCurrentSession(opts = {}) {
   const esc = (s) => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const msgHtml = buildExportMessagesHtml();
   const themeHref = resolveThemeHref();
-  const bodyTheme = esc(document.body.getAttribute("data-theme") || "dark");
+  const bodyTheme = "light";
   const bodyClass = esc(document.body.className || "");
-
-  const autoPrint = format === "pdf";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -9449,28 +9426,12 @@ async function exportCurrentSession(opts = {}) {
     ${msgHtml}
   </div>
 </div>
-${autoPrint ? `<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),220));</script>` : ''}
 </body>
 </html>`;
 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const base = `${label.replace(/[^a-zA-Z0-9-_ ]/g, '')}-${dateStr}`;
-
-  if (format === "pdf") {
-    const win = window.open(url, "_blank", "noopener");
-    if (!win) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${base}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      alert("Popup blocked — downloaded HTML instead. Open it and use Print → Save as PDF.");
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-    return;
-  }
 
   const a = document.createElement('a');
   a.href = url;
