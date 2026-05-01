@@ -5421,15 +5421,19 @@ function formatMarkdown(text) {
 
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => safeLink(text, url));
 
-  // Lists: accept common markdown variants with optional leading spaces.
-  // Supports bullets (-, *) and ordered markers ("1." and "1)") for better compatibility.
-  html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, "<li>$1</li>");
+  // Lists: preserve indentation so nested lists render at the intended level.
+  html = html.replace(/^(\s*)[\-\*]\s+(.+)$/gm, (_, indent, content) => {
+    const n = listIndentSize(indent);
+    return `<li data-list="ul" data-indent="${n}">${content}</li>`;
+  });
 
-  html = html.replace(/^\s*(\d+)[\.)]\s+(.+)$/gm, '<li class="ol-item" value="$1">$2</li>');
+  html = html.replace(/^(\s*)(\d+)[\.)]\s+(.+)$/gm, (_, indent, num, content) => {
+    const n = listIndentSize(indent);
+    return `<li data-list="ol" data-indent="${n}" value="${num}">${content}</li>`;
+  });
 
-  html = html.replace(/((?:<li(?:\s[^>]*)?>.*?<\/li>\s*)+)/g, (match) => {
-    if (match.includes('class="ol-item"')) return '<ol>' + match.replace(/ class="ol-item"/g, '') + '</ol>';
-    return '<ul>' + match + '</ul>';
+  html = html.replace(/((?:<li(?:\s[^>]*)?>[\s\S]*?<\/li>\s*)+)/g, (match) => {
+    return buildNestedListFromFlat(match);
   });
 
   html = html.replace(/\n\n/g, "</p><p>");
@@ -5460,6 +5464,79 @@ function escapeHtmlChat(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+function listIndentSize(indent) {
+  if (!indent) return 0;
+  return String(indent).replace(/\t/g, "    ").length;
+}
+
+function buildNestedListFromFlat(flatHtml) {
+  const parts = [...String(flatHtml).matchAll(/<li\b[^>]*>[\s\S]*?<\/li>/g)].map((m) => m[0]);
+  if (!parts.length) return flatHtml;
+
+  const items = parts.map((raw) => {
+    const type = (raw.match(/\bdata-list="(ul|ol)"/i)?.[1] || "").toLowerCase();
+    const indent = Number.parseInt(raw.match(/\bdata-indent="(\d+)"/i)?.[1] || "0", 10) || 0;
+    const value = Number.parseInt(raw.match(/\bvalue="(\d+)"/i)?.[1] || "", 10);
+    const content = raw.replace(/^<li\b[^>]*>/i, "").replace(/<\/li>\s*$/i, "");
+    return { type: type === "ol" ? "ol" : "ul", indent, value, content, tagged: !!type };
+  });
+
+  const hasTagged = items.some((i) => i.tagged);
+  if (!hasTagged) {
+    if (flatHtml.includes('class="ol-item"')) return '<ol>' + flatHtml.replace(/ class="ol-item"/g, '') + '</ol>';
+    return '<ul>' + flatHtml + '</ul>';
+  }
+
+  const root = document.createElement("div");
+  const stack = [];
+
+  const makeList = (type) => document.createElement(type === "ol" ? "ol" : "ul");
+
+  const ensureFrame = (item) => {
+    while (stack.length && item.indent < stack[stack.length - 1].indent) stack.pop();
+
+    if (!stack.length) {
+      const list = makeList(item.type);
+      root.appendChild(list);
+      stack.push({ list, type: item.type, indent: item.indent, lastLi: null });
+      return;
+    }
+
+    let top = stack[stack.length - 1];
+
+    if (item.indent > top.indent && top.lastLi) {
+      const nested = makeList(item.type);
+      top.lastLi.appendChild(nested);
+      stack.push({ list: nested, type: item.type, indent: item.indent, lastLi: null });
+      return;
+    }
+
+    if (item.indent === top.indent && item.type !== top.type) {
+      const sibling = makeList(item.type);
+      const parent = top.list.parentElement || root;
+      parent.appendChild(sibling);
+      stack[stack.length - 1] = { list: sibling, type: item.type, indent: item.indent, lastLi: null };
+      return;
+    }
+
+    if (item.indent > top.indent && !top.lastLi) {
+      item.indent = top.indent;
+    }
+  };
+
+  for (const item of items) {
+    ensureFrame(item);
+    const frame = stack[stack.length - 1];
+    const li = document.createElement("li");
+    if (frame.type === "ol" && Number.isFinite(item.value)) li.setAttribute("value", String(item.value));
+    li.innerHTML = item.content;
+    frame.list.appendChild(li);
+    frame.lastLi = li;
+  }
+
+  return root.innerHTML;
 }
 
 /** Sanitize a URL — only allow http(s), mailto, and # (anchor) protocols */
