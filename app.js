@@ -9312,16 +9312,7 @@ function exportShouldIncludeNode(el) {
 function sanitizeExportNode(root) {
   if (!root) return;
   root.querySelectorAll(".oc-code-copy, .oc-inline-menu, script").forEach((n) => n.remove());
-
-  root.querySelectorAll(".openclaw-audio-play-btn").forEach((btn) => {
-    btn.textContent = "▶ voice message";
-    btn.disabled = true;
-    btn.title = "Audio playback disabled in export file";
-  });
-
-  root.querySelectorAll(".openclaw-audio-progress .openclaw-audio-bar").forEach((bar) => {
-    bar.style.width = "0%";
-  });
+  root.querySelectorAll(".openclaw-audio-player").forEach((n) => n.remove());
 }
 
 function buildExportMessagesHtml() {
