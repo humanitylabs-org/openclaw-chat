@@ -3516,8 +3516,8 @@ document.getElementById("bar-thinking")?.addEventListener("click", () =>
 document.getElementById("bar-verbose")?.addEventListener("click", () =>
   cycleShowSteps());
 
-document.getElementById("bar-download")?.addEventListener("click", () =>
-  exportCurrentSession());
+document.getElementById("bar-download")?.addEventListener("click", (event) =>
+  openExportMenu(event.currentTarget));
 
 document.getElementById("bar-menu")?.addEventListener("click", (event) =>
   openCommandMenu(event.currentTarget));
@@ -9280,7 +9280,76 @@ function applyDashSettings(settings) {
 
 // ─── Export Session ───────────────────────────────────────────────
 
-function exportCurrentSession() {
+function openExportMenu(anchorEl) {
+  openInlineMenu({
+    id: "export-menu",
+    anchorEl,
+    title: "download",
+    options: [
+      {
+        label: "PDF",
+        description: "Print dialog · save as PDF",
+        onSelect: () => exportCurrentSession({ format: "pdf" }),
+      },
+      {
+        label: "HTML",
+        description: "Single file · same visual layout",
+        onSelect: () => exportCurrentSession({ format: "html" }),
+      },
+    ],
+  });
+}
+
+function exportShouldIncludeNode(el) {
+  if (!el || !(el instanceof HTMLElement)) return false;
+  if (el.id === "reconnect-banner") return false;
+  if (el.classList.contains("openclaw-typing")) return false;
+  if (el.classList.contains("oc-hidden")) return false;
+  if (el.style?.display === "none") return false;
+  return true;
+}
+
+function sanitizeExportNode(root) {
+  if (!root) return;
+  root.querySelectorAll(".oc-code-copy, .oc-inline-menu, script").forEach((n) => n.remove());
+
+  root.querySelectorAll(".openclaw-audio-play-btn").forEach((btn) => {
+    btn.textContent = "▶ voice message";
+    btn.disabled = true;
+    btn.title = "Audio playback disabled in export file";
+  });
+
+  root.querySelectorAll(".openclaw-audio-progress .openclaw-audio-bar").forEach((bar) => {
+    bar.style.width = "0%";
+  });
+}
+
+function buildExportMessagesHtml() {
+  const wrap = document.createElement("div");
+  wrap.className = "openclaw-messages";
+
+  const source = ui.messagesContainer;
+  if (!source) return wrap.outerHTML;
+
+  for (const child of Array.from(source.children)) {
+    if (!exportShouldIncludeNode(child)) continue;
+    const clone = child.cloneNode(true);
+    sanitizeExportNode(clone);
+    wrap.appendChild(clone);
+  }
+
+  return wrap.outerHTML;
+}
+
+function resolveThemeHref() {
+  const link = document.querySelector('link[rel="stylesheet"][href*="theme.css"]');
+  const href = link?.getAttribute("href") || "/theme.css";
+  const abs = new URL(href, window.location.origin).toString();
+  return abs;
+}
+
+async function exportCurrentSession(opts = {}) {
+  const format = String(opts?.format || "pdf").toLowerCase();
   const sk = state.sessionKey || "main";
   const messages = state.messages || [];
   if (messages.length === 0) {
@@ -9294,16 +9363,13 @@ function exportCurrentSession() {
   const dateStr = now.toISOString().slice(0, 19).replace(/[T:]/g, '-');
   const readableDate = now.toLocaleString();
 
-  // Build clean HTML
   const esc = (s) => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  let msgHtml = '';
-  for (const msg of messages) {
-    const role = msg.role === 'user' ? 'You' : 'Assistant';
-    const cls = msg.role === 'user' ? 'user' : 'assistant';
-    const text = esc(msg.text).replace(/\n/g, '<br>');
-    const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '';
-    msgHtml += `<div class="msg ${cls}"><div class="msg-header"><strong>${role}</strong><span class="time">${time}</span></div><div class="msg-body">${text}</div></div>\n`;
-  }
+  const msgHtml = buildExportMessagesHtml();
+  const themeHref = resolveThemeHref();
+  const bodyTheme = esc(document.body.getAttribute("data-theme") || "dark");
+  const bodyClass = esc(document.body.className || "");
+
+  const autoPrint = format === "pdf";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -9311,44 +9377,84 @@ function exportCurrentSession() {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(label)} — Session Export</title>
+<link rel="stylesheet" href="${esc(themeHref)}">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1a1a; padding: 24px; line-height: 1.6; }
-  .header { max-width: 720px; margin: 0 auto 24px; padding-bottom: 16px; border-bottom: 1px solid #e0e0e0; }
-  .header h1 { font-size: 18px; font-weight: 500; color: #1a1a1a; }
-  .header p { font-size: 12px; color: #888; margin-top: 4px; }
-  .messages { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
-  .msg { padding: 12px 16px; border-radius: 10px; }
-  .msg.user { background: #f5f5f5; border: 1px solid #e8e8e8; }
-  .msg.assistant { background: transparent; }
-  .msg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .msg-header strong { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #888; }
-  .time { font-size: 11px; color: #aaa; }
-  .msg-body { font-size: 14px; white-space: pre-wrap; word-break: break-word; }
-  .msg.user .msg-body { color: #1a1a1a; }
-  .msg.assistant .msg-body { color: #333; }
-  .footer { max-width: 720px; margin: 24px auto 0; padding-top: 16px; border-top: 1px solid #e0e0e0; text-align: center; font-size: 11px; color: #aaa; }
-  @media print { body { padding: 0; } .msg { break-inside: avoid; } }
+  body { margin: 0; }
+  .export-shell {
+    min-height: 100vh;
+    background: var(--background-primary, #0b0b0d);
+    color: var(--text-normal, #f2f2f2);
+  }
+  .export-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    backdrop-filter: blur(8px);
+    background: color-mix(in srgb, var(--background-primary, #0b0b0d) 78%, transparent);
+    border-bottom: 1px solid var(--background-modifier-border, rgba(255,255,255,0.1));
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text-muted, #a4a8b0);
+  }
+  .export-header strong { color: var(--text-normal, #f2f2f2); }
+  .export-body {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  .openclaw-messages {
+    min-height: 0;
+    max-height: none;
+    height: auto;
+    overflow: visible;
+    padding-bottom: 24px;
+  }
+  .openclaw-msg,
+  .openclaw-msg-work-summary,
+  .openclaw-tool-item,
+  .openclaw-tool-output {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .openclaw-audio-play-btn { cursor: default !important; }
+  @media print {
+    .export-header { position: static; backdrop-filter: none; }
+    .export-shell { background: #fff !important; color: #111 !important; }
+  }
 </style>
 </head>
-<body>
-<div class="header">
-  <h1>${esc(label)}</h1>
-  <p>Exported ${esc(readableDate)} · ${messages.length} messages</p>
+<body data-theme="${bodyTheme}" class="${bodyClass}">
+<div class="export-shell">
+  <div class="export-header"><strong>${esc(label)}</strong> · Exported ${esc(readableDate)} · ${messages.length} messages</div>
+  <div class="export-body">
+    ${msgHtml}
+  </div>
 </div>
-<div class="messages">
-${msgHtml}
-</div>
-<div class="footer">Exported from usemyclaw.com</div>
+${autoPrint ? `<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),220));</script>` : ''}
 </body>
 </html>`;
 
-  // Trigger download
-  const blob = new Blob([html], { type: 'text/html' });
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
+  const base = `${label.replace(/[^a-zA-Z0-9-_ ]/g, '')}-${dateStr}`;
+
+  if (format === "pdf") {
+    const win = window.open(url, "_blank", "noopener");
+    if (!win) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${base}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      alert("Popup blocked — downloaded HTML instead. Open it and use Print → Save as PDF.");
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    return;
+  }
+
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${label.replace(/[^a-zA-Z0-9-_ ]/g, '')}-${dateStr}.html`;
+  a.download = `${base}.html`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
