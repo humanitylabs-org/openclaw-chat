@@ -4905,6 +4905,29 @@ html body .dashboard .hud-embed-panel.hud-section.hud-collapsible.hud-open {
   font-size: 0.9em;
 }
 
+.oc-scroll-bottom-btn {
+  position: absolute;
+  right: 14px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  background: color-mix(in srgb, var(--background-secondary) 86%, transparent);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 22;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(6px);
+}
+
+.oc-scroll-bottom-btn:hover {
+  color: var(--text-normal);
+  border-color: color-mix(in srgb, var(--interactive-accent) 35%, var(--background-modifier-border));
+}
+
 /* Tool/readout readability */
 .openclaw-tool-item {
   font-size: 12.5px;

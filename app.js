@@ -1181,6 +1181,7 @@ const ui = {
   agentDropdown: $("agent-dropdown"),
   statusBanner: $("status-banner"),
   messagesContainer: $("messages"),
+  scrollBottomBtn: $("scroll-bottom-btn"),
   messageInput: $("message-input"),
   attachBtn: $("attach-btn"),
   fileInput: $("file-input"),
@@ -1193,7 +1194,15 @@ const ui = {
 
 ui.messagesContainer?.addEventListener("scroll", () => {
   state.autoScrollPinned = isNearBottom(ui.messagesContainer, 72);
+  updateScrollBottomButton();
 }, { passive: true });
+
+ui.scrollBottomBtn?.addEventListener("click", () => {
+  if (!ui.messagesContainer) return;
+  state.autoScrollPinned = true;
+  ui.messagesContainer.scrollTo({ top: ui.messagesContainer.scrollHeight, behavior: "smooth" });
+  setTimeout(() => updateScrollBottomButton(), 120);
+});
 
 // ─── Onboarding Flow ─────────────────────────────────────────────────
 
@@ -5125,6 +5134,7 @@ function renderMessages(opts = {}) {
   } else {
     ui.messagesContainer.scrollTop = prevTop;
     state.autoScrollPinned = false;
+    updateScrollBottomButton();
   }
 }
 
@@ -5581,12 +5591,22 @@ function scrollToBottom(force = false) {
   requestAnimationFrame(() => {
     ui.messagesContainer.scrollTop = ui.messagesContainer.scrollHeight;
     state.autoScrollPinned = true;
+    updateScrollBottomButton();
   });
 }
 
 function isNearBottom(el, threshold = 48) {
   if (!el) return true;
   return (el.scrollHeight - el.scrollTop - el.clientHeight) <= threshold;
+}
+
+function updateScrollBottomButton() {
+  const btn = ui.scrollBottomBtn;
+  const el = ui.messagesContainer;
+  if (!btn || !el) return;
+  const canScroll = (el.scrollHeight - el.clientHeight) > 24;
+  const show = canScroll && !isNearBottom(el, 72);
+  btn.classList.toggle("oc-hidden", !show);
 }
 
 // ─── Tool Call Display ───────────────────────────────────────────────

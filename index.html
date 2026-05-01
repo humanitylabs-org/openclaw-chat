@@ -1486,7 +1486,7 @@
     [data-theme="light"] .openclaw-input-wrapper { background: var(--background-secondary); border-color: var(--background-modifier-border); }
     [data-theme="light"] #message-input { color: var(--text-normal); }
   </style>
-  <link rel="stylesheet" href="/theme.css?v=168">
+  <link rel="stylesheet" href="/theme.css?v=169">
   <!-- Cal redesign: final spacing fix (inline = highest cascade priority) -->
   <style id="cal-spacing-fix">
     /* Every section toggle — tight spacing, no exceptions */
@@ -2000,6 +2000,11 @@
       <!-- Messages -->
       <div class="openclaw-messages" id="messages"></div>
 
+      <!-- Scroll to bottom -->
+      <button id="scroll-bottom-btn" class="oc-scroll-bottom-btn oc-hidden" aria-label="Scroll to bottom" title="Scroll to bottom">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 10 12 16 18 10"/></svg>
+      </button>
+
       <!-- Typing indicator -->
       <div class="openclaw-typing oc-hidden" id="typing-indicator">
         <div class="openclaw-typing-inner">
@@ -2047,7 +2052,7 @@
 
   </div>
 
-  <script src="/app.js?v=197"></script>
+  <script src="/app.js?v=198"></script>
   <!-- Connect Modal (styles inlined to avoid cache issues) -->
   <style>
     #connect-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);justify-content:center;align-items:center;padding:24px}
