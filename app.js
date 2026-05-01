@@ -5421,9 +5421,11 @@ function formatMarkdown(text) {
 
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => safeLink(text, url));
 
-  html = html.replace(/^[\-\*]\s+(.+)$/gm, "<li>$1</li>");
+  // Lists: accept common markdown variants with optional leading spaces.
+  // Supports bullets (-, *) and ordered markers ("1." and "1)") for better compatibility.
+  html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, "<li>$1</li>");
 
-  html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li class="ol-item" value="$1">$2</li>');
+  html = html.replace(/^\s*(\d+)[\.)]\s+(.+)$/gm, '<li class="ol-item" value="$1">$2</li>');
 
   html = html.replace(/((?:<li(?:\s[^>]*)?>.*?<\/li>\s*)+)/g, (match) => {
     if (match.includes('class="ol-item"')) return '<ol>' + match.replace(/ class="ol-item"/g, '') + '</ol>';
