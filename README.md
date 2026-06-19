@@ -1,6 +1,6 @@
 # OpenClaw Chat
 
-A Progressive Web App (PWA) for chatting with OpenClaw AI assistants via Tailscale.
+A Progressive Web App (PWA) for chatting with compatible local agent gateways via Tailscale. It was originally built for OpenClaw and keeps that protocol as the baseline.
 
 🚀 **Live Demo:** https://openclaw-chat.vercel.app
 
@@ -31,16 +31,16 @@ vercel --prod
 
 1. Open the deployed app
 2. Enter your gateway URL (e.g., `https://your-server.tail1234.ts.net`)
-3. Paste your auth token (from `~/.openclaw/openclaw.json`)
+3. Paste your auth token. For OpenClaw this is in `~/.openclaw/openclaw.json`; other compatible gateways can provide their own token.
 4. Click "Connect"
 5. Approve the device in your gateway's Control UI
 6. Start chatting!
 
 ## How It Works
 
-OpenClaw Chat uses the same protocol as the ObsidianClaw plugin:
+The app uses the OpenClaw/compatible gateway protocol:
 
-1. **WebSocket connection** to your OpenClaw gateway
+1. **WebSocket connection** to your compatible gateway
 2. **Ed25519 challenge-response auth** for device approval
 3. **Streaming message protocol** with delta updates
 4. **Tool call indicators** for transparency
